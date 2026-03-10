@@ -1,1 +1,11 @@
-# sistemas-operativos-unrc
+# UNRC - Sistemas Operativos
+
+**Año académico: 2026**
+
+Repositorio de la materia **Sistemas Operativos** de la **Licenciatura en Ciencias de la Computación** (UNRC).
+
+Autor: Tomás Rodeghiero
+
+## Resolucion de prácticos
+
+- [Práctico 1](./resolucion-practicos/practico-1/README.md)
