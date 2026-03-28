@@ -1,0 +1,26 @@
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Local virtualenvs
+.venv/
+.venv_pdf/
+
+# C/C++ generic build artifacts
+*.o
+*.obj
+*.dSYM/
+
+# Practico 3 generated binaries
+resolucion-practicos/practico-3/resolucion-2/mapa_memoria_macos
+resolucion-practicos/practico-3/resolucion-8/mmapfile
+resolucion-practicos/practico-3/resolucion-8/mmapfile_shared
+resolucion-practicos/practico-3/resolucion-9/shmwriter
+resolucion-practicos/practico-3/resolucion-9/shmreader
+
+# Practico 3 runtime-generated files
+resolucion-practicos/practico-3/resolucion-8/mmapfile.txt
+resolucion-practicos/practico-3/resolucion-9/shmfile
+
+# Local copy of statement PDF (optional, avoid noisy binary diffs)
+resolucion-practicos/practico-3/*Memoria.pdf

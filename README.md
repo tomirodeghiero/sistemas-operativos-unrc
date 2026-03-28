@@ -10,3 +10,5 @@ Autor: Tomás Rodeghiero
 
 - [Práctico 1](./resolucion-practicos/practico-1/README.md)
 - [Práctico 2](./resolucion-practicos/practico-2/README.md)
+- [Práctico 3](./resolucion-practicos/practico-3/README.md)
+- [Práctico 4](./resolucion-practicos/practico-4/README.md)
