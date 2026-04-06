@@ -1,14 +1,23 @@
-# Practico 2
+# Practico 2 (2026)
 
-Tareas, concurrencia y planificacion de CPU.
+Compilacion y linking.
 
-## Resoluciones
+## Archivos fuente
 
-- [Resolucion 1 - Ejercicio 1 (counter, condicion de carrera y flock)](./resolucion-1/README.md)
-- [Resolucion 2 - Ejercicio 2 (estado de una tarea no RUNNING)](./resolucion-2/README.md)
-- [Resolucion 3 - Ejercicio 3 (propuesta de fork en mini-kernel)](./resolucion-3/README.md)
-- [Resolucion 4 - Ejercicio 4 (flujo de interrupcion de timer)](./resolucion-4/README.md)
-- [Resolucion 5 - Ejercicio 5 (trapframe vs contexto salvado)](./resolucion-5/README.md)
-- [Resolucion 6 - Ejercicio 6 (FCFS vs SJF, tiempo de espera promedio)](./resolucion-6/README.md)
-- [Resolucion 7 - Ejercicio 7 (experimento de planificacion con nice/renice)](./resolucion-7/README.md)
-- [Resolucion 8 - Ejercicio 8 (semaforos + productor-consumidor)](./resolucion-8/README.md)
+- `main.c` (original)
+- `main_stack.c` (variante para el ejercicio 6)
+- `hello.c`
+
+## Resoluciones por ejercicio
+
+- [Ejercicio 1 - Preprocesado, assembly y objeto de `hello.c`](./ejercicio-1/README.md)
+- [Ejercicio 2 - Compilar `main.c` a `main.o`](./ejercicio-2/README.md)
+- [Ejercicio 3 - Analisis de `main.o` y `hello.o`](./ejercicio-3/README.md)
+- [Ejercicio 4 - Generar ejecutable `myprog` desde objetos](./ejercicio-4/README.md)
+- [Ejercicio 5 - Analisis assembly de `myprog`](./ejercicio-5/README.md)
+- [Ejercicio 6 - Espacio de direcciones del stack](./ejercicio-6/README.md)
+
+## Ejecutables/resultados actuales
+
+- `myprog`
+- `myprog_stack`
