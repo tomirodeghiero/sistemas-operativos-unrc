@@ -6,6 +6,18 @@
 .venv/
 .venv_pdf/
 
+# Node / Docusaurus
+node_modules/
+.docusaurus/
+build/
+
+# Generated docs (se regeneran con docs:generate)
+docs/
+static/material/
+
+# Vercel local metadata
+.vercel/
+
 # C/C++ generic build artifacts
 *.o
 *.obj
@@ -21,6 +33,3 @@ resolucion-practicos/practico-3/resolucion-9/shmreader
 # Practico 3 runtime-generated files
 resolucion-practicos/practico-3/resolucion-8/mmapfile.txt
 resolucion-practicos/practico-3/resolucion-9/shmfile
-
-# Local copy of statement PDF (optional, avoid noisy binary diffs)
-resolucion-practicos/practico-3/*Memoria.pdf

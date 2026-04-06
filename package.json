@@ -1,0 +1,19 @@
+{
+  "name": "sistemas-operativos-docs",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "docusaurus start",
+    "build": "docusaurus build",
+    "docs:build": "bash scripts/generate_docs_docusaurus.sh && docusaurus build",
+    "serve": "docusaurus serve",
+    "clear": "docusaurus clear",
+    "docs:generate": "bash scripts/generate_docs_docusaurus.sh"
+  },
+  "dependencies": {
+    "@docusaurus/core": "3.9.2",
+    "@docusaurus/preset-classic": "3.9.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  }
+}
