@@ -25,6 +25,26 @@ extract_num() {
   echo "$s" | sed -E 's/[^0-9]+/ /g' | awk '{print $1}'
 }
 
+practico_title() {
+  local practico="$1"
+  local pnum
+  local year
+
+  if [[ "$practico" =~ ^practico-([0-9]+)-([0-9]{4})$ ]]; then
+    pnum="${BASH_REMATCH[1]}"
+    year="${BASH_REMATCH[2]}"
+    echo "Practico $pnum - $year"
+    return
+  fi
+
+  pnum="$(extract_num "$practico")"
+  if [ -n "$pnum" ]; then
+    echo "Practico $pnum"
+  else
+    echo "$(titleize "$practico")"
+  fi
+}
+
 practicos=()
 while IFS= read -r practico_path; do
   [ -z "$practico_path" ] && continue
@@ -55,12 +75,7 @@ while IFS= read -r src; do
 
   if [ "$dir" = "." ]; then
     dest="docs/$practico/index.md"
-    pnum="$(extract_num "$practico")"
-    if [ -n "$pnum" ]; then
-      title="Practico $pnum"
-    else
-      title="$(titleize "$practico")"
-    fi
+    title="$(practico_title "$practico")"
     slug="/$practico/"
     position=1
   else
@@ -116,12 +131,7 @@ for practico_path in "${practicos[@]}"; do
   idx="docs/$practico/index.md"
   if [ ! -f "$idx" ]; then
     mkdir -p "docs/$practico"
-    pnum="$(extract_num "$practico")"
-    if [ -n "$pnum" ]; then
-      ptitle="Practico $pnum"
-    else
-      ptitle="$(titleize "$practico")"
-    fi
+    ptitle="$(practico_title "$practico")"
     {
       echo "---"
       echo "title: \"$ptitle\""
@@ -217,12 +227,7 @@ done
   echo
   for practico_path in "${practicos[@]}"; do
     practico="$(basename "$practico_path")"
-    pnum="$(extract_num "$practico")"
-    if [ -n "$pnum" ]; then
-      label="Practico $pnum"
-    else
-      label="$(titleize "$practico")"
-    fi
+    label="$(practico_title "$practico")"
     echo "- [$label](./$practico/)"
   done
 

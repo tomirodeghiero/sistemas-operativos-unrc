@@ -1,4 +1,4 @@
-# Practico 2 (2026)
+# Practico 2
 
 Compilacion y linking.
 
