@@ -106,34 +106,37 @@ El literal se almacena en `__TEXT,__cstring` de `hello.o`, con simbolo local `l_
 Comandos:
 
 ```bash
-nm -m main.o
-nm -m hello.o
-otool -rvV main.o
-otool -rvV hello.o
+objdump -t main.o
+objdump -r main.o
+objdump -t hello.o
+objdump -r hello.o
 ```
 
 Resumen:
 
 ### Simbolos en `main.o`
 
-- externos indefinidos: `_hello`, `_printf`
-- externo definido: `_main`
-- local: `l_.str` en `__TEXT,__cstring` (formato de `printf`)
+- global definido: `_main`
+- indefinidos (`*UND*`): `_hello`, `_printf`
+- locales: `l_.str` en `__TEXT,__cstring` (formato de `printf`) y `ltmp*`
 
 ### Reubicaciones en `main.o` (`__TEXT,__text`)
 
-- `BR26` a `_hello` (call)
-- `BR26` a `_printf` (call)
-- `PAGE21` y `PAGOF12` a `l_.str` (armado de direccion del literal)
+- `ARM64_RELOC_BRANCH26` a `_hello` (call)
+- `ARM64_RELOC_BRANCH26` a `_printf` (call)
+- `ARM64_RELOC_PAGE21` y `ARM64_RELOC_PAGEOFF12` a `l_.str` (armado de direccion del literal)
+- en `__compact_unwind`: `ARM64_RELOC_UNSIGNED` a `__text`
 
 ### Simbolos en `hello.o`
 
-- externo definido: `_hello`
-- local: `l_.str` en `__TEXT,__cstring` (`"Hello world"`)
+- global definido: `_hello`
+- local: `l_.str` en `__TEXT,__cstring` (`"Hello world"`) y `ltmp*`
+- no tiene simbolos externos indefinidos
 
 ### Reubicaciones en `hello.o` (`__TEXT,__text`)
 
-- `PAGE21` y `PAGOF12` a `l_.str`
+- `ARM64_RELOC_PAGE21` y `ARM64_RELOC_PAGEOFF12` a `l_.str`
+- en `__compact_unwind`: `ARM64_RELOC_UNSIGNED` a `__text`
 
 ## g) Instrucciones `call` en `main()`: operandos resueltos?
 
@@ -148,7 +151,7 @@ En `main.o` se ve:
 - `bl 0x18`
 - `bl 0x2c`
 
-Esos operandos **no estan resueltos definitivamente** en el objeto; se resuelven via reubicacion (tabla `otool -rvV main.o`) hacia `_hello` y `_printf` al linkear.
+Esos operandos **no estan resueltos definitivamente** en el objeto; se resuelven via reubicacion (tabla `objdump -r main.o`) hacia `_hello` y `_printf` al linkear.
 
 ## h) Como retornan los valores las funciones
 
@@ -180,8 +183,8 @@ otool -tvV hello.o
 # simbolos y relocaciones
 nm -n main.o
 nm -n hello.o
-nm -m main.o
-nm -m hello.o
-otool -rvV main.o
-otool -rvV hello.o
+objdump -t main.o
+objdump -r main.o
+objdump -t hello.o
+objdump -r hello.o
 ```

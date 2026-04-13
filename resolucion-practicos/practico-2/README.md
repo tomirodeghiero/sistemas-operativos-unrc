@@ -6,7 +6,10 @@ Compilacion y linking.
 
 - `main.c` (original)
 - `main_stack.c` (variante para el ejercicio 6)
+- `main_lib.c` (variante para el ejercicio 7)
+- `main_dlopen.c` (variante para el ejercicio 8)
 - `hello.c`
+- `hello2.c`
 
 ## Resoluciones por ejercicio
 
@@ -16,8 +19,12 @@ Compilacion y linking.
 - [Ejercicio 4 - Generar ejecutable `myprog` desde objetos](./ejercicio-4/README.md)
 - [Ejercicio 5 - Analisis assembly de `myprog`](./ejercicio-5/README.md)
 - [Ejercicio 6 - Espacio de direcciones del stack](./ejercicio-6/README.md)
+- [Ejercicio 7 - Biblioteca estatica `libhello.a` y enlace](./ejercicio-7/README.md)
+- [Ejercicio 8 - Biblioteca dinamica `libhello.dylib` y `dlopen`](./ejercicio-8/README.md)
 
 ## Ejecutables/resultados actuales
 
 - `myprog`
 - `myprog_stack`
+- `myprog_lib`
+- `myprog_dlopen`
