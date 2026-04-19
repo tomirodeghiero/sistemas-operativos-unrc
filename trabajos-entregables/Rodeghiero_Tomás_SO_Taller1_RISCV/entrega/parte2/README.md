@@ -1,4 +1,12 @@
-# Parte 2 - Entrega (S-mode + trap)
+# Parte 2 - Entrega (S-mode con manejo de traps)
+
+**Universidad Nacional de Río Cuarto**
+
+**Sistemas Operativos (Código 1965) - Taller 1**
+
+**Alumno:** Tomás Rodeghiero
+
+**Abril de 2026**
 
 En este paso trabajé con el kernel que arranca en machine mode (M) y luego cambia a supervisor mode (S) antes de entrar a `kernel_main()`.
 

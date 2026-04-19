@@ -1,0 +1,8 @@
+80000000 T boot
+8000000c T console_putc
+80000048 T console_puts
+8000008c T kernel_main
+800000c0 R __bss
+800000c0 R __bss_end
+80001000 R __stack0
+80002000 R __kernel_end
