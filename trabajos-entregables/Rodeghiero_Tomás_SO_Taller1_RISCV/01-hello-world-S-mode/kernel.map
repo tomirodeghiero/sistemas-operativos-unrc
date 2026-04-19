@@ -1,0 +1,111 @@
+
+There are no discarded input sections
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+RAM              0x80000000         0x08000000         xrw
+*default*        0x00000000         0xffffffff
+
+Linker script and memory map
+
+LOAD /var/folders/m6/k5srhp15335gyr_cp_n_y61c0000gn/T//cc58CdP4.o
+LOAD /var/folders/m6/k5srhp15335gyr_cp_n_y61c0000gn/T//cctgNc9o.o
+                0x80000000                        . = 0x80000000
+
+.text           0x80000000      0x158
+ *(.text.boot)
+ *(.text .text.*)
+ .text          0x80000000       0x88 /var/folders/m6/k5srhp15335gyr_cp_n_y61c0000gn/T//cc58CdP4.o
+                0x80000000                boot
+ .text          0x80000088       0xd0 /var/folders/m6/k5srhp15335gyr_cp_n_y61c0000gn/T//cctgNc9o.o
+                0x80000088                console_putc
+                0x800000c4                console_puts
+                0x80000108                trap
+                0x80000134                kernel_main
+
+.rodata         0x80000158       0x2f
+ *(.rodata .rodata.*)
+ .rodata.str1.4
+                0x80000158       0x2f /var/folders/m6/k5srhp15335gyr_cp_n_y61c0000gn/T//cctgNc9o.o
+
+.rela.dyn       0x80000188        0x0
+ .rela.text     0x80000188        0x0 /var/folders/m6/k5srhp15335gyr_cp_n_y61c0000gn/T//cc58CdP4.o
+
+.data           0x80000188        0x0
+ *(.data .data.*)
+ .data          0x80000188        0x0 /var/folders/m6/k5srhp15335gyr_cp_n_y61c0000gn/T//cc58CdP4.o
+ .data          0x80000188        0x0 /var/folders/m6/k5srhp15335gyr_cp_n_y61c0000gn/T//cctgNc9o.o
+
+.sdata          0x80000188        0x4
+ .sdata         0x80000188        0x4 /var/folders/m6/k5srhp15335gyr_cp_n_y61c0000gn/T//cctgNc9o.o
+                0x80000188                hello
+
+.bss            0x8000018c        0x0
+                0x8000018c                        __bss = .
+ *(.bss .bss.* .sbss .sbss.*)
+ .bss           0x8000018c        0x0 /var/folders/m6/k5srhp15335gyr_cp_n_y61c0000gn/T//cc58CdP4.o
+ .bss           0x8000018c        0x0 /var/folders/m6/k5srhp15335gyr_cp_n_y61c0000gn/T//cctgNc9o.o
+                0x8000018c                        __bss_end = .
+                0x80001000                        . = ALIGN (0x1000)
+                0x80001000                        __stack0 = .
+                0x80002000                        . = (. + 0x1000)
+                0x80002000                        __kernel_end = .
+OUTPUT(kernel elf32-littleriscv)
+
+.riscv.attributes
+                0x00000000       0x4f
+ .riscv.attributes
+                0x00000000       0x4d /var/folders/m6/k5srhp15335gyr_cp_n_y61c0000gn/T//cc58CdP4.o
+ .riscv.attributes
+                0x0000004d       0x4f /var/folders/m6/k5srhp15335gyr_cp_n_y61c0000gn/T//cctgNc9o.o
+
+.comment        0x00000000       0x19
+ .comment       0x00000000       0x19 /var/folders/m6/k5srhp15335gyr_cp_n_y61c0000gn/T//cctgNc9o.o
+                                 0x1a (size before relaxing)
+
+.note.GNU-stack
+                0x00000000        0x0
+ .note.GNU-stack
+                0x00000000        0x0 /var/folders/m6/k5srhp15335gyr_cp_n_y61c0000gn/T//cctgNc9o.o
+
+.debug_line     0x00000000      0x20e
+ .debug_line    0x00000000       0xe8 /var/folders/m6/k5srhp15335gyr_cp_n_y61c0000gn/T//cc58CdP4.o
+ .debug_line    0x000000e8      0x126 /var/folders/m6/k5srhp15335gyr_cp_n_y61c0000gn/T//cctgNc9o.o
+
+.debug_line_str
+                0x00000000       0x89
+ .debug_line_str
+                0x00000000       0x89 /var/folders/m6/k5srhp15335gyr_cp_n_y61c0000gn/T//cc58CdP4.o
+                                 0x80 (size before relaxing)
+ .debug_line_str
+                0x00000089        0x0 /var/folders/m6/k5srhp15335gyr_cp_n_y61c0000gn/T//cctgNc9o.o
+                                 0x81 (size before relaxing)
+
+.debug_info     0x00000000      0x15e
+ .debug_info    0x00000000       0x25 /var/folders/m6/k5srhp15335gyr_cp_n_y61c0000gn/T//cc58CdP4.o
+ .debug_info    0x00000025      0x139 /var/folders/m6/k5srhp15335gyr_cp_n_y61c0000gn/T//cctgNc9o.o
+
+.debug_abbrev   0x00000000      0x106
+ .debug_abbrev  0x00000000       0x14 /var/folders/m6/k5srhp15335gyr_cp_n_y61c0000gn/T//cc58CdP4.o
+ .debug_abbrev  0x00000014       0xf2 /var/folders/m6/k5srhp15335gyr_cp_n_y61c0000gn/T//cctgNc9o.o
+
+.debug_aranges  0x00000000       0x40
+ .debug_aranges
+                0x00000000       0x20 /var/folders/m6/k5srhp15335gyr_cp_n_y61c0000gn/T//cc58CdP4.o
+ .debug_aranges
+                0x00000020       0x20 /var/folders/m6/k5srhp15335gyr_cp_n_y61c0000gn/T//cctgNc9o.o
+
+.debug_str      0x00000000      0x1b1
+ .debug_str     0x00000000      0x1b1 /var/folders/m6/k5srhp15335gyr_cp_n_y61c0000gn/T//cc58CdP4.o
+                                 0x8c (size before relaxing)
+ .debug_str     0x000001b1        0x0 /var/folders/m6/k5srhp15335gyr_cp_n_y61c0000gn/T//cctgNc9o.o
+                                0x149 (size before relaxing)
+
+.debug_loclists
+                0x00000000       0x37
+ .debug_loclists
+                0x00000000       0x37 /var/folders/m6/k5srhp15335gyr_cp_n_y61c0000gn/T//cctgNc9o.o
+
+.debug_frame    0x00000000       0xa8
+ .debug_frame   0x00000000       0xa8 /var/folders/m6/k5srhp15335gyr_cp_n_y61c0000gn/T//cctgNc9o.o

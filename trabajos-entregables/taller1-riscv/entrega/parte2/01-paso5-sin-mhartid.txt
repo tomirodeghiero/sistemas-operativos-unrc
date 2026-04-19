@@ -1,2 +1,0 @@
-Hello World from supervisor mode!
-qemu-system-riscv32: terminating on signal 15 from pid 32156 (<unknown process>)

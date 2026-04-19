@@ -2,4 +2,3 @@ trap!!!
 trap type: exception
 exception code: 2
 exception detail: Illegal Instruction
-qemu-system-riscv32: terminating on signal 15 from pid 32382 (<unknown process>)

@@ -1,6 +1,6 @@
 # Parte 2 - Entrega (S-mode + trap)
 
-En este paso se trabajó con el kernel que arranca en machine mode (M) y luego cambia a supervisor mode (S) antes de entrar a `kernel_main()`.
+En este paso trabajé con el kernel que arranca en machine mode (M) y luego cambia a supervisor mode (S) antes de entrar a `kernel_main()`.
 
 ## Qué se hizo
 
