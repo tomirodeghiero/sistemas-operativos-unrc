@@ -1,122 +1,73 @@
-# Resolucion 8 - `mmapfile.c` (adaptado y ejecutado en macOS)
+# Resolucion 8 - Practico 3
+
+Ejercicio 8: como se representa el estado de ejecucion completo de una tarea que no esta RUNNING.
 
 ## Contexto
 
-El enunciado original dice "en Linux", pero `mmap`/`munmap`/`MAP_SHARED`/`MAP_PRIVATE`
-son interfaces POSIX disponibles tambien en macOS.
+Una tarea (proceso o hilo) puede estar en varios estados: `RUNNING`, `RUNNABLE` (lista para ejecutar pero sin CPU), `SLEEPING` (bloqueada en un evento), `ZOMBIE`, `STOPPED`, etc. Solo las tareas `RUNNING` estan usando una CPU en un instante dado; las demas estan "congeladas" y para poder reanudarlas mas tarde el SO debe tener guardada toda la informacion que la CPU tenia cuando esa tarea dejo de correr.
 
-En esta carpeta ya estaba el archivo provisto:
+En xv6 (y en Linux conceptualmente igual) cada tarea se representa con un **Process Control Block** (PCB). Para una tarea que no esta RUNNING el PCB almacena todo lo necesario para reanudarla:
 
-- `mmapfile.c` (de la catedra)
+## Componentes del estado completo
 
-y sobre esa base se resolvio:
+1. **Registros de la CPU salvados (contexto de CPU)**
 
-1. Compilar y ejecutar el original.
-2. Explicar por que `data + 7000` no da segmentation fault.
-3. Crear version RW + `MAP_SHARED` para persistir cambios al liberar el mapping.
-4. Verificar tamano final del archivo.
+   - Todos los registros de proposito general (en RISC-V: `x0`-`x31`, especialmente los callee-saved `s0`-`s11`, `sp`, `ra`).
+   - Los registros de punto flotante si la tarea los uso.
+   - El program counter (`pc`) o el equivalente `ra` de donde retomar.
+   - El stack pointer (`sp`).
 
-## Archivos usados
+   En xv6 esto se guarda en `struct context` (para context switches entre tareas en modo kernel) y en `struct trapframe` (para traps desde modo usuario). Ambos estan en el PCB / `struct proc`.
 
-- `mmapfile.c` (original, sin cambios)
-- `mmapfile_shared.c` (version modificada para inciso b)
-- `mmapfile.txt` (archivo de prueba generado)
+2. **Stacks**
 
-## a) Compilar y ejecutar `mmapfile.c` + explicacion de `data + 7000`
+   - Stack en modo kernel propio de la tarea (cada proceso tiene uno).
+   - Stack en modo usuario, que es parte del espacio de direcciones del proceso.
 
-### Compilacion y ejecucion
+3. **Espacio de direcciones virtuales**
 
-```bash
-clang -std=c17 -Wall -Wextra -O0 -g mmapfile.c -o mmapfile
-./mmapfile
-ls -l mmapfile.txt
-```
+   - Tabla de paginas raiz (registro `satp` en RISC-V / `CR3` en x86).
+   - Permite que al reanudarla la MMU vuelva a mapear sus regiones de codigo, datos, heap y stack.
 
-### Salida obtenida
+4. **Estado de ejecucion logico**
 
-```text
-file contents mapped at 0x100408000
-Hello world in page 1
-I'm in second page
+   - Campo `state`: `RUNNABLE`, `SLEEPING`, `ZOMBIE`, etc.
+   - Si esta en `SLEEPING`: el canal / recurso sobre el que duerme (`chan` en xv6).
+   - Si esta en `ZOMBIE`: el codigo de salida (`xstate`) para que el padre lo recupere con `wait()`.
 
--rw-r--r--@ 1 tomasrodeghiero  staff  4115 Mar 26 23:17 mmapfile.txt
-```
+5. **Metadatos de gestion**
 
-### Por que `data + 7000` no causa segmentation fault
+   - `pid`, `ppid`, `parent`.
+   - Tabla de descriptores de archivos abiertos.
+   - Directorio de trabajo actual (`cwd`).
+   - Nombre del ejecutable (`name`).
+   - Senales pendientes y mascara (en sistemas que las implementan).
 
-Puntos clave:
+## En una frase
 
-1. El mapping se hace con longitud `PGSIZE * 2 = 8192` bytes.
-2. El archivo mide `4115` bytes (un poco mas de 4096).
-3. La direccion `data + 7000` esta dentro del rango mapeado `[data, data+8192)`.
+El estado completo de una tarea no-RUNNING esta formado por: **los valores de todos los registros de la CPU al momento de ser desplanificada + sus stacks + el puntero a su espacio de direcciones + la informacion logica de gestion (estado, parentesco, files, cwd, etc.)**. Todo junto vive en la estructura que el SO llama PCB (en xv6: `struct proc`).
 
-Entonces la direccion es valida para el VMA del proceso.
-
-Ademas, como el EOF cae dentro de la segunda pagina mapeada:
-
-- bytes de archivo reales en pagina 2: desde 4096 hasta 4114
-- resto de esa pagina (hasta 8191): el kernel los expone como ceros para lectura
-
-Por eso no hay segfault en ese acceso.
-
-Nota:
-
-- En muchos sistemas, tocar paginas completamente fuera del objeto mapeado puede terminar en `SIGBUS`.
-- En este caso puntual, `7000` cae en la pagina parcialmente respaldada por archivo (la segunda), no en una tercera pagina inexistente.
-
-## b) Version lectura/escritura con persistencia automatica al liberar mapping
-
-Se creo `mmapfile_shared.c` con estos cambios respecto al original:
-
-1. Abrir archivo con `O_RDWR`.
-2. Mapear con `PROT_READ | PROT_WRITE`.
-3. Usar `MAP_SHARED` (no `MAP_PRIVATE`).
-4. Modificar contenido en memoria mapeada.
-5. Llamar `munmap` y `close`.
-6. Reabrir y verificar que el archivo quedo modificado.
-
-### Comandos
-
-```bash
-clang -std=c17 -Wall -Wextra -O0 -g mmapfile_shared.c -o mmapfile_shared
-./mmapfile_shared
-ls -l mmapfile.txt
-```
-
-### Salida obtenida
+## Diagrama conceptual (xv6)
 
 ```text
-Antes de modificar:
-  page1: Hello world in page 1
-  page2: I'm in second page
-Despues de munmap + close:
-  page1: HELLO from page 1 (shared)
-  page2: I'm in second page [MODIFIED]
-  tamano archivo: 4115 bytes
--rw-r--r--@ 1 tomasrodeghiero  staff  4115 Mar 26 23:17 mmapfile.txt
+                          struct proc
+         +----------------------------------------+
+         | pid, state (RUNNABLE/SLEEPING/...)     |
+         | parent, chan, xstate                   |
+         | pagetable  (espacio de direcciones)    |
+         | sz (tamano del espacio usuario)        |
+         | kstack (stack kernel para esta tarea)  |
+         | trapframe*  ---->  regs usuario + sepc |
+         | context     ---->  regs callee-saved + |
+         |                    ra, sp para swtch() |
+         | ofile[]  (tabla de fds)                |
+         | cwd                                    |
+         | name                                   |
+         +----------------------------------------+
 ```
 
-### Como hace esto el SO
+Cuando el scheduler decide volver a correr esa tarea, hace:
 
-Con `MAP_SHARED`:
-
-1. Las escrituras del proceso van a paginas de memoria asociadas al page cache del archivo.
-2. Esas paginas quedan marcadas como "dirty".
-3. Al `munmap`/`close` (o por writeback periodico), el kernel sincroniza esas paginas dirty al backing file.
-
-O sea, no hicimos `write()` explicito; el SO propaga cambios desde memoria mapeada al archivo.
-
-## c) Verificar tamano del archivo al finalizar
-
-Resultado medido:
-
-- Tamaño final de `mmapfile.txt`: **4115 bytes**
-
-No cambia porque en la version modificada solo alteramos bytes dentro del rango ya existente del archivo.  
-No hicimos `ftruncate` para extenderlo.
-
-## Conclusiones finales
-
-1. El acceso a `data + 7000` no falla porque cae dentro de un mapping valido de 2 paginas.
-2. Con `MAP_SHARED` + `PROT_WRITE`, los cambios hechos en memoria quedan persistidos en el archivo al liberar mapping/cerrar.
-3. El tamaño del archivo permanece en 4115 bytes si no se lo extiende explicitamente.
+1. `satp = p->pagetable` -> restaura el address space.
+2. `swtch(&cpu->scheduler_context, &p->context)` -> restaura los registros callee-saved y salta a donde esa tarea habia quedado.
+3. Si finalmente debe volver a modo usuario, `usertrapret()` usa el trapframe para restaurar el resto de los registros y hace `sret`.

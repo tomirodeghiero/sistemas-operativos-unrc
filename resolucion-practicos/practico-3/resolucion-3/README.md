@@ -1,62 +1,101 @@
-# Resolucion 3 - Cantidad de PTE y memoria de tabla para 4GB (arquitectura 32 bits)
+# Resolucion 3 - Practico 3
 
-Ejercicio:
+Ejercicio 3: usar `pstree` para visualizar el arbol de procesos del sistema y determinar el primer proceso lanzado y su PID.
 
-En un SO de 32 bits con paginado, determinar:
+## Instalacion de pstree en macOS
 
-- cantidad de entradas de tabla de paginas (`pte`)
-- cantidad total de memoria necesaria para esas entradas
+macOS no trae `pstree` por defecto (`zsh: command not found: pstree`). Se instala via Homebrew:
 
-para cubrir un espacio virtual de `4GB`.
+```bash
+brew install pstree
+```
 
-## Datos base
+Verificacion:
 
-- Espacio de direcciones virtuales: `4GB = 2^32 bytes`
-- Formula general:
+```bash
+which pstree
+# /opt/homebrew/bin/pstree
+```
 
-`cantidad_de_entradas = espacio_virtual / tamano_de_pagina`
+Nota: el `pstree` que instala Homebrew en macOS es la implementacion de **Fred Hucht (v2.40)**, que tiene **opciones distintas** al `pstree` de Linux (PSmisc). En particular los PIDs se muestran **siempre** por defecto y el flag `-p` significa "filtrar por un PID especifico", no "mostrar PIDs".
 
-Para calcular memoria de la tabla, asumo `4 bytes` por entrada (caso clasico de 32 bits):
+## Arbol completo de procesos
 
-`memoria_tabla = cantidad_de_entradas * 4 bytes`
+Sin argumentos imprime el arbol entero con PIDs incluidos:
 
-## a) Paginas de 4KB
+```bash
+pstree
+```
 
-- Tamano de pagina: `4KB = 2^12 bytes`
-- Cantidad de entradas:
+Salida (primeras lineas, ejemplo real):
 
-`2^32 / 2^12 = 2^20 = 1,048,576 entradas`
+```text
+-+= 00001 root /sbin/launchd
+ |--= 00312 root /usr/libexec/logd
+ |--= 00313 root /usr/libexec/smd
+ |--= 00314 root /usr/libexec/UserEventAgent (System)
+ |--= 00316 root /System/Library/Frameworks/CoreServices.framework/.../fseventsd
+ ...
+```
 
-- Memoria para la tabla:
+- `-+=` y `|--=` son los conectores del arbol.
+- Los numeros de 5 digitos son los PIDs.
+- El `=` al final del prefijo indica que el proceso es un *process group leader*.
 
-`1,048,576 * 4 = 4,194,304 bytes = 4MB`
+## Opciones utiles
 
-Resultado inciso a):
+```bash
+pstree -w                   # wide: no trunca lineas largas
+pstree -g 3                 # conectores en UTF-8 (mas prolijos)
+pstree -u "$USER"           # solo ramas que contengan procesos del usuario
+pstree -U                   # omite ramas que solo tienen procesos root
+pstree -s bash              # solo ramas que contengan la cadena "bash"
+pstree -p <PID>             # solo ramas que contengan ese PID
+pstree -l 3                 # profundidad maxima de 3 niveles
+pstree <PID>                # arranca el arbol desde ese PID (no filtra)
+```
 
-- `PTE = 1,048,576`
-- `Memoria de tabla = 4MB`
+Ejemplo util: ver todos los procesos del usuario con grafica UTF-8:
 
-## b) Paginas de 4MB
+```bash
+pstree -g 3 -u "$USER"
+```
 
-- Tamano de pagina: `4MB = 2^22 bytes`
-- Cantidad de entradas:
+## Primer proceso del sistema
 
-`2^32 / 2^22 = 2^10 = 1,024 entradas`
+El primer proceso lanzado por el kernel en espacio de usuario tiene **PID 1** y es el ancestro de todos los demas. En `pstree`, es siempre el nodo raiz (`-+= 00001 ...`):
 
-- Memoria para la tabla:
+```bash
+pstree | head -n 1
+```
 
-`1,024 * 4 = 4,096 bytes = 4KB`
+```text
+-+= 00001 root /sbin/launchd
+```
 
-Resultado inciso b):
+Confirmacion con `ps`:
 
-- `PTE = 1,024`
-- `Memoria de tabla = 4KB`
+```bash
+ps -p 1 -o pid,ppid,user,comm
+```
 
-## Conclusión
+```text
+  PID  PPID USER COMM
+    1     0 root /sbin/launchd
+```
 
-Cuando aumenta el tamano de pagina, baja fuertemente la cantidad de entradas de tabla necesarias:
+## Por que PID 1
 
-- de `1,048,576` a `1,024`
-- y la memoria de metadatos baja de `4MB` a `4KB`
+- El kernel arranca un proceso interno con `PID 0` (scheduler/swapper, no visible como proceso de usuario).
+- Luego ejecuta el programa pasado por el bootloader como `init` (o equivalente). Ese programa recibe `PID 1`.
+- El proceso `PID 1` se encarga de lanzar el resto del espacio de usuario (servicios, login, etc.).
+- Si un proceso queda huerfano (su padre muere), el kernel lo re-asigna a `PID 1`, que luego hace `wait()` para evitar zombies.
 
-Costo/tradeoff esperado: paginas grandes reducen metadatos, pero suelen aumentar fragmentacion interna.
+Variantes segun el sistema:
+
+| Sistema                  | Proceso PID 1         |
+|--------------------------|-----------------------|
+| macOS                    | `launchd`             |
+| Linux moderno            | `systemd`             |
+| Linux tradicional        | `init` (SysV, BusyBox)|
+| FreeBSD                  | `init`                |

@@ -1,118 +1,141 @@
-# Resolucion 5 - Memoria compartida de 2 paginas (4KB)
+# Resolucion 5 - Practico 3
 
-## Datos del ejercicio
+Ejercicio 5: programa `counter.c` provisto por la catedra que incrementa un contador persistente en `counter.dat`. Primero se observa la race condition al correr dos instancias en paralelo y luego se la corrige con `flock()`.
 
-- Tamano de pagina: `4KB = 0x1000`
-- Region compartida: `2 paginas = 8KB`
-- Proceso 1 mapea desde `0xA000`
-- Proceso 2 mapea desde `0xF000`
+## Archivos fuente
 
-Voy a nombrar los marcos fisicos compartidos como:
+- `counter.c`: 1000 iteraciones de lectura-modificacion-escritura sobre `counter.dat` usando `open`, `lseek`, `read`, `write` y `fsync`. Escribe el valor con formato `"%d"` (sin padding, longitud variable segun el numero).
+- `counter_locked.c`: version corregida que envuelve la zona critica de cada iteracion con `flock(fd, LOCK_EX)` / `flock(fd, LOCK_UN)`.
 
-- `S0` para la primera pagina compartida
-- `S1` para la segunda pagina compartida
+Detalle del codigo original:
 
-Lo importante es que **ambos procesos apunten a los mismos marcos fisicos `S0` y `S1`**.
+```c
+int fd = open("counter.dat", O_RDWR);
 
-## 1) Calculo de paginas virtuales involucradas
+for (i=0; i<1000; i++) {
+    char s[N];
+    int n;
 
-Como cada pagina es de `0x1000`, el numero de pagina virtual (VPN) es:
-
-`VPN = VA / 0x1000` (equivale a correr 12 bits a derecha)
-
-### Proceso 1
-
-- Inicio: `0xA000` -> `VPN = 0xA`
-- Segunda pagina: `0xB000` -> `VPN = 0xB`
-
-Rango compartido en P1:
-
-- `0xA000 - 0xAFFF` (primera pagina)
-- `0xB000 - 0xBFFF` (segunda pagina)
-
-### Proceso 2
-
-- Inicio: `0xF000` -> `VPN = 0xF`
-- Segunda pagina: `0x10000` -> `VPN = 0x10`
-
-Rango compartido en P2:
-
-- `0xF000 - 0xFFFF` (primera pagina)
-- `0x10000 - 0x10FFF` (segunda pagina)
-
-## 2) Layout virtual de cada proceso (diagrama)
-
-### Proceso 1 (vista parcial)
-
-```text
-VA bajas                                                VA altas
-... | 0x9000-0x9FFF | 0xA000-0xAFFF | 0xB000-0xBFFF | 0xC000-... |
-... |     otro      |   SHARED p0   |   SHARED p1   |    otro     |
-                    |-> marco S0    |-> marco S1    |
+    lseek(fd, 0, SEEK_SET);
+    read(fd, s, N);
+    n = atoi(s);
+    sprintf(s, "%d", n+1);
+    lseek(fd, 0, SEEK_SET);   // rewind
+    write(fd, s, strlen(s));
+    fsync(fd);
+}
 ```
 
-### Proceso 2 (vista parcial)
+## Compilacion
 
-```text
-VA bajas                                                     VA altas
-... | 0xE000-0xEFFF | 0xF000-0xFFFF | 0x10000-0x10FFF | 0x11000-... |
-... |     otro      |   SHARED p0   |    SHARED p1    |    otro      |
-                    |-> marco S0    |-> marco S1      |
+```bash
+gcc -Wall -Wextra -o counter counter.c
 ```
 
-Observacion clave: la region compartida cae en diferentes direcciones virtuales en cada proceso, pero ambas traducen a los mismos marcos fisicos.
+Nota: el compilador emite una advertencia por la variable `pid` declarada pero no usada en el codigo oficial. Es inofensiva.
 
-## 3) Tablas de paginas (solo entradas relevantes)
+## Preparacion
 
-### Tabla de paginas del Proceso 1
+Crear el archivo de datos con valor inicial `0`:
 
-```text
-VPN    -> PFN    Flags
-0xA    -> S0     P=1, RW=1, US=1, SH=1
-0xB    -> S1     P=1, RW=1, US=1, SH=1
-...    -> ...    ...
+```bash
+echo 0 > counter.dat
 ```
 
-### Tabla de paginas del Proceso 2
+## 5.1 Ejecucion secuencial
 
-```text
-VPN    -> PFN    Flags
-0xF    -> S0     P=1, RW=1, US=1, SH=1
-0x10   -> S1     P=1, RW=1, US=1, SH=1
-...    -> ...    ...
+Una sola invocacion (para ver el `1000` del enunciado):
+
+```bash
+echo 0 > counter.dat
+./counter
+cat counter.dat    # 1000
 ```
 
-(`SH=1` lo uso como etiqueta conceptual de "compartida"; en hardware real depende de politica/MMU/SO.)
+Dos invocaciones encadenadas:
 
-## 4) Diagrama de mapeo conjunto (VA -> PA)
-
-```text
-Proceso 1                           Memoria fisica compartida
-VA 0xA000-0xAFFF  ---------------->  marco S0 (4KB)
-VA 0xB000-0xBFFF  ---------------->  marco S1 (4KB)
-
-Proceso 2
-VA 0xF000-0xFFFF  ---------------->  marco S0 (4KB)
-VA 0x10000-0x10FFF --------------->  marco S1 (4KB)
+```bash
+echo 0 > counter.dat
+./counter ; ./counter
+cat counter.dat    # 2000
 ```
 
-## 5) Traduccion de direcciones (regla)
+Cada invocacion incrementa 1000 veces el valor. El enunciado dice "deberia quedar en 1000" porque considera una sola invocacion; con dos ejecuciones secuenciales partiendo de `0` se obtienen `1000 + 1000 = 2000`. Lo que importa es que en secuencial **no hay perdida de incrementos**.
 
-Si el desplazamiento dentro de pagina es `d` (`0 <= d < 0x1000`):
+## 5.2 Ejecucion concurrente (sin lock)
 
-- En P1:
-  - `VA = 0xA000 + d` -> `PA = base(S0) + d`
-  - `VA = 0xB000 + d` -> `PA = base(S1) + d`
-- En P2:
-  - `VA = 0xF000 + d` -> `PA = base(S0) + d`
-  - `VA = 0x10000 + d` -> `PA = base(S1) + d`
+```bash
+echo 0 > counter.dat
+./counter & ./counter
+wait
+cat counter.dat
+```
 
-Eso prueba que escribiendo en la zona compartida de uno, el otro proceso ve los mismos datos.
+Salida observada: un valor **menor a 2000** (en mis corridas: `1826`, `1740`, `1766`, varia entre ejecuciones).
 
-## Resumen final
+## 5.3 Explicacion del resultado
 
-- Region compartida total: 2 paginas (8KB)
-- P1 usa `VPN 0xA` y `0xB`
-- P2 usa `VPN 0xF` y `0x10`
-- Ambas tablas apuntan a los mismos marcos fisicos `S0` y `S1`
-- Mismo contenido fisico, distinta ubicacion virtual en cada proceso.
+El ciclo hace, por iteracion, la secuencia:
+
+1. `lseek(fd, 0)` + `read` -> leer el valor actual.
+2. `atoi` + `+1` -> calcular nuevo valor.
+3. `lseek(fd, 0)` + `write` + `fsync` -> grabarlo.
+
+Con dos procesos A y B ejecutando en paralelo sobre el mismo archivo, esta secuencia no es atomica. Una intercalacion posible:
+
+```text
+A lseek(0); read -> "100"    (v=100)
+                            B lseek(0); read -> "100"    (v=100)
+A sprintf("101"); write 3 bytes
+                            B sprintf("101"); write 3 bytes   <-- pisa igual
+```
+
+Ambos procesos terminan escribiendo el mismo valor: un incremento se pierde. Es un **lost update** clasico. El resultado final depende del intercalado del scheduler y suele ubicarse bastante por debajo de 2000.
+
+Detalles tecnicos adicionales que refuerzan la race:
+
+- El descriptor `fd` es independiente en cada proceso (cada uno hizo su propio `open`), por lo que tienen offsets separados aunque apunten al mismo inode.
+- `fsync()` solo garantiza que la escritura llegue a disco, no excluye mutuamente a otro proceso.
+- Con `"%d"` el tamano del archivo crece monotonamente (1, 2, 3, 4 digitos). Como los numeros nunca achican su longitud, no quedan bytes residuales problematicos en el caso secuencial; en el concurrente la race es la misma por lost update, independiente del formato.
+
+## 5.4 Solucion con flock()
+
+`flock(fd, LOCK_EX)` toma un **lock exclusivo advisory** sobre el descriptor. Mientras un proceso lo tiene, cualquier otro que intente tomarlo exclusivamente se bloquea hasta que se libere con `LOCK_UN` (o hasta que se cierre el descriptor).
+
+En `counter_locked.c` la modificacion es minima: se agrega `flock(fd, LOCK_EX)` al inicio del cuerpo del for y `flock(fd, LOCK_UN)` al final, englobando el read-modify-write:
+
+```c
+for (i=0; i<1000; i++) {
+    char s[N];
+    int n;
+
+    flock(fd, LOCK_EX);
+
+    lseek(fd, 0, SEEK_SET);
+    read(fd, s, N);
+    n = atoi(s);
+    sprintf(s, "%d", n+1);
+    lseek(fd, 0, SEEK_SET);
+    write(fd, s, strlen(s));
+    fsync(fd);
+
+    flock(fd, LOCK_UN);
+}
+```
+
+Con el lock, las regiones criticas de los dos procesos quedan serializadas y el resultado es determinista.
+
+Verificacion:
+
+```bash
+echo 0 > counter.dat
+./counter_locked & ./counter_locked
+wait
+cat counter.dat    # 2000
+```
+
+### Notas
+
+- `flock()` es **advisory**: solo funciona si todos los procesos cooperan usando el mismo mecanismo. No impide que un proceso que ignore el lock pise el archivo.
+- Alternativa POSIX: `fcntl(F_SETLKW, ...)` con rangos de bytes, mas flexible pero mas verboso.
+- Con NFS antiguo `flock()` puede tener problemas. En filesystems locales (ext4, apfs, tmpfs) funciona correctamente.

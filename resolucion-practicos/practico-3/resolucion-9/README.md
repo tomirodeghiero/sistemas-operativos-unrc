@@ -1,187 +1,131 @@
-# Resolucion 9 - `shmwriter.c` y `shmreader.c` (IPC SysV Shared Memory)
+# Resolucion 9 - Practico 3
 
-## 0) Que se pide en el ejercicio
+Ejercicio 9: describir el flujo de ejecucion cuando un proceso es interrumpido por el timer hasta retornar de la interrupcion.
 
-El ejercicio pide observar como funciona la memoria compartida SysV (UNIX IPC):
+La descripcion toma como referencia xv6 sobre RISC-V en modo Sv39, que es el modelo visto en la teoria.
 
-1. Compilar y ejecutar `shmwriter.c` y `shmreader.c` (en ese orden).
-2. Volver a correr `shmreader` y explicar que pasa.
-3. Comentar en `shmreader.c` la linea que destruye la shm (`IPC_RMID`), correr una vez writer y varias veces reader, y explicar el comportamiento.
+## Punto de partida
 
-## 1) Archivos usados (movidos desde resolucion-8)
+La tarea P esta en modo usuario ejecutando codigo normal cuando ocurre una **interrupcion del timer** generada por el hardware (CLINT en RISC-V, interrupcion de reloj periodica programada al arranque del kernel).
 
-Se movieron solamente los solicitados:
+## Paso 1: hardware atrapa la interrupcion
 
-- `shmwriter.c`
-- `shmreader.c`
+La CPU, al recibir la interrupcion del timer:
 
-## 2) Compatibilidad Linux/macOS
+1. Verifica que las interrupciones esten habilitadas en supervisor mode (`sstatus.SIE = 1` para traps en modo S; el timer de M-mode se delega luego a S).
+2. Salva el `pc` en `sepc`.
+3. Salva el modo previo en `sstatus.SPP` (aqui: `U`, modo usuario).
+4. Pone en `scause` el codigo de la interrupcion (timer = supervisor timer interrupt).
+5. Cambia a supervisor mode.
+6. Salta a la direccion almacenada en `stvec`. En xv6, cuando el proceso estaba en modo usuario, `stvec` apunta a `uservec` (en `trampoline.S`).
 
-Aunque el enunciado nombra Linux, estos programas usan API SysV (`ftok`, `shmget`, `shmat`, `shmdt`, `shmctl`), que tambien existe en macOS.
+Esto todo lo hace la CPU en un solo ciclo de trap, sin intervencion de software.
 
-Se hicieron dos mejoras minimas para poder ejecutar de forma segura:
+## Paso 2: uservec en el trampoline
 
-- chequeo de errores en llamadas del sistema
-- reemplazo de `gets` por `fgets` (porque `gets` es insegura y obsoleta)
+`uservec` es codigo del kernel mapeado en la ultima pagina del espacio de direcciones del proceso (`TRAMPOLINE`), por lo que sigue siendo ejecutable aunque todavia este activa la `pagetable` del proceso. Sus funciones:
 
-La logica de IPC del ejercicio no cambia.
+1. Salva **todos los registros de proposito general** en el `trapframe` del proceso (cuya direccion esta pre-cargada en `sscratch`).
+2. Carga el `satp` del kernel desde el trapframe -> la CPU pasa a usar la tabla de paginas del kernel.
+3. Carga el stack kernel del proceso.
+4. Salta a `usertrap()` (C) en `trap.c`.
 
-## 3) Recordatorio conceptual corto (muy importante)
+## Paso 3: usertrap()
 
-Una shm SysV tiene este ciclo de vida:
+En modo supervisor, con la pagetable del kernel y el stack del kernel del proceso:
 
-1. `ftok(path, proj_id)` genera una key.
-2. `shmget(key, size, flags)` crea o recupera el segmento (retorna `shmid`).
-3. `shmat(shmid, ...)` lo mapea al espacio virtual del proceso (retorna puntero local).
-4. Proceso escribe/lee bytes compartidos.
-5. `shmdt(ptr)` desadjunta en ese proceso.
-6. `shmctl(shmid, IPC_RMID, NULL)` marca el segmento para eliminacion global.
+1. Setea `stvec = kernelvec` (si ocurre otro trap dentro del kernel, ahora se maneja distinto).
+2. Salva `sepc` en el trapframe (por si la llamada al scheduler la sobrescribe).
+3. Lee `scause` y reconoce que es una interrupcion del timer (chequea `devintr()`).
+4. `devintr()` reconoce al timer, actualiza el contador global de ticks y despierta a los procesos dormidos esperando tick.
+5. Como fue interrupcion del timer, `usertrap()` invoca a **`yield()`** para ceder la CPU. Este es el comportamiento que hace preemptive al planificador: en cada tick, la tarea corriente se pone en `RUNNABLE` y pide al scheduler correr a otra.
 
-Idea clave:
+## Paso 4: yield() y context switch
 
-- `shmdt` solo desconecta al proceso actual.
-- `IPC_RMID` afecta al objeto compartido del kernel (el segmento).
+`yield()`:
 
-## 4) Preparacion y compilacion
+1. Toma el lock del proceso (`p->lock`).
+2. Cambia el estado de `RUNNING` a `RUNNABLE`.
+3. Llama a `sched()`.
 
-`ftok("shmfile", 65)` requiere que exista `shmfile` en el directorio actual:
+`sched()` hace algunos chequeos de invariantes y llama a `swtch(&p->context, &cpu->scheduler)`, que:
 
-```bash
-: > shmfile
-```
+- Guarda los **registros callee-saved** (`ra`, `sp`, `s0..s11`) de la tarea actual en `p->context`.
+- Carga los del scheduler desde `cpu->scheduler`.
+- Retorna con `ret` a la funcion `scheduler()`.
 
-Compilacion:
+A partir de aqui la tarea P queda "congelada" en `RUNNABLE`. El scheduler puede elegir otro proceso Q y hacer `swtch(&cpu->scheduler, &Q->context)`, con lo que Q reanuda donde habia sido desplanificado anteriormente.
 
-```bash
-clang -std=c17 -Wall -Wextra -O0 -g shmwriter.c -o shmwriter
-clang -std=c17 -Wall -Wextra -O0 -g shmreader.c -o shmreader
-```
+## Paso 5: eventualmente, el scheduler reanuda a P
 
-## 5) Ejecucion base (writer -> reader)
+Cuando el scheduler decide volver a P, hace:
 
-Comando:
+1. `swtch(&cpu->scheduler, &p->context)` -> reanuda `sched()` en el punto donde habia cedido.
+2. `sched()` retorna a `yield()`, que suelta el lock y retorna.
+3. `yield()` retorna a `usertrap()`.
 
-```bash
-printf 'mensaje inicial\n' | ./shmwriter
-./shmreader
-```
+## Paso 6: usertrapret()
 
-Salida observada:
+`usertrap()` continua llamando a `usertrapret()`:
 
-```text
-shared memory logical address: 0x104548000
-Data to write to shmem: Data written in memory: mensaje inicial
-shared memory logical address: 0x1021cc000
-Data read from memory: mensaje inicial
-```
+1. Deshabilita interrupciones (`sstatus.SIE = 0`) mientras manipula estado sensible.
+2. Setea `stvec = uservec` otra vez (para el proximo trap desde usuario).
+3. Escribe en el trapframe los valores del kernel que `uservec` necesitara en la proxima entrada (satp del kernel, trap handler, hartid, etc.).
+4. Prepara `sstatus` para que `sret` vuelva a modo usuario (`SPP = 0`).
+5. Carga en `sepc` el `pc` donde la tarea fue interrumpida.
+6. Salta a `userret` (en `trampoline.S`) pasandole el `satp` del proceso.
 
-Interpretacion detallada:
+## Paso 7: userret restaura y ejecuta sret
 
-1. `shmwriter` y `shmreader` usan la misma key (`ftok("shmfile", 65)`), entonces apuntan al mismo `shmid`.
-2. `shmwriter` escribe `mensaje inicial` en el segmento.
-3. `shmreader` lee exactamente ese contenido desde otro proceso.
-4. Las direcciones impresas (`0x104548000`, `0x1021cc000`) son distintas porque cada proceso puede mapear el mismo objeto fisico en direcciones virtuales diferentes. Esto es normal.
+`userret`:
 
-## 6) Inciso (a): correr nuevamente reader y observar
+1. Conmuta a la tabla de paginas del proceso (`csrw satp, a0; sfence.vma`).
+2. Restaura **todos los registros de proposito general** desde el trapframe.
+3. Ejecuta `sret`.
 
-### Escenario con `IPC_RMID` activo (version original del reader)
+`sret`:
 
-En la version original, reader termina con:
+- Restaura `pc = sepc` -> la instruccion que seguia a la interrumpida en el proceso.
+- Restaura el modo segun `sstatus.SPP` (`U`, modo usuario).
+- Rehabilita interrupciones (`sstatus.SIE = SPIE`).
 
-```c
-shmctl(shmid, IPC_RMID, NULL);
-```
+La tarea P continua ejecutando como si nada hubiera pasado (salvo que ya transcurrio tiempo real porque la CPU estuvo ocupada corriendo otros procesos en el medio).
 
-Si despues del primer reader se corre otra vez:
-
-```bash
-./shmreader
-```
-
-Salida observada:
+## Resumen de la ruta completa
 
 ```text
-shared memory logical address: 0x1023d0000
-Data read from memory:
+  [user mode, proceso P]
+           |
+           |  HW: timer irq
+           v
+  stvec -> uservec (trampoline.S)
+           | salva regs en trapframe, cambia satp, salta a C
+           v
+  usertrap() en trap.c
+           | devintr() reconoce timer, yield()
+           v
+  yield() -> sched() -> swtch()        <-- context switch saliente
+           | pasa a cpu->scheduler
+           v
+  scheduler() elige otro proceso Q
+           | swtch() -- Q ejecuta ...
+           | ... eventualmente, scheduler vuelve a elegir P
+           v
+  swtch() retorna a sched()/yield() en P
+           v
+  usertrap() -> usertrapret()
+           | prepara trapframe y stvec
+           v
+  userret (trampoline.S)
+           | restaura regs y satp del proceso
+           v
+  sret
+           v
+  [user mode, proceso P continua]
 ```
 
-Que significa esto:
+Puntos clave:
 
-1. El reader anterior elimino (marco para eliminar) el segmento compartido.
-2. En la nueva corrida, `shmget(..., IPC_CREAT)` crea otro segmento nuevo.
-3. Ese segmento nuevo no trae el string anterior, por eso aparece vacio.
-
-## 7) Inciso (b): comentar la destruccion y repetir varias lecturas
-
-Se comento en `shmreader.c`:
-
-```c
-// shmctl(shmid, IPC_RMID, NULL);
-```
-
-Luego se ejecuto:
-
-```bash
-printf 'persistente en shm\n' | ./shmwriter
-./shmreader
-./shmreader
-./shmreader
-```
-
-Salida observada:
-
-```text
-shared memory logical address: 0x1022b0000
-Data to write to shmem: Data written in memory: persistente en shm
-shared memory logical address: 0x102970000
-Data read from memory: persistente en shm
-shared memory logical address: 0x102f4c000
-Data read from memory: persistente en shm
-shared memory logical address: 0x102620000
-Data read from memory: persistente en shm
-```
-
-Interpretacion detallada:
-
-1. Writer escribe una sola vez.
-2. Reader puede ejecutarse varias veces y seguir leyendo el mismo contenido.
-3. El dato persiste porque el segmento no se elimina al final de cada reader.
-4. De nuevo, cambia el puntero virtual en cada proceso, pero el backing segment es el mismo.
-
-## 8) Evidencia del estado de shm en el sistema
-
-Consulta real:
-
-```bash
-ipcs -m
-```
-
-Salida observada (fragmento):
-
-```text
-T     ID     KEY        MODE       OWNER    GROUP
-Shared Memory:
-m  65536 0x000dfe8b --rw------- tomasrodeghiero    staff
-m 196609 0x410a8c13 --rw-rw-rw- tomasrodeghiero    staff
-```
-
-Eso muestra segmentos SysV activos en el kernel.
-
-## 9) Diagrama mental rapido
-
-```text
-Proceso A (writer)         Kernel (segmento shm)           Proceso B (reader)
-------------------         ----------------------          ------------------
-shmat -> ptr A   ----->    [ bytes compartidos ]    <-----  ptr B <- shmat
-escribe texto             (mismo shmid / misma key)        lee texto
-
-ptr A != ptr B (VA distintas), pero ambos apuntan al mismo objeto IPC.
-```
-
-## 10) Conclusiones de aprendizaje
-
-1. Shared memory SysV permite compartir datos sin copiar por kernel en cada read/write.
-2. El estado de persistencia depende de si se llama o no `IPC_RMID`.
-3. `shmdt` no destruye; solo desadjunta localmente.
-4. `IPC_RMID` cambia totalmente el comportamiento entre ejecuciones:
-   con `IPC_RMID` el siguiente reader ve un segmento nuevo, sin `IPC_RMID` ve el contenido previo.
+- Hay **dos** context switches: uno al entrar al scheduler, otro al salir hacia la tarea siguiente.
+- El trapframe guarda los registros de modo usuario; el `struct context` guarda los callee-saved para `swtch()` entre kernel y scheduler.
+- `sret` (no una instruccion de retorno comun) es la que completa el retorno a modo usuario restaurando modo y `pc` en un solo paso atomico.

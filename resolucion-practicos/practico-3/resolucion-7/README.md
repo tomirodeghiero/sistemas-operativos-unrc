@@ -1,148 +1,69 @@
-# Resolucion 7 - Espacios de memoria (incluyendo swap) usados por los procesos
+# Resolucion 7 - Practico 3
 
-## Objetivo del ejercicio
+Ejercicio 7: tres procesos con las rafagas de CPU siguientes llegan al mismo tiempo a la ready queue:
 
-Determinar los espacios de memoria que estan usando los procesos del sistema, incluyendo swap.
+| Proceso | Duracion de la proxima rafaga |
+|---------|-------------------------------|
+| P1      | 8                             |
+| P2      | 3                             |
+| P3      | 5                             |
 
-El enunciado sugiere comandos de Linux (`top`, `free`, `smem`, `swapon`), pero en este caso el sistema es **macOS**.  
-Entonces se usan equivalentes:
+Calcular el **tiempo de espera promedio** bajo FCFS (FIFO) y SJF (Shortest Job First), ambos no expropiativos.
 
-- `top` (macOS) -> estado general de CPU/RAM/VM por snapshot
-- `vm_stat` -> contadores de memoria virtual por paginas
-- `memory_pressure` -> estado global de presion de memoria
-- `sysctl vm.swapusage` -> swap total/usado/libre
-- `ps` -> consumo por proceso (RSS/VSZ)
+## Definicion
 
-## Entorno medido
+**Tiempo de espera** de un proceso = tiempo desde que llega a la ready queue hasta que empieza a ejecutar (no incluye su propio tiempo de ejecucion ni I/O). Como los tres procesos llegan en t = 0, el tiempo de espera de cada uno coincide con su **tiempo de inicio** en la CPU.
 
-- Fecha de medicion: `2026-03-26 23:08:17 -03`
-- SO: `Darwin 25.3.0 (arm64)`
-- RAM fisica (`hw.memsize`): `8589934592 bytes` = **8 GiB**
+## FCFS (orden de llegada: P1, P2, P3)
 
-## 1) Memoria fisica y swap global
+Se ejecutan en el orden en que aparecen: P1, luego P2, luego P3.
 
-### Comando
-
-```bash
-sysctl vm.swapusage
+```text
+        |  P1 (8)   |   P2 (3)  |   P3 (5)  |
+ 0           8          11          16
 ```
 
-### Resultado
+| Proceso | Inicio | Espera |
+|---------|--------|--------|
+| P1      | 0      | 0      |
+| P2      | 8      | 8      |
+| P3      | 11     | 11     |
 
-- Swap total: `2048.00M`
-- Swap usado: `927.94M`
-- Swap libre: `1120.06M`
+Tiempo de espera promedio:
 
-Interpretacion:
-
-- Hay uso real de swap (casi 1 GiB), por lo que parte del working set historico de procesos fue desplazado fuera de RAM.
-
-## 2) Snapshot general de memoria del sistema
-
-### Comando
-
-```bash
-top -l 1 -n 20
+```text
+(0 + 8 + 11) / 3 = 19 / 3 ≈ 6.33
 ```
 
-### Fragmento relevante del resultado
+## SJF (Shortest Job First)
 
-- `PhysMem: 7472M used (1399M wired, 3476M compressor), 160M unused.`
-- `VM: ... 56073 swapins, 151844 swapouts.`
+Se ordenan por rafaga creciente: P2 (3), P3 (5), P1 (8).
 
-Interpretacion rapida:
-
-- RAM usada: **7472M**
-- RAM sin usar inmediata: **160M**
-- `wired` (no pageable): **1399M**
-- `compressor`: **3476M** (macOS comprimio memoria para evitar mas swapping)
-- Existe actividad de swap I/O (`swapins/swapouts`), consistente con el uso de swap reportado.
-
-## 3) Contadores de memoria virtual (detalle por paginas)
-
-### Comando
-
-```bash
-vm_stat
+```text
+ |  P2 (3)  |   P3 (5)  |   P1 (8)   |
+ 0          3           8           16
 ```
 
-### Datos observados
+| Proceso | Inicio | Espera |
+|---------|--------|--------|
+| P2      | 0      | 0      |
+| P3      | 3      | 3      |
+| P1      | 8      | 8      |
 
-- Page size: `16384 bytes` (16KB en esta maquina)
-- `Pages active`: `101164`
-- `Pages inactive`: `97108`
-- `Pages wired down`: `79420`
-- `Pages occupied by compressor`: `203786`
-- `Swapins`: `53961`
-- `Swapouts`: `137396`
-- `Pageins`: `1645025`
-- `Pageouts`: `37316`
+Tiempo de espera promedio:
 
-Interpretacion:
-
-- Hay una fraccion importante de memoria en estado comprimido.
-- Hubo swapping significativo (`swapouts` bastante mayor que `swapins`), lo que sugiere presion de memoria previa/sostenida.
-
-## 4) Presion de memoria
-
-### Comando
-
-```bash
-memory_pressure
+```text
+(0 + 3 + 8) / 3 = 11 / 3 ≈ 3.67
 ```
 
-### Resultado clave
+## Conclusion
 
-- `System-wide memory free percentage: 41%`
-- swapins/swapouts tambien reportados por esta herramienta.
+| Algoritmo | Promedio |
+|-----------|----------|
+| FCFS      | 6.33     |
+| SJF       | 3.67     |
 
-Interpretacion:
+SJF minimiza el tiempo de espera promedio cuando se conocen las duraciones. Se puede probar que **SJF es optimo** en esa metrica entre los algoritmos no-expropiativos para una misma carga que llega al mismo tiempo. La desventaja es:
 
-- Aunque `top` muestra poca RAM "unused", macOS mantiene disponibilidad por compresion + cache + pages reclaimables, por eso este porcentaje puede parecer alto.
-
-## 5) Procesos que mas memoria residente consumen (RSS)
-
-### Comando usado
-
-```bash
-ps -axo pid,rss,comm | sort -k2 -nr | head -n 15
-```
-
-### Top observado (RSS en KB, aprox)
-
-1. PID `3517` - VS Code Helper (Renderer): `392416 KB` (~383 MB)
-2. PID `18570` - VS Code Helper (Renderer): `256128 KB` (~250 MB)
-3. PID `963` - Google Chrome (main): `196576 KB` (~192 MB)
-4. PID `1503` - VS Code Helper (Renderer): `192240 KB` (~188 MB)
-5. PID `18581` - VS Code Helper (Plugin): `171744 KB` (~168 MB)
-6. PID `44506` - Chrome Helper (Renderer): `161200 KB` (~157 MB)
-7. PID `43424` - Chrome Helper (Renderer): `146944 KB` (~143 MB)
-8. PID `43671` - Chrome Helper (Renderer): `146880 KB` (~143 MB)
-
-Patron claro:
-
-- Los mayores consumidores residentes en este snapshot son procesos de **VS Code** y **Google Chrome** (varios helpers/renderer por arquitectura multiproceso).
-
-## 6) Equivalencia con comandos sugeridos por la catedra (Linux vs macOS)
-
-- `top` -> existe en ambos (sintaxis distinta)
-- `free` (Linux) -> en macOS se reemplaza por `vm_stat` + `top` + `memory_pressure`
-- `smem` (Linux) -> en macOS usar `ps`/Activity Monitor (`smem` no viene instalado)
-- `swapon` (Linux) -> en macOS usar `sysctl vm.swapusage`
-
-Comprobacion en esta maquina:
-
-- `free`: no instalado
-- `smem`: no instalado
-- `swapon`: no instalado
-
-## 7) Conclusion final del ejercicio
-
-En este sistema macOS (8 GiB RAM):
-
-1. La RAM esta fuertemente utilizada (top reporta ~7.3 GiB usados).
-2. Hay compresion alta de memoria (varios GiB en compressor).
-3. Hay swap en uso real (~928 MB).
-4. Los procesos que mas memoria residente consumen pertenecen principalmente a VS Code y Chrome.
-
-Por lo tanto, el analisis de espacios de memoria del sistema (RAM activa/inactiva/wired/comprimida + swap) queda completamente determinado con los comandos usados.
+1. Requiere conocer o estimar la rafaga futura, lo que en la practica se hace con promedios exponenciales de las rafagas pasadas.
+2. Puede producir **starvation** de los procesos largos si llegan continuamente procesos cortos.

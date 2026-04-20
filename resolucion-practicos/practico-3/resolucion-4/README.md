@@ -1,190 +1,109 @@
-# Resolucion 4 - Representacion de tablas en bloques de una pagina (32 bits, paginas de 4KB y 4MB)
+# Resolucion 4 - Practico 3
 
-## Enunciado, en palabras simples
+Ejercicio 4: experimento de planificacion de CPU con dos procesos CPU-bound de distinta prioridad.
 
-El ejercicio pide proponer una forma de representar tablas de paginas para un espacio virtual de 32 bits, con dos tamanos de pagina posibles (4KB y 4MB), cumpliendo esta condicion:
+## Archivo fuente
 
-- cada estructura de tabla debe ocupar un bloque del tamano de una pagina.
+- `busyloop.sh`: script shell con ciclo infinito (`while :; do :; done`). Consume 100% de CPU.
 
-Ademas pide explicar:
+Dar permisos:
 
-- como se interpreta una direccion virtual
-- como se obtiene la direccion fisica (mapping).
+```bash
+chmod +x busyloop.sh
+```
 
-## Idea principal de la solucion
+## 4.1 Instancia normal + observacion con top
 
-La representacion mas natural para esto es una tabla jerarquica de 2 niveles (estilo x86 de 32 bits):
+Terminal 1:
 
-1. Directorio de paginas (nivel 1)
-2. Tablas de paginas (nivel 2), solo cuando usamos paginas de 4KB
+```bash
+./busyloop.sh
+```
 
-Esto permite:
+Terminal 2:
 
-- que cada estructura de metadata ocupe exactamente 1 pagina de 4KB
-- usar paginas chicas (4KB) cuando necesito granularidad fina
-- usar paginas grandes (4MB) cuando quiero menos overhead de tablas.
+```bash
+top
+# dentro de top: tecla P para ordenar por %CPU, q para salir
+```
 
-## Hipotesis y numeros base
+Se observa `bash busyloop.sh` usando cerca del 100% de un core con valor `NI` (niceness) = `0` y `PR` (prioridad del scheduler) por defecto (tipicamente 20).
 
-- Espacio virtual: `2^32 bytes = 4GB`
-- Tamano de entrada (PDE/PTE): `4 bytes` (supuesto clasico de 32 bits)
-- Tamano de pagina base del sistema: `4KB = 2^12 bytes`
+## 4.2 Segunda instancia con menor prioridad (nice +15)
 
-Entonces:
+Terminal 3:
 
-- en 4KB entran `4096 / 4 = 1024` entradas
-- eso equivale a 10 bits de indice (`2^10 = 1024`).
+```bash
+nice -n 15 bash ./busyloop.sh
+```
 
-Con esto, un directorio de paginas de 1024 entradas ocupa exactamente una pagina de 4KB.
+Terminal 2 (top):
 
-## Estructuras propuestas
+- Ambos procesos aparecen compitiendo por CPU.
+- El nuevo muestra `NI=15` y una prioridad `PR` mas alta numericamente (menos prioridad).
+- Si hay un solo core libre, el proceso con nice 0 consume la mayor parte del tiempo de CPU. El de nice 15 recibe mucho menos.
 
-### 1) Directorio de paginas (Page Directory)
+### Cambios de contexto
 
-- Cantidad de entradas: 1024
-- Tamano por entrada: 4 bytes
-- Tamano total: `1024 * 4 = 4096 bytes = 4KB`
+```bash
+cat /proc/<PID>/sched | grep nr_switches
+```
 
-Cada entrada del directorio (PDE) puede tener dos comportamientos:
+`nr_switches` cuenta los context switches totales desde que el proceso existe (voluntarios + involuntarios).
 
-- `PS = 0`: la entrada apunta a una tabla de paginas de nivel 2 (modo 4KB)
-- `PS = 1`: la entrada mapea directo una pagina grande de 4MB (modo 4MB)
+Pregunta: **el proceso con menor prioridad (nice 15) deberia ejecutar mas o menos cambios de contexto?**
 
-### 2) Tabla de paginas de nivel 2 (Page Table)
+Respuesta: **mas**. Con el scheduler CFS de Linux (Completely Fair Scheduler), el proceso con mayor nice recibe fracciones de CPU mas cortas y es desalojado mas frecuentemente a favor del de mayor prioridad. Como el desalojo forzado del scheduler es un context switch involuntario, el contador `nr_switches` crece mas rapido en el proceso de baja prioridad.
 
-- Cantidad de entradas: 1024
-- Tamano por entrada: 4 bytes
-- Tamano total: `4KB`
+Monitoreo en vivo (actualiza cada 1s):
 
-Solo existe para los rangos virtuales donde el PDE tenga `PS=0`.
+```bash
+watch -n1 "cat /proc/<PID_NICE15>/sched | grep nr_switches"
+```
 
-Conclusión importante: tanto el directorio como cada tabla de nivel 2 ocupan una pagina de 4KB, o sea se cumple exactamente lo pedido en el enunciado.
+Se puede comparar con el nice=0 abriendo otro watch en paralelo.
 
-## Como se interpreta una direccion virtual de 32 bits
+## 4.3 Cambiar prioridad en ejecucion con renice
 
-Sea `VA` una direccion virtual de 32 bits.
+```bash
+renice -n 5 -p <PID>       # sube el nice (baja la prioridad)
+renice -n -5 -p <PID>      # baja el nice (sube la prioridad, requiere root)
+```
 
-Primero siempre se toman los 10 bits mas altos para indexar el directorio:
+Verificar con `top` o:
 
-- `PDI = VA[31..22]`
+```bash
+ps -o pid,ni,pri,comm -p <PID>
+```
 
-Luego, segun el valor de `PS` en el PDE:
+## 4.4 Correr con mayor prioridad (nice -10)
 
-### Caso A: paginas de 4KB (`PS=0`)
+Los nice negativos reducen solo root puede asignarlos:
 
-Se usa traduccion de 2 niveles:
+```bash
+sudo nice -n -10 bash ./busyloop.sh
+```
 
-- `PDI = VA[31..22]` (10 bits, indice en directorio)
-- `PTI = VA[21..12]` (10 bits, indice en tabla nivel 2)
-- `offset = VA[11..0]` (12 bits, desplazamiento dentro de la pagina de 4KB)
+Rango de niceness en Linux: `-20` (mayor prioridad) a `+19` (menor prioridad). El enunciado menciona el rango `-19 .. 20` que es equivalente pero la implementacion real es `-20 .. 19` (ver `man setpriority`).
 
-Formato:
+Observacion esperada en `top`:
 
-`VA = [ PDI(10) | PTI(10) | offset(12) ]`
+- El proceso con `NI=-10` captura casi todo el tiempo de CPU frente a otros con nice 0.
+- Los otros procesos CPU-bound aparecen esencialmente pausados en intervalos cortos.
 
-### Caso B: paginas de 4MB (`PS=1`)
+## Limpieza
 
-No hay nivel 2 para esa region:
+Terminar todas las instancias:
 
-- `PDI = VA[31..22]` (10 bits)
-- `offset = VA[21..0]` (22 bits, desplazamiento dentro de 4MB)
+```bash
+pkill -f busyloop.sh
+```
 
-Formato:
+## Nota macOS
 
-`VA = [ PDI(10) | offset(22) ]`
+`/proc` no existe en macOS. Equivalencias:
 
-## Algoritmo de mapping VA -> PA
+- Prioridad: `nice`/`renice` funcionan igual.
+- Context switches por proceso: no hay interfaz directa. Se puede inspeccionar con `dtrace` (requiere SIP desactivado) o Instruments.app.
 
-Supongo que un registro base (equivalente a `CR3`) apunta al directorio de paginas del proceso actual.
-
-### Paso 1: buscar PDE
-
-- `PDE = PageDirectory[PDI]`
-- Si `PDE.present = 0` -> page fault (la traduccion no existe)
-
-### Paso 2: elegir camino segun `PS`
-
-#### Camino 2A: `PS=0` (pagina de 4KB)
-
-1. Tomar base fisica de la tabla de nivel 2 desde el PDE
-2. Leer `PTE = PageTable[PTI]`
-3. Si `PTE.present = 0` -> page fault
-4. Construir direccion fisica:
-
-`PA = (PTE.frame << 12) | offset_12`
-
-#### Camino 2B: `PS=1` (pagina de 4MB)
-
-El PDE ya contiene el marco fisico de 4MB:
-
-`PA = (PDE.frame_4MB << 22) | offset_22`
-
-## Ejemplo numerico completo (4KB)
-
-Supongamos:
-
-- `PDI = 0x12`
-- `PTI = 0x034`
-- `offset = 0x2A0`
-- `PDE[0x12]` esta presente, `PS=0`, y apunta a una page table
-- `PTE[0x034]` esta presente y su marco fisico es `0x001AB`
-
-Entonces:
-
-- base fisica del marco de 4KB = `0x001AB << 12 = 0x001AB000`
-- direccion fisica final:
-
-`PA = 0x001AB000 + 0x2A0 = 0x001AB2A0`
-
-## Ejemplo numerico completo (4MB)
-
-Supongamos:
-
-- `PDI = 0x155`
-- `offset_22 = 0x00321F0`
-- `PDE[0x155]` presente, `PS=1`, marco fisico de 4MB = `0x02C`
-
-Entonces:
-
-- base fisica del bloque de 4MB = `0x02C << 22 = 0x0B000000`
-- direccion fisica final:
-
-`PA = 0x0B000000 + 0x00321F0 = 0x0B321F0`
-
-## Por que esta representacion es conveniente
-
-1. Cumple el requisito de diseno del enunciado:
-   cada tabla/directorio ocupa una pagina de 4KB.
-2. Es escalable:
-   no obliga a reservar todas las tablas de nivel 2 desde el inicio.
-3. Permite mezcla de tamanos de pagina:
-   regiones con 4KB y regiones con 4MB dentro del mismo espacio virtual.
-4. Reduce overhead en regiones grandes:
-   con `PS=1` evitas una tabla de nivel 2 por cada entrada de directorio usada.
-
-## Overhead de tablas (dato util para justificar)
-
-Si todo se mapea con paginas de 4KB:
-
-- 1 directorio (4KB) + 1024 tablas de nivel 2 (1024 * 4KB)
-- total metadata = `4KB + 4MB = 4MB + 4KB`
-
-Si todo se mapea con paginas de 4MB:
-
-- solo 1 directorio de 4KB (no hay nivel 2)
-- total metadata = `4KB`
-
-Esto muestra bien el tradeoff:
-
-- 4KB: mas granularidad, mas metadata
-- 4MB: menos metadata, menos granularidad, posible mayor fragmentacion interna.
-
-## Respuesta final corta (para cerrar)
-
-La representacion recomendada es jerarquica de 2 niveles, con directorio y tablas de 1024 entradas de 4 bytes (cada estructura ocupa 4KB).  
-La direccion virtual se interpreta como:
-
-- `PDI|PTI|offset(12)` para paginas de 4KB (`PS=0`)
-- `PDI|offset(22)` para paginas de 4MB (`PS=1`)
-
-El mapping a fisica se obtiene leyendo PDE (y opcionalmente PTE) y concatenando el frame fisico con el offset correspondiente.
+Este experimento esta pensado para GNU/Linux.
