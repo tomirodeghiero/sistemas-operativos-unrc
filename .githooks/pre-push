@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Bloquea pushes que reescriban historia en el remote (force push).
+# Cubre: git push --force, git push -f, git push --force-with-lease.
+#
+# Escape de emergencia (solo si sabés lo que hacés):
+#   ALLOW_FORCE_PUSH=1 git push ...
+
+set -eu
+
+if [ "${ALLOW_FORCE_PUSH:-0}" = "1" ]; then
+  echo "⚠️  ALLOW_FORCE_PUSH=1 — force push permitido por override explícito."
+  exit 0
+fi
+
+zero="0000000000000000000000000000000000000000"
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  # Borrado de rama remota: permitido
+  if [ "$local_sha" = "$zero" ]; then
+    continue
+  fi
+  # Rama nueva en el remote: permitido
+  if [ "$remote_sha" = "$zero" ]; then
+    continue
+  fi
+
+  # Si el sha remoto NO es ancestro del local => no es fast-forward => force push
+  if ! git merge-base --is-ancestor "$remote_sha" "$local_sha" 2>/dev/null; then
+    echo ""
+    echo "🚫 Push bloqueado: estarías pisando commits en '$remote_ref'."
+    echo ""
+    echo "   Local : $local_sha"
+    echo "   Remote: $remote_sha (tiene commits que tu rama local no tiene)"
+    echo ""
+    echo "Opciones seguras:"
+    echo "  • git fetch && git log HEAD..$remote_ref   # ver qué hay en el remote"
+    echo "  • git pull --rebase                        # integrar antes de pushear"
+    echo ""
+    echo "Si REALMENTE necesitás forzar (bajo tu responsabilidad):"
+    echo "  ALLOW_FORCE_PUSH=1 git push ..."
+    echo ""
+    exit 1
+  fi
+done
+
+exit 0
