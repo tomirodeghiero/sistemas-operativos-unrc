@@ -29,29 +29,29 @@ Notacion para la tabla temporal: `Ti:n` significa "tarea i, con n ms de CPU pend
 
 ## Tabla temporal
 
-| Time | CPU         | T1     | T2     | T3     | L0                       | L1                       | L2          |
-|------|-------------|--------|--------|--------|--------------------------|--------------------------|-------------|
-| 0    | -           | RDY    | RDY    | RDY    | <T1:5, T2:6, T3:1>       | <>                       | <>          |
-| 0-3  | T1          | RUN    | RDY    | RDY    | <T2:6, T3:1>             | <>                       | <>          |
-| 3    | demote T1   | RDY    | RDY    | RDY    | <T2:6, T3:1>             | <T1:2>                   | <>          |
-| 3-6  | T2          | RDY    | RUN    | RDY    | <T3:1>                   | <T1:2>                   | <>          |
-| 6    | demote T2   | RDY    | RDY    | RDY    | <T3:1>                   | <T1:2, T2:9>             | <>          |
-| 6-7  | T3          | RDY    | RDY    | RUN    | <>                       | <T1:2, T2:9>             | <>          |
-| 7    | T3 -> WAIT  | RDY    | RDY    | WAIT   | <>                       | <T1:2, T2:9>             | <>          |
-| 7-9  | T1          | RUN    | RDY    | WAIT   | <>                       | <T2:9>                   | <>          |
-| 9    | T1 -> WAIT; T3 wakeup | WAIT   | RDY    | RDY    | <T3:1>                   | <T2:9>                   | <>          |
-| 9-10 | T3          | WAIT   | RDY    | RUN    | <>                       | <T2:9>                   | <>          |
-| 10   | T3 termina  | WAIT   | RDY    | TERM   | <>                       | <T2:9>                   | <>          |
-| 10-12| T2          | WAIT   | RUN    | TERM   | <>                       | <>                       | <>          |
-| 12   | demote T2   | WAIT   | RDY    | TERM   | <>                       | <>                       | <T2:7>      |
-| 12-13| T2          | WAIT   | RUN    | TERM   | <>                       | <>                       | <>          |
-| 13   | T2 reencola en L2 | WAIT | RDY  | TERM   | <>                       | <>                       | <T2:6>      |
-| 13-14| T2          | WAIT   | RUN    | TERM   | <>                       | <>                       | <>          |
-| 14   | T1 wakeup -> L1; T2 desalojado | RDY | RDY | TERM | <>           | <T1:1>                   | <T2:5>      |
-| 14-15| T1          | RUN    | RDY    | TERM   | <>                       | <>                       | <T2:5>      |
-| 15   | T1 termina  | TERM   | RDY    | TERM   | <>                       | <>                       | <T2:5>      |
-| 15-20| T2          | TERM   | RUN    | TERM   | <>                       | <>                       | <T2:4...0>  |
-| 20   | T2 termina  | TERM   | TERM   | TERM   | <>                       | <>                       | <>          |
+| Time  | CPU                            | T1   | T2  | T3   | L0                     | L1             | L2         |
+|-------|--------------------------------|------|-----|------|------------------------|----------------|------------|
+| 0     | -                              | RDY  | RDY | RDY  | `<T1:5, T2:6, T3:1>`   | `<>`           | `<>`       |
+| 0-3   | T1                             | RUN  | RDY | RDY  | `<T2:6, T3:1>`         | `<>`           | `<>`       |
+| 3     | demote T1                      | RDY  | RDY | RDY  | `<T2:6, T3:1>`         | `<T1:2>`       | `<>`       |
+| 3-6   | T2                             | RDY  | RUN | RDY  | `<T3:1>`               | `<T1:2>`       | `<>`       |
+| 6     | demote T2                      | RDY  | RDY | RDY  | `<T3:1>`               | `<T1:2, T2:9>` | `<>`       |
+| 6-7   | T3                             | RDY  | RDY | RUN  | `<>`                   | `<T1:2, T2:9>` | `<>`       |
+| 7     | T3 -> WAIT                     | RDY  | RDY | WAIT | `<>`                   | `<T1:2, T2:9>` | `<>`       |
+| 7-9   | T1                             | RUN  | RDY | WAIT | `<>`                   | `<T2:9>`       | `<>`       |
+| 9     | T1 -> WAIT; T3 wakeup          | WAIT | RDY | RDY  | `<T3:1>`               | `<T2:9>`       | `<>`       |
+| 9-10  | T3                             | WAIT | RDY | RUN  | `<>`                   | `<T2:9>`       | `<>`       |
+| 10    | T3 termina                     | WAIT | RDY | TERM | `<>`                   | `<T2:9>`       | `<>`       |
+| 10-12 | T2                             | WAIT | RUN | TERM | `<>`                   | `<>`           | `<>`       |
+| 12    | demote T2                      | WAIT | RDY | TERM | `<>`                   | `<>`           | `<T2:7>`   |
+| 12-13 | T2                             | WAIT | RUN | TERM | `<>`                   | `<>`           | `<>`       |
+| 13    | T2 reencola en L2              | WAIT | RDY | TERM | `<>`                   | `<>`           | `<T2:6>`   |
+| 13-14 | T2                             | WAIT | RUN | TERM | `<>`                   | `<>`           | `<>`       |
+| 14    | T1 wakeup -> L1; T2 desalojado | RDY  | RDY | TERM | `<>`                   | `<T1:1>`       | `<T2:5>`   |
+| 14-15 | T1                             | RUN  | RDY | TERM | `<>`                   | `<>`           | `<T2:5>`   |
+| 15    | T1 termina                     | TERM | RDY | TERM | `<>`                   | `<>`           | `<T2:5>`   |
+| 15-20 | T2                             | TERM | RUN | TERM | `<>`                   | `<>`           | `<T2:4..0>`|
+| 20    | T2 termina                     | TERM | TERM| TERM | `<>`                   | `<>`           | `<>`       |
 
 Verificacion global: la CPU permanece ocupada de 0 a 20 ms sin huecos. La suma de rafagas de CPU es $T_1 = 6$, $T_2 = 12$, $T_3 = 2$, total 20 ms. Cuadra.
 
