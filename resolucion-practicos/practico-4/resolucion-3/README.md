@@ -1,85 +1,55 @@
-# Resolucion 3 - Modificar `rtc.c` para retornar segundos en binario
+# Resolucion 3 - Practico 4
 
-## Que pide el ejercicio
+Ejercicio 3: un planificador recalcula una vez por segundo la prioridad de cada proceso usando
 
-Modificar el driver `rtc.c` para que el valor de los segundos no se entregue en formato BCD, sino en binario (valor entero normal de `0` a `59`).
+$$\text{priority} = \frac{\text{recent\_cpu\_usage}()}{2} + 60$$
 
-## Idea clave
+donde el valor numerico es invertido (a **mayor valor, menor prioridad**). Tres procesos en el sistema con usos recientes de CPU de 30, 15 y 10 para P1, P2 y P3 respectivamente.
 
-El RTC clasico puede entregar datos en BCD o en binario segun el bit `DM` del registro `RTC_REG_B`.
+1. ¿Como prioriza a los procesos orientados a CPU y a los orientados a I/O?
+2. ¿Cual es el objetivo del planificador?
 
-1. Si `DM = 0`, el dato viene en BCD y hay que convertirlo.
-2. Si `DM = 1`, el dato ya esta en binario y no se convierte.
+## Conceptos teoricos
 
-Conversion BCD -> binario:
+De las notas del curso:
 
-```c
-bin = ((bcd >> 4) * 10) + (bcd & 0x0F);
-```
+- En el algoritmo basado en *prioridades*, se elige siempre al proceso con mayor prioridad. La asignacion puede ser **estatica** (al crear el proceso) o **dinamica** (en run-time).
+- El problema clasico es la **starvation**: un proceso de baja prioridad puede no ser planificado nunca si llegan continuamente procesos de mas alta prioridad.
+- Una solucion es el **aging** (envejecimiento): incrementar gradualmente la prioridad de procesos que llevan mucho tiempo esperando.
+- La idea de *Multilevel Feedback (MLF)* lleva esto al extremo: un proceso que **no usa todo el quantum se considera interactivo y se sube de nivel** (mas prioridad), y uno que lo consume completo se considera *CPU-bound* y se baja. Esa estrategia "prioriza a los procesos orientados a entrada-salida y contribuye a mejorar los tiempos de respuesta" (cita literal del capitulo).
 
-Ejemplo: `0x45` (BCD) -> `45` (binario).
+La formula del enunciado es exactamente un caso particular de aging dinamico de esta familia: la prioridad numerica crece con el uso reciente de CPU, y como en este sistema **mayor valor implica menor prioridad**, mas uso de CPU castiga al proceso.
 
-## Cambio de codigo (patch sugerido)
+## Calculo de las prioridades
 
-Este patch asume una implementacion tipica del driver que lee segundos desde `RTC_SECONDS` y usa `RTC_REG_B`.
+| Proceso | recent_cpu | priority = recent_cpu/2 + 60 | Posicion |
+|---------|------------|------------------------------|----------|
+| P1      | 30         | 30/2 + 60 = **75**           | menor prioridad |
+| P2      | 15         | 15/2 + 60 = **67.5**         | intermedia |
+| P3      | 10         | 10/2 + 60 = **65**           | mayor prioridad |
 
-```diff
---- a/rtc.c
-+++ b/rtc.c
-@@
--static unsigned char rtc_read_seconds(void)
-+static unsigned char bcd_to_bin(unsigned char v)
-+{
-+    return ((v >> 4) * 10) + (v & 0x0F);
-+}
-+
-+static unsigned char rtc_read_seconds(void)
- {
-     unsigned char sec;
-+    unsigned char regb;
- 
-     sec = cmos_read(RTC_SECONDS);
--    return sec; /* antes devolvia BCD */
-+
-+    regb = cmos_read(RTC_REG_B);
-+    if (!(regb & 0x04)) {   /* DM=0 => dato en BCD */
-+        sec = bcd_to_bin(sec);
-+    }
-+
-+    return sec; /* ahora siempre binario */
- }
-```
+Es decir, el orden por prioridad (de mas alta a mas baja) es:
 
-## Si tu `read()` devolvia texto
+$$P_3 \;\succ\; P_2 \;\succ\; P_1.$$
 
-Si el driver devolvia los segundos como texto hexadecimal (`%02x`), cambiar a decimal:
+## 1. Como prioriza a CPU-bound vs I/O-bound
 
-```diff
---- a/rtc.c
-+++ b/rtc.c
-@@
--len = scnprintf(kbuf, sizeof(kbuf), "%02x\n", sec);
-+len = scnprintf(kbuf, sizeof(kbuf), "%u\n", sec);
-```
+Un proceso **orientado a CPU** ejecuta rafagas largas: gasta su quantum sin bloquearse, asi que su contador `recent_cpu_usage` crece rapido cada segundo (la formula recalcula y suma uso). Su `priority` numerica sube y, como mayor valor implica menor prioridad efectiva, **el algoritmo lo posterga**. P1 es ejemplo en la tabla: uso reciente 30, prioridad 75 (la mas baja del trio).
 
-Con ese cambio, al leer desde user space se obtiene un valor decimal normal (`0..59`).
+Un proceso **orientado a I/O** se bloquea seguido en `read`/`write` y rara vez consume el quantum entero. Su `recent_cpu_usage` queda chico, su `priority` numerica se mantiene cerca del piso (60), y por lo tanto **el algoritmo lo favorece** y lo planifica enseguida cuando vuelve de I/O. P3 es ejemplo: uso 10, prioridad 65 (la mas alta).
 
-## Compilacion y prueba
+El "+60" funciona como piso fijo de la prioridad (ningun proceso baja de 60) y el "/2" amortigua el crecimiento, evitando que un pico breve de uso de CPU castigue de manera desproporcionada al proceso. Esto da un comportamiento suave: la prioridad cambia en forma gradual con el patron de uso.
 
-```bash
-make
-sudo insmod rtc.ko
-dmesg | tail -n 30
-cat /dev/rtc_driver
-sudo rmmod rtc
-```
+> **Observacion**: en realidad la formula provista es la receta clasica del scheduler historico de **4.3BSD UNIX** (multilevel feedback con decay del `recent_cpu`), donde el contador se decae exponencialmente entre recalculos para no quedar pegados con el comportamiento viejo. La teoria del curso describe una idea equivalente cuando habla de *aging* y de MLF "que se mueven entre niveles".
 
-## Resultado esperado
+## 2. Objetivo del planificador
 
-1. El modulo compila y carga sin errores.
-2. El valor de segundos no aparece en BCD.
-3. Si antes veias algo como `0x25`, ahora el valor es `25` decimal.
+El objetivo es **minimizar el tiempo de respuesta** del sistema y **maximizar el throughput** privilegiando a los procesos interactivos / I/O-bound, sin negarles servicio definitivamente a los CPU-bound.
 
-## Nota
+Mas concretamente:
 
-En este repositorio no esta el archivo `rtc.c` del enunciado, por eso se deja el patch listo para aplicar sobre el codigo provisto por la catedra.
+- **Mejor responsiveness para procesos interactivos**: editores, shells, terminales y servicios atendiendo requests son tipicamente I/O-bound. Que el planificador les de prioridad alta cuando vuelven de un bloqueo significa que la latencia entre que llega un dato (tecla, paquete, lectura de disco) y que se procesa, es minima.
+- **Mejor uso de los dispositivos de I/O**: si los procesos I/O-bound se planifican rapido, mantienen los dispositivos ocupados y se solapa I/O con CPU. Los CPU-bound pueden usar la CPU mientras los otros estan bloqueados sin perjudicar el throughput global.
+- **Evitar starvation pese a usar prioridades**: como `recent_cpu_usage` solo refleja la *historia reciente*, un proceso que llega como CPU-bound pero deja de demandar CPU vera caer su priority y volvera a ser elegible. La penalizacion no es para siempre. Esto es exactamente el rol que la teoria le adjudica al *aging*.
+
+Resumiendo en una linea: el planificador busca **un compromiso entre utilizacion de CPU, throughput y tiempo de respuesta** que la teoria del curso identifica como el objetivo central de los short-term schedulers en sistemas time-sharing.

@@ -1,223 +1,76 @@
-# Resolucion 4 - Representacion del arbol de archivos en FAT e inodos
+# Resolucion 4 - Practico 4
 
-## Enunciado (resumen)
+Ejercicio 4: dada la tabla del ejercicio 1, dar la secuencia de planificacion con prioridades
 
-Se pide describir un sistema de archivos para esta estructura:
+| Proceso | CPU | Prioridad |
+|---------|-----|-----------|
+| P1      | 8   | 1         |
+| P2      | 3   | 3         |
+| P3      | 5   | 2         |
 
-```text
-/
-`-- docs
-    `-- mycv.txt
-```
+Asumiendo que los tres arriban en t = 0.
 
-y asumir que `mycv.txt` ocupa exactamente dos bloques de datos.
+## Conceptos teoricos
 
-## Supuestos que voy a fijar
+De la teoria del curso (capitulo *Planificacion de uso de CPU*, seccion *Uso de prioridades*):
 
-Para poder "dibujar" el sistema con precision, fijo un modelo simple y consistente:
+- Se asigna un numero de prioridad a cada proceso. La relacion de orden puede ser arbitraria: a menor valor mayor prioridad o a mayor valor mayor prioridad. **El enunciado no fija la convencion**, asi que se debe elegir y justificar.
+- El algoritmo puede ser preemptivo o no. Como aqui los tres procesos arriban en t = 0 y nadie se incorpora despues, no hay diferencia entre la version preemptiva y la no preemptiva: una vez decidido el orden, ningun nuevo arribo lo puede alterar.
+- Asumimos prioridades **estaticas** (no se modifican durante la corrida). El enunciado no menciona aging.
 
-1. Tamaño de bloque (o cluster): `4096 bytes`.
-2. `mycv.txt` usa 2 bloques de datos. Para dejarlo claro en ambos modelos, tomo tamaño logico `6000 bytes` (entra en 2 bloques de 4096).
-3. Solo existen estos objetos: `/`, `docs` y `mycv.txt`.
-4. Los numeros de bloque/inodo son ejemplos validos (no un volcado real de una maquina concreta).
+### Convencion de prioridades
 
-Con estos supuestos, el arbol logico es:
+Se adopta la convencion mas extendida en bibliografia (Silberschatz, Tanenbaum) y la que usa Linux en el rango *real-time*: **menor numero implica mayor prioridad**. Es la misma convencion que aparece en la teoria del curso al describir el rango Linux 0-99 para procesos real-time, donde 0 es la mayor prioridad.
 
-1. Directorio raiz `/`.
-2. Dentro de raiz, un subdirectorio `docs`.
-3. Dentro de `docs`, el archivo regular `mycv.txt`.
+Bajo esta convencion, el orden decreciente de prioridad es:
 
-## a) Representacion tipo FAT
+$$P_1 \;(\text{prio } 1) \;\succ\; P_3 \;(\text{prio } 2) \;\succ\; P_2 \;(\text{prio } 3).$$
 
-## Idea de FAT (muy importante)
+(Si en cambio el enunciado quisiera la convencion contraria, alcanza con invertir el orden: P2 - P3 - P1. Se discute al final.)
 
-En FAT, cada archivo/directorio apunta a un **primer cluster**.  
-La secuencia de clusters se sigue en la tabla FAT:
+## Secuencia de planificacion
 
-1. FAT[cluster_actual] = cluster_siguiente.
-2. FAT[cluster_actual] = `EOF` cuando termina la cadena.
+Como los tres llegan en t = 0, en ese instante todos estan READY y el scheduler elige al de mayor prioridad: P1. P1 corre hasta terminar (la version no preemptiva no le quita CPU; la preemptiva tampoco, porque nadie con prioridad mayor aparece). Luego entran en orden P3 y P2.
 
-No hay inodo por archivo. Los metadatos principales se guardan en la entrada de directorio.
-
-## Layout simplificado del volumen FAT
+### Diagrama de Gantt
 
 ```text
-[Boot][FAT][Data region...]
+| P1                   | P3            | P2       |
+0                      8               13          16
 ```
 
-Voy a usar estos clusters en la region de datos:
+| Proceso | Inicio | Fin | Espera (Inicio - Arribo) | Turnaround (Fin - Arribo) |
+|---------|--------|-----|--------------------------|---------------------------|
+| P1      | 0      | 8   | 0                        | 8                         |
+| P3      | 8      | 13  | 8                        | 13                        |
+| P2      | 13     | 16  | 13                       | 16                        |
 
-1. `C2` -> contenido del directorio raiz.
-2. `C3` -> contenido del directorio `docs`.
-3. `C4` -> bloque 1 de `mycv.txt`.
-4. `C7` -> bloque 2 de `mycv.txt`.
+Promedios:
 
-Observacion: `C4 -> C7` muestra un caso no contiguo (fragmentacion posible en FAT).
+- Tiempo de espera medio: $(0 + 8 + 13)/3 = 7$.
+- Turnaround medio: $(8 + 13 + 16)/3 \approx 12.33$.
 
-## Entradas de directorio
+## Observaciones
 
-### Directorio raiz (cluster `C2`)
+1. La secuencia depende **exclusivamente** del numero de prioridad. Notar que P1, ademas de tener mayor prioridad, es el de rafaga mas larga: el algoritmo prioriza segun la prioridad asignada y no segun la rafaga. Esto provoca un perjuicio para los demas procesos respecto de SJF: con SJF la espera promedio hubiera sido $(0 + 8 + 11)/3 \approx 6.33$ (orden P2-P3-P1), claramente menor.
+2. El algoritmo de prioridades, tal como lo presenta la teoria, **no garantiza optimalidad** en tiempo de espera ni en turnaround promedio: solo respeta la importancia relativa que el sistema asigna a cada proceso.
+3. **Riesgo de starvation**: si en este sistema llegaran continuamente procesos con prioridad 1 o 2, P2 (prioridad 3) podria quedar pospuesto indefinidamente. La solucion estandar es **aging**, que la teoria menciona explicitamente: incrementar la prioridad de los procesos que llevan mucho tiempo esperando.
 
-| Nombre | Tipo | Primer cluster | Tamaño |
-|---|---|---:|---:|
-| `docs` | Directorio | `C3` | 0 |
+### Si la convencion fuera "mayor numero, mayor prioridad"
 
-### Directorio `docs` (cluster `C3`)
-
-| Nombre | Tipo | Primer cluster | Tamaño |
-|---|---|---:|---:|
-| `mycv.txt` | Archivo regular | `C4` | 6000 |
-
-## Tabla FAT (solo entradas relevantes)
-
-| Cluster | FAT[Cluster] | Significado |
-|---:|---:|---|
-| 2 | EOF | El directorio raiz ocupa un solo cluster |
-| 3 | EOF | El directorio `docs` ocupa un solo cluster |
-| 4 | 7 | Primer bloque de `mycv.txt` apunta al segundo |
-| 7 | EOF | Fin de `mycv.txt` |
-
-## Como se resuelve la ruta `/docs/mycv.txt` en FAT
-
-1. El sistema conoce el cluster inicial de raiz (`C2`).
-2. Lee el directorio de `C2` y encuentra `docs -> C3`.
-3. Lee el directorio de `C3` y encuentra `mycv.txt -> C4` con tamaño `6000`.
-4. Para leer datos del archivo:
-5. Lee `C4` (primer tramo de datos).
-6. Consulta FAT[4] y obtiene `7`.
-7. Lee `C7`.
-8. Consulta FAT[7] y obtiene EOF, fin del archivo.
-
-## Lectura logica de bytes en FAT
-
-Con bloque de 4096 y tamaño 6000:
-
-1. Bytes `0..4095` salen de `C4`.
-2. Bytes `4096..5999` salen de `C7`.
-3. El resto del bloque `C7` no pertenece al tamaño logico del archivo.
-
-## Comentario tecnico FAT
-
-Ventaja:
-
-1. Implementacion simple: seguir cadenas en FAT es directo.
-
-Desventaja:
-
-1. Para archivos fragmentados, hay muchos accesos a FAT.
-2. La tabla FAT central puede volverse cuello de botella.
-
-## b) Representacion basada en inodos
-
-## Idea de inodos (muy importante)
-
-Cada archivo/directorio tiene un inodo propio con metadatos:
-
-1. Tipo (archivo/directorio).
-2. Tamaño.
-3. Punteros a bloques de datos.
-4. Contador de enlaces y permisos (segun FS).
-
-Los directorios guardan pares `(nombre, numero_de_inodo)`.
-
-## Layout simplificado del volumen con inodos
+El orden seria $P_2 \succ P_3 \succ P_1$ y el Gantt:
 
 ```text
-[Boot][Superblock][Inode bitmap][Data bitmap][Inode table][Data blocks]
+| P2       | P3            | P1                   |
+0          3               8                      16
 ```
 
-Asigno estos inodos:
+| Proceso | Inicio | Fin | Espera | Turnaround |
+|---------|--------|-----|--------|------------|
+| P2      | 0      | 3   | 0      | 3          |
+| P3      | 3      | 8   | 3      | 8          |
+| P1      | 8      | 16  | 8      | 16         |
 
-1. `inode 2` -> directorio raiz `/`.
-2. `inode 5` -> directorio `docs`.
-3. `inode 9` -> archivo `mycv.txt`.
+Promedios: espera $(0 + 3 + 8)/3 \approx 3.67$; turnaround $(3 + 8 + 16)/3 = 9$. Se obtienen los mismos numeros que SJF, porque en este caso particular las "prioridades altas" coinciden con las rafagas mas cortas.
 
-Asigno estos bloques de datos:
-
-1. `B20` -> contenido del directorio raiz.
-2. `B21` -> contenido del directorio `docs`.
-3. `B30` -> bloque 1 de datos de `mycv.txt`.
-4. `B45` -> bloque 2 de datos de `mycv.txt`.
-
-## Tabla de inodos (vista simplificada)
-
-| Inodo | Tipo | Tamaño | Punteros directos relevantes |
-|---:|---|---:|---|
-| 2 | Directorio (`/`) | 1 bloque | `[B20]` |
-| 5 | Directorio (`docs`) | 1 bloque | `[B21]` |
-| 9 | Archivo (`mycv.txt`) | 6000 bytes | `[B30, B45]` |
-
-## Contenido de directorios
-
-### Bloque `B20` (directorio `/`, inode 2)
-
-| Entrada | Inodo destino |
-|---|---:|
-| `.` | 2 |
-| `..` | 2 |
-| `docs` | 5 |
-
-### Bloque `B21` (directorio `docs`, inode 5)
-
-| Entrada | Inodo destino |
-|---|---:|
-| `.` | 5 |
-| `..` | 2 |
-| `mycv.txt` | 9 |
-
-## Estado de bitmaps (resumen)
-
-### Inode bitmap
-
-| Inodo | Estado |
-|---:|---|
-| 2 | usado |
-| 5 | usado |
-| 9 | usado |
-| resto | libre |
-
-### Data bitmap
-
-| Bloque | Estado | Uso |
-|---:|---|---|
-| 20 | usado | directorio `/` |
-| 21 | usado | directorio `docs` |
-| 30 | usado | datos de `mycv.txt` (parte 1) |
-| 45 | usado | datos de `mycv.txt` (parte 2) |
-| resto | libre | - |
-
-## Como se resuelve la ruta `/docs/mycv.txt` con inodos
-
-1. El sistema parte del inodo raiz (2).
-2. Lee su bloque de directorio `B20`.
-3. Busca `docs` y obtiene inodo `5`.
-4. Lee el inodo `5` y su bloque `B21`.
-5. Busca `mycv.txt` y obtiene inodo `9`.
-6. Lee inodo `9`, obtiene tamaño `6000` y punteros `[B30, B45]`.
-7. Lee `B30` y luego `B45` para completar el archivo.
-
-## Lectura logica de bytes con inodos
-
-Con 4096 bytes por bloque y tamaño 6000:
-
-1. Bytes `0..4095` se leen de `B30`.
-2. Bytes `4096..5999` se leen de `B45`.
-3. El resto fisico de `B45` no cuenta para el tamaño logico.
-
-## Comparacion puntual FAT vs inodos para este caso
-
-1. En FAT, la "relacion entre bloques" vive en la tabla FAT (`C4 -> C7`).
-2. En inodos, la "relacion entre bloques" vive en el inodo del archivo (`[B30, B45]`).
-3. En FAT, metadatos de archivo estan en entrada de directorio.
-4. En inodos, metadatos estan en el inodo; el directorio solo mapea nombre -> inodo.
-5. En ambos modelos se representa sin problema el arbol pedido y los 2 bloques de `mycv.txt`.
-
-## Conclusiones
-
-La estructura pedida queda correctamente representada de las dos formas:
-
-1. FAT: directorios con primer cluster + cadena en FAT para `mycv.txt`.
-2. Inodos: directorios con nombre->inodo + inodo del archivo apuntando a dos bloques.
-
-Para este ejercicio pequeño, ambas funcionan igual de bien.  
-La diferencia fuerte aparece al escalar: fragmentacion, costos de busqueda, consistencia y manejo de metadatos.
+Como criterio de la teoria, ambas convenciones son legitimas; la respuesta principal del ejercicio es la primera (P1-P3-P2) y se aclara la alternativa para que quede explicita la dependencia del resultado respecto del criterio de orden.
