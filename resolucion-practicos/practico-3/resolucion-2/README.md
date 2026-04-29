@@ -1,12 +1,10 @@
 # Resolucion 2 - Practico 3
 
-Ejercicio 2: usar el script `runseconds.sh` provisto por la catedra (ciclo busy-waiting) y controlar su estado con señales.
+Ejercicio 2: usar el script `runseconds.sh` provisto por la catedra (un ciclo de busy-waiting de 120 segundos) y manipular su estado con senales.
 
-## Archivo fuente
+## El script
 
-- `runseconds.sh`: ciclo en shell que consume CPU durante 120 segundos usando la variable especial `SECONDS` de bash y el no-op `:`. Al terminar imprime `Done!`.
-
-Contenido:
+`runseconds.sh` es un loop en bash que consume cpu durante 120 segundos. Aprovecha la variable especial `SECONDS` (que cuenta el tiempo desde que arranco el shell) y el no-op `:` para girar sin hacer nada util:
 
 ```bash
 #!/bin/bash
@@ -20,13 +18,13 @@ done
 echo "Done!"
 ```
 
-Dar permisos de ejecucion:
+Para que sea ejecutable:
 
 ```bash
 chmod +x runseconds.sh
 ```
 
-Nota: el enunciado menciona 60 segundos pero el script de la catedra fija 120. El comportamiento observable es el mismo; solo cambia la ventana de tiempo para inspeccionar el proceso.
+> Nota al margen: el enunciado habla de 60 segundos pero el script de la catedra fija 120. No cambia la dinamica del ejercicio, solo da una ventana mas amplia para inspeccionar al proceso.
 
 ## 2.1 Lanzar como proceso de fondo
 
@@ -36,77 +34,78 @@ PID=$!
 echo "$PID"
 ```
 
-El `&` delega la ejecucion al background. `$!` guarda el PID del ultimo proceso lanzado en background. Se lo copia a `PID` para reutilizarlo en los pasos siguientes.
+El `&` manda el comando al background. La variable `$!` guarda el PID del ultimo proceso lanzado en background, que copio a `PID` para reusarlo despues.
 
-Nota zsh: si pegas `echo "PID=$!"` directamente y zsh te muestra el prompt `dquote>`, es porque la comilla de cierre se perdio en el copy-paste (por ejemplo si el markdown convirtio `"` en comillas tipograficas `"` / `"`). Presiona `"` y Enter para cerrar la cita y abortar el comando, o Ctrl-C para cancelar. La version con variable `PID=$!` de arriba evita ese problema porque no pone `$!` dentro de comillas.
+> Tip zsh: si pegas algo como `echo "PID=$!"` y zsh te muestra el prompt `dquote>`, es porque la comilla de cierre se perdio en el copy-paste (algunas veces el markdown convierte `"` en comillas tipograficas `"`/`"`). Se cierra escribiendo `"` y Enter, o se aborta con Ctrl-C. Usar `PID=$!` sin comillas evita ese problema de raiz.
 
-## 2.2 Verificar estado RUNNING
+## 2.2 Verificar que esta RUNNING
 
-En macOS la columna `cmd` se llama `command`. Comando compatible con Linux y macOS:
+En macOS la columna `cmd` se llama `command`, asi que conviene pedir el formato explicito para que sea portable:
 
 ```bash
 ps -o pid,stat,command -p $PID
 ```
 
-Salida esperada (columna `STAT` con `R` o `R+`):
+Salida esperada:
 
 ```text
   PID STAT CMD
 12345 R    bash ./runseconds.sh
 ```
 
-El signo `+` indica que el proceso pertenece al grupo de foreground de la terminal. Como esta en background suele mostrar solo `R` o `S`.
+El estado es `R` (o `R+` cuando el proceso pertenece al grupo de foreground). Como el ciclo evalua `$SECONDS` como builtin del shell, no como syscall, el proceso esta computando casi todo el tiempo y `ps` lo reporta como `R`.
 
-Como el ciclo evalua `$SECONDS` en cada iteracion (shell builtin, no syscall), el proceso alterna muy rapido entre `R` (computando) y breves microbloqueos. En la practica `ps` lo reporta casi siempre como `R`.
+## 2.3 Pasarlo a STOPPED con `kill`
 
-## 2.3 Pasar a STOPPED con kill
-
-Enviar `SIGSTOP` (senal 19 en Linux, no se puede ignorar ni bloquear):
+`SIGSTOP` (senal 19 en Linux) detiene al proceso y no puede ser ignorada ni bloqueada:
 
 ```bash
 kill -STOP $PID
 ps -o pid,stat,command -p $PID
 ```
 
-Salida esperada (estado `T`):
+Ahora el `STAT` cambia a `T`:
 
 ```text
   PID STAT COMMAND
 12345 T    bash ./runseconds.sh
 ```
 
-Mientras el proceso esta `T`, la variable interna `SECONDS` **no avanza desde el punto de vista del shell**, por lo que el timeout de 120 s se efectiviza sobre el tiempo corrido, no sobre el real. Al detenerlo 30 s y reanudarlo, va a durar 120 s mas desde ese instante.
+Un detalle interesante: mientras esta en `T`, la variable interna `SECONDS` no avanza desde el punto de vista del shell. Si lo dejo detenido 30 segundos y despues lo reanudo, el script va a durar 120 segundos mas a partir de ese instante, no menos. Es decir, la espera se mide en tiempo de cpu corrido, no en tiempo real.
 
-## 2.4 Continuar con SIGCONT
+## 2.4 Continuar la ejecucion
+
+La unica senal que reanuda un proceso detenido por `SIGSTOP` es `SIGCONT`:
 
 ```bash
 kill -CONT $PID
 ps -o pid,stat,command -p $PID
 ```
 
-El estado vuelve a `R` (o `R+`). `SIGCONT` es la unica senal que reanuda a un proceso detenido con `SIGSTOP`.
+El estado vuelve a `R` (o `R+`).
 
 ## 2.5 Esperar o terminar
 
-Opcion A: esperar que termine por timeout del script (cuando imprime `Done!`):
+Si quiero esperar a que termine solo (cuando imprime `Done!`), uso:
 
 ```bash
 wait $PID
 ```
 
-Opcion B: forzarlo:
+Si quiero forzarlo, primero le mando `SIGTERM` (terminacion ordenada) y, si no responde, `SIGKILL`:
 
 ```bash
-kill $PID        # envia SIGTERM (pide terminar limpio)
-# o si no responde:
-kill -KILL $PID  # SIGKILL (no se puede ignorar)
+kill $PID         # SIGTERM
+kill -KILL $PID   # SIGKILL si lo anterior no alcanzo
 ```
 
-## Resumen de senales usadas
+## Recapitulacion de senales usadas
 
-| Senal     | Numero Linux | Efecto                                  |
-|-----------|--------------|-----------------------------------------|
-| `SIGSTOP` | 19           | Detiene el proceso (no interceptable)   |
-| `SIGCONT` | 18           | Reanuda un proceso detenido             |
-| `SIGTERM` | 15           | Pide terminar de forma ordenada         |
-| `SIGKILL` | 9            | Termina de inmediato (no interceptable) |
+| Senal     | Numero Linux | Efecto                                   |
+|-----------|--------------|------------------------------------------|
+| `SIGSTOP` | 19           | Detiene el proceso (no se puede ignorar) |
+| `SIGCONT` | 18           | Reanuda un proceso detenido              |
+| `SIGTERM` | 15           | Pide terminar de forma ordenada          |
+| `SIGKILL` | 9            | Termina de inmediato (no se puede ignorar) |
+
+El par `SIGSTOP`/`SIGCONT` es justamente la herramienta que el shell usa internamente cuando uno aprieta Ctrl-Z (`SIGTSTP`) y despues escribe `fg` o `bg` para reactivar el job.

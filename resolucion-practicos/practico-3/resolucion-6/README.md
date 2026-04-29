@@ -186,4 +186,42 @@ Consecuencia:
 +----------------+   bajo
 ```
 
+## 6.4 Experimento: todos los threads comparten el mismo address space
+
+Para verlo de manera directa basta con que cada thread imprima:
+
+1. La direccion del **global compartido** `counter`.
+2. Su PID (`getpid()`) y su TID (identidad del thread).
+3. La direccion de la variable local `tid` del stack del thread.
+
+Si efectivamente comparten el mismo proceso, los items 1 y 2 deben coincidir entre threads, y solo el item 3 debe diferir (cada thread tiene su propio stack). Una version pequena del cuerpo de `increment()`:
+
+```c
+void* increment(void* thread_id) {
+    int tid = *((int *) thread_id);
+    if (/* primera entrada del thread */) {
+        printf("[T%d] pid=%d, &counter=%p, &tid=%p\n",
+               tid, getpid(), (void*)&counter, (void*)&tid);
+    }
+    /* ... resto igual ... */
+}
+```
+
+Salida real (una corrida en macOS):
+
+```text
+[T1] pid=44213, &counter=0x10054af80, &tid=0x16fa9afb4
+[T2] pid=44213, &counter=0x10054af80, &tid=0x16fb26fb4
+```
+
+Lo que se observa:
+
+- **Mismo PID** -> los dos threads son tareas dentro del mismo proceso (el kernel no les asigna PIDs distintos; en Linux comparten `tgid` y solo difieren en `tid`).
+- **Misma direccion para `&counter`** -> la variable global esta en la misma pagina virtual para los dos threads. Como la tabla de paginas es unica por proceso, ambos resuelven la misma direccion virtual a la misma pagina fisica. **Por eso el `counter++` sin lock genera la race condition**: los threads no estan trabajando sobre copias, estan tocando *exactamente la misma palabra de memoria*.
+- **`&tid` distintos** -> son variables locales en stacks separados (uno por thread).
+
+Esto se contrasta con el experimento del **ejercicio 5**: alli dos *procesos* corrian `counter`, no compartian address space y, sin embargo, igual habia race porque el recurso compartido era el archivo `counter.dat`. Aca, la unidad de aislamiento mas debil (thread) pone aun mas variables al alcance de la concurrencia: globales, heap, descriptores, todo lo del proceso.
+
+> En sintesis: el experimento confirma directamente la afirmacion del modelo de threads visto en la teoria. Cada thread tiene **su propio stack**, pero **comparte texto, datos, heap, descriptores y todo el resto del address space del proceso**.
+
 Text, data, heap y variables globales (`counter`) son **compartidos** entre todos los hilos. El stack es **privado** a cada hilo.

@@ -1,33 +1,28 @@
 # Resolucion 3 - Practico 3
 
-Ejercicio 3: usar `pstree` para visualizar el arbol de procesos del sistema y determinar el primer proceso lanzado y su PID.
+Ejercicio 3: usar `pstree` para visualizar el arbol de procesos del sistema y determinar cual es el primer proceso lanzado y su PID.
 
-## Instalacion de pstree en macOS
+## Instalar `pstree` en macOS
 
-macOS no trae `pstree` por defecto (`zsh: command not found: pstree`). Se instala via Homebrew:
+macOS no trae `pstree` por defecto (`zsh: command not found: pstree`), asi que primero hay que instalarlo via Homebrew:
 
 ```bash
 brew install pstree
-```
-
-Verificacion:
-
-```bash
 which pstree
 # /opt/homebrew/bin/pstree
 ```
 
-Nota: el `pstree` que instala Homebrew en macOS es la implementacion de **Fred Hucht (v2.40)**, que tiene **opciones distintas** al `pstree` de Linux (PSmisc). En particular los PIDs se muestran **siempre** por defecto y el flag `-p` significa "filtrar por un PID especifico", no "mostrar PIDs".
+Hay un detalle a tener presente: el `pstree` que distribuye Homebrew para macOS es la implementacion de **Fred Hucht (v2.40)**, no la de PSmisc que se usa en Linux. Las opciones son distintas. La diferencia mas notoria es que en este `pstree` los PIDs se muestran siempre por defecto y `-p` significa "filtrar por un PID", no "mostrar los PIDs". A la hora de copiar comandos del manual de Linux, conviene tenerlo en cuenta.
 
-## Arbol completo de procesos
+## Ver el arbol completo
 
-Sin argumentos imprime el arbol entero con PIDs incluidos:
+Sin argumentos imprime todo el arbol con los PIDs incluidos:
 
 ```bash
 pstree
 ```
 
-Salida (primeras lineas, ejemplo real):
+Las primeras lineas son algo asi:
 
 ```text
 -+= 00001 root /sbin/launchd
@@ -38,32 +33,30 @@ Salida (primeras lineas, ejemplo real):
  ...
 ```
 
-- `-+=` y `|--=` son los conectores del arbol.
-- Los numeros de 5 digitos son los PIDs.
-- El `=` al final del prefijo indica que el proceso es un *process group leader*.
+Los conectores `-+=` y `|--=` arman la jerarquia, los numeros de cinco digitos son los PIDs y el `=` final marca a los lideres de grupo de procesos (process group leaders).
 
-## Opciones utiles
+## Algunas opciones que vienen bien
 
 ```bash
 pstree -w                   # wide: no trunca lineas largas
-pstree -g 3                 # conectores en UTF-8 (mas prolijos)
-pstree -u "$USER"           # solo ramas que contengan procesos del usuario
-pstree -U                   # omite ramas que solo tienen procesos root
-pstree -s bash              # solo ramas que contengan la cadena "bash"
-pstree -p <PID>             # solo ramas que contengan ese PID
-pstree -l 3                 # profundidad maxima de 3 niveles
+pstree -g 3                 # conectores en UTF-8 (queda mas prolijo)
+pstree -u "$USER"           # solo ramas que tocan procesos del usuario
+pstree -U                   # esconde ramas que solo tienen procesos root
+pstree -s bash              # ramas que contengan la cadena "bash"
+pstree -p <PID>             # filtra por un PID concreto
+pstree -l 3                 # limita a 3 niveles de profundidad
 pstree <PID>                # arranca el arbol desde ese PID (no filtra)
 ```
 
-Ejemplo util: ver todos los procesos del usuario con grafica UTF-8:
+Una combinacion util en el dia a dia es ver solo lo "mio" con grafica linda:
 
 ```bash
 pstree -g 3 -u "$USER"
 ```
 
-## Primer proceso del sistema
+## El primer proceso del sistema
 
-El primer proceso lanzado por el kernel en espacio de usuario tiene **PID 1** y es el ancestro de todos los demas. En `pstree`, es siempre el nodo raiz (`-+= 00001 ...`):
+El primer proceso de espacio de usuario que arranca el kernel siempre tiene **PID 1** y es ancestro de todos los demas. En la salida de `pstree` aparece como nodo raiz:
 
 ```bash
 pstree | head -n 1
@@ -73,7 +66,7 @@ pstree | head -n 1
 -+= 00001 root /sbin/launchd
 ```
 
-Confirmacion con `ps`:
+Se confirma con `ps`:
 
 ```bash
 ps -p 1 -o pid,ppid,user,comm
@@ -84,14 +77,13 @@ ps -p 1 -o pid,ppid,user,comm
     1     0 root /sbin/launchd
 ```
 
-## Por que PID 1
+Notar que el PPID de PID 1 es 0: ese 0 corresponde al proceso interno del kernel (scheduler/swapper) que no aparece en el espacio de usuario, y por eso no es visible con `ps`.
 
-- El kernel arranca un proceso interno con `PID 0` (scheduler/swapper, no visible como proceso de usuario).
-- Luego ejecuta el programa pasado por el bootloader como `init` (o equivalente). Ese programa recibe `PID 1`.
-- El proceso `PID 1` se encarga de lanzar el resto del espacio de usuario (servicios, login, etc.).
-- Si un proceso queda huerfano (su padre muere), el kernel lo re-asigna a `PID 1`, que luego hace `wait()` para evitar zombies.
+## Por que justamente PID 1
 
-Variantes segun el sistema:
+La logica es la siguiente: cuando el kernel termina de inicializarse arma manualmente un proceso en espacio de usuario y lo lanza, que es el primero al que le toca PID 1. Ese proceso (`launchd`, `systemd`, `init`, etc., segun el sistema) se encarga de levantar el resto del userland: servicios, login manager, daemons. Como bonus, el kernel le re-asigna como hijos a cualquier proceso que quede huerfano (es decir, cuyo padre haya muerto antes de hacer `wait()`), con la intencion de que PID 1 los recoja con `wait()` y evitar zombies acumulados.
+
+Quien cumple ese rol depende del sistema:
 
 | Sistema                  | Proceso PID 1         |
 |--------------------------|-----------------------|
@@ -99,3 +91,5 @@ Variantes segun el sistema:
 | Linux moderno            | `systemd`             |
 | Linux tradicional        | `init` (SysV, BusyBox)|
 | FreeBSD                  | `init`                |
+
+En cualquier caso, el rol conceptual es el mismo: ser el ancestro comun de todo el espacio de usuario.
