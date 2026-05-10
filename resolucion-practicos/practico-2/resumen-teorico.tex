@@ -1,0 +1,988 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- Encoding ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands]{babel}
+\usepackage{lmodern}
+
+% --- Layout ---
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{parskip}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em plus 0.2em minus 0.1em}
+
+% --- Tables and graphics ---
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{positioning,shapes.geometric,arrows.meta}
+\usepackage{caption}
+
+% --- Code listings ---
+\usepackage{listings}
+\definecolor{codegray}{rgb}{0.96,0.96,0.96}
+\definecolor{codeborder}{rgb}{0.85,0.85,0.85}
+\definecolor{codecomment}{rgb}{0.30,0.55,0.30}
+\definecolor{codekeyword}{rgb}{0.10,0.30,0.70}
+\definecolor{codestring}{rgb}{0.65,0.15,0.10}
+
+\lstdefinestyle{cstyle}{
+    language=C,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    numbersep=8pt,
+    aboveskip=1em,
+    belowskip=1em,
+}
+
+\lstdefinestyle{shellstyle}{
+    language=bash,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstdefinestyle{asmstyle}{
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    commentstyle=\color{codecomment}\itshape,
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstset{style=shellstyle}
+
+% --- Definition box ---
+\usepackage[most]{tcolorbox}
+\newtcolorbox{definicion}[1][]{
+    colback=blue!5!white,
+    colframe=blue!50!black,
+    fonttitle=\bfseries,
+    title=Definición,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{idea}[1][]{
+    colback=orange!5!white,
+    colframe=orange!60!black,
+    fonttitle=\bfseries,
+    title=Idea intuitiva,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+
+% --- Hyperlinks ---
+\usepackage[colorlinks=true,
+            linkcolor=blue!60!black,
+            urlcolor=blue!50!black,
+            citecolor=blue!60!black]{hyperref}
+
+% --- Title ---
+\title{
+    \vspace{-2.5em}
+    \textbf{Resumen teórico --- Sistemas Operativos} \\[0.3em]
+    \large Capítulo 4 de las Notas del curso: \emph{El lenguaje C y herramientas}
+}
+\author{
+    Tomás Rodeghiero \\
+    \small Sistemas Operativos --- Universidad Nacional de Río Cuarto
+}
+\date{2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent
+Este documento es un resumen teórico del capítulo 4 de las
+\emph{Notas del curso} de Sistemas Operativos (Marcelo Arroyo,
+UNRC), dedicado al lenguaje C y al \emph{toolchain} de
+desarrollo: pre-procesamiento, compilación, ensamblado, linking,
+archivos objeto, ejecutables, símbolos, bibliotecas estáticas y
+dinámicas, carga dinámica explícita y sistemas de \emph{build} como
+GNU make. El objetivo es servir como material de estudio: las
+definiciones formales se acompañan de explicaciones intuitivas,
+ejemplos y conexiones entre conceptos, de modo que el lector pueda
+preparar tanto el examen teórico como el Práctico 2 con una
+comprensión sólida y articulada del proceso que transforma un
+archivo \texttt{.c} en un ejecutable.
+\end{abstract}
+
+\tableofcontents
+\bigskip
+
+% =====================================================================
+\section{Introducción}
+% =====================================================================
+
+Programar en C parece resumirse a un único comando ---\texttt{gcc -o
+myprog main.c hello.c}---, pero detrás de él hay una secuencia de
+herramientas trabajando en conjunto. Entender qué hace cada una es
+clave porque el sistema operativo \emph{ejecuta} ese resultado: el
+formato del binario, la disposición del código y los datos en
+memoria, y la forma en que las funciones de biblioteca se enlazan en
+tiempo de ejecución dependen directamente de las decisiones que se
+toman en cada etapa del proceso de compilación.
+
+\begin{definicion}
+La \textbf{cadena de herramientas} (\emph{toolchain}) es el conjunto
+de programas que transforman un programa fuente en un ejecutable.
+Incluye, como mínimo, un \emph{pre-procesador}, un \emph{compilador},
+un \emph{ensamblador} y un \emph{linker}.
+\end{definicion}
+
+\begin{idea}
+Pensemos en la analogía con una receta: el código fuente es la receta
+escrita en lenguaje humano, el assembly es la lista de pasos
+detallados, el archivo objeto es el plato hecho pero todavía sin
+montar, y el ejecutable es la comida lista para servir. El
+\emph{linker} es el que arma el plato uniendo los ingredientes
+(funciones) que provienen de varios módulos.
+\end{idea}
+
+% =====================================================================
+\section{El lenguaje C}
+% =====================================================================
+
+C es un lenguaje de bajo nivel, diseñado por Dennis Ritchie en los
+años 70, con abstracciones simples y directas al hardware. UNIX fue el
+primer sistema operativo escrito casi enteramente en C, y desde
+entonces el lenguaje quedó indisolublemente ligado a la programación
+de sistemas: drivers, bibliotecas estándar, kernels, intérpretes y
+compiladores se escriben típicamente en C.
+
+\subsection{Tipos de datos}
+
+\paragraph{Básicos.}
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Enteros:} \texttt{char} (un byte), \texttt{short
+        int}, \texttt{int}, \texttt{long int}. Pueden ser
+        \texttt{signed} (con signo) o \texttt{unsigned} (sin signo).
+        Los literales se escriben en decimal (\texttt{456}), octal
+        (\texttt{0367}) o hexadecimal (\texttt{0x20AF}).
+    \item \textbf{Punto flotante:} \texttt{float} (simple precisión)
+        y \texttt{double} (doble precisión).
+    \item \textbf{Enumeraciones:} dan nombres simbólicos a constantes
+        enteras consecutivas.
+\end{itemize}
+
+\paragraph{Compuestos.}
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Arreglos:} elementos contiguos en memoria,
+        indexados desde \texttt{0} hasta \texttt{N-1}. El nombre del
+        arreglo, en la mayoría de los contextos, decae a un puntero a
+        su primer elemento.
+    \item \textbf{Strings:} arreglos de caracteres \emph{terminados
+        en} \texttt{\textbackslash 0} (\texttt{NULL}). El literal
+        \texttt{"hola"} se almacena como
+        \texttt{\{'h','o','l','a','\textbackslash 0'\}}.
+    \item \textbf{Estructuras (\texttt{struct}):} agrupan campos
+        heterogéneos bajo un mismo nombre. Cada campo se accede con
+        \texttt{.}\,o, si se tiene un puntero, con \texttt{->}.
+    \item \textbf{Uniones (\texttt{union}):} campos de tipos
+        distintos que comparten la misma posición de memoria. Sirven
+        para implementar \emph{polimorfismo} de bajo nivel
+        (representaciones alternativas del mismo dato).
+\end{itemize}
+
+\paragraph{Constantes y alias.}
+Los valores constantes se declaran anteponiendo la palabra clave
+\texttt{const} al tipo. Los alias de tipo se introducen con
+\texttt{typedef}, lo que permite escribir, por ejemplo,
+\texttt{typedef unsigned char byte;} y luego usar \texttt{byte} como
+sinónimo de \texttt{unsigned char}.
+
+\subsection{Punteros}
+
+\begin{definicion}
+Un \textbf{puntero} es una variable cuyo valor es la dirección de
+memoria de otra variable. Un puntero a un valor de tipo \texttt{T} se
+declara como \texttt{T *p}. Tiene asociados dos operadores:
+\texttt{\&v} (\emph{tomar la dirección de} \texttt{v}) y
+\texttt{*p} (\emph{desreferenciar} \texttt{p}, es decir, leer el
+valor apuntado).
+\end{definicion}
+
+\begin{lstlisting}[style=cstyle]
+int v = 10;
+int *ptr = &v;          /* ptr apunta a v */
+printf("v = %d\n", *ptr);   /* desreferencia: imprime 10 */
+\end{lstlisting}
+
+En la declaración \texttt{T v[N]}, el identificador \texttt{v} es un
+\emph{puntero constante} a su primer elemento; por lo tanto, \texttt{*v
+== v[0]}.
+
+\paragraph{Aritmética de punteros.}
+La aritmética de punteros tiene en cuenta el tamaño del tipo apuntado.
+\texttt{ptr + 1} no significa "sumar un byte" sino "avanzar al siguiente
+elemento del arreglo", es decir, \texttt{ptr + sizeof(*ptr)} en bytes.
+
+\paragraph{Punteros a función.}
+C permite tomar la dirección de una función y guardarla en un puntero.
+Esto habilita \emph{programación de alto orden}: pasar funciones como
+parámetros, instalar callbacks, despachar dinámicamente. La sintaxis es
+incómoda pero idiomática:
+
+\begin{lstlisting}[style=cstyle]
+typedef int (*fptr_t)(int, int);   /* puntero a función int x int -> int */
+int inc(int v, int step) { return v + step; }
+fptr_t f = inc;
+printf("%d\n", f(1, 2));           /* imprime 3 */
+\end{lstlisting}
+
+\subsection{Funciones, definiciones y declaraciones}
+
+C distingue dos conceptos relacionados pero distintos:
+
+\begin{definicion}
+La \textbf{definición} de una función incluye su \emph{cuerpo}: el
+bloque de sentencias que ejecuta. Solo puede haber una definición por
+función en todo el programa.
+\end{definicion}
+
+\begin{definicion}
+Una \textbf{declaración} (también llamada \emph{prototipo}) especifica
+únicamente el \emph{perfil} de la función ---tipo de retorno, nombre y
+tipos de los parámetros--- pero no su cuerpo. Sirve para que el
+compilador valide el uso cuando la definición está en otro lugar (más
+abajo en el archivo o en otro módulo).
+\end{definicion}
+
+Los parámetros se pasan \emph{por valor}; el pasaje por referencia se
+\emph{simula} pasando un puntero. C admite además \emph{funciones
+variádicas} (con un número arbitrario de argumentos), como la propia
+\texttt{printf}, cuyo perfil es
+\texttt{int printf(const char *fmt, ...)}.
+
+\subsection{Módulos: archivos \texttt{.c} y \texttt{.h}}
+
+C no tiene una construcción sintáctica para módulos. Por convención
+cada módulo se distribuye en dos archivos:
+
+\begin{itemize}[leftmargin=*]
+    \item Un archivo de implementación \texttt{nombre.c} con las
+        \emph{definiciones} (cuerpo de funciones, variables globales).
+    \item Un archivo de cabecera \texttt{nombre.h} con las
+        \emph{declaraciones} de los símbolos exportados, pensado para
+        ser incluido (\texttt{\#include "nombre.h"}) por otros
+        módulos que lo usen.
+\end{itemize}
+
+Las cabeceras del sistema se incluyen con \texttt{<\,>} (por ejemplo,
+\texttt{\#include <stdio.h>}); las del proyecto, con comillas
+(\texttt{\#include "miarchivo.h"}). El compilador busca cada cabecera
+en distintos directorios según el caso.
+
+% =====================================================================
+\section{El proceso de compilación}
+% =====================================================================
+
+\subsection{Cuatro etapas}
+
+Compilar un programa C consiste de cuatro pasos coordinados por el
+\emph{driver} \texttt{gcc} (o \texttt{clang}):
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Pre-procesamiento (\texttt{cpp}).} Procesa las
+        directivas del programa fuente y \emph{expande} las macros y
+        \texttt{\#include}. Su salida es un archivo temporal con
+        extensión \texttt{.i}.
+    \item \textbf{Compilación (\texttt{cc1}).} Traduce el código C ya
+        expandido a \emph{assembly} de la arquitectura objetivo.
+        Salida: \texttt{.s}.
+    \item \textbf{Ensamblado (\texttt{as}).} Convierte el assembly en
+        un \emph{archivo objeto binario} en el formato del SO
+        (\texttt{ELF} en GNU/Linux, \texttt{Mach-O} en macOS,
+        \texttt{PE/COFF} en Windows). Salida: \texttt{.o}.
+    \item \textbf{Linking (\texttt{ld}).} Combina archivos objeto y
+        bibliotecas, recalcula direcciones y resuelve referencias
+        externas para producir el \emph{ejecutable} (o una nueva
+        biblioteca).
+\end{enumerate}
+
+\begin{center}
+\begin{tikzpicture}[
+    node distance=0.55cm and 0.7cm,
+    every node/.style={draw, rounded corners, font=\ttfamily\small,
+                       minimum width=1.4cm, minimum height=0.65cm,
+                       align=center},
+    arr/.style={-{Latex[length=2mm]}, thick},
+    label/.style={draw=none, font=\footnotesize\itshape}
+]
+\node (mainC)  {main.c};
+\node (mainI)  [right=of mainC]  {main.i};
+\node (mainS)  [right=of mainI]  {main.s};
+\node (mainO)  [right=of mainS]  {main.o};
+\node (myprog) [right=of mainO]  {myprog};
+
+\draw[arr] (mainC) -- node[label, above]{cpp}      (mainI);
+\draw[arr] (mainI) -- node[label, above]{cc1}      (mainS);
+\draw[arr] (mainS) -- node[label, above]{as}       (mainO);
+\draw[arr] (mainO) -- node[label, above]{ld}       (myprog);
+\end{tikzpicture}
+\end{center}
+
+\subsection{Detener el proceso en una etapa}
+
+\texttt{gcc} permite frenar la cadena de compilación en cualquier
+etapa intermedia, lo que es muy útil para inspección y depuración:
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{l p{8cm} l}
+\toprule
+\textbf{Flag} & \textbf{Detiene tras} & \textbf{Salida} \\
+\midrule
+\texttt{-E} & Pre-procesamiento. & Archivo \texttt{.i} (texto). \\
+\texttt{-S} & Compilación.       & Archivo \texttt{.s} (assembly). \\
+\texttt{-c} & Ensamblado.        & Archivo \texttt{.o} (binario). \\
+(sin flags)  & Linking.           & Ejecutable. \\
+\bottomrule
+\end{tabular}
+\caption{Opciones de \texttt{gcc} para detener la compilación.}
+\end{table}
+
+\begin{lstlisting}
+gcc -E hello.c -o hello.i     # solo preprocesa
+gcc -S hello.c -o hello.s     # preprocesa + compila
+gcc -c hello.c -o hello.o     # preprocesa + compila + ensambla
+gcc    hello.c -o hello       # ciclo completo
+\end{lstlisting}
+
+\subsection{El rol del pre-procesador}
+
+El pre-procesador no es un compilador: es un manipulador de texto. Sus
+directivas más comunes son:
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{\#include}: copia el contenido de otro archivo.
+    \item \texttt{\#define}: define una macro de sustitución textual.
+    \item \texttt{\#ifdef}/\texttt{\#endif}: compilación condicional.
+\end{itemize}
+
+Por ejemplo, dado \texttt{\#define hi "Hello world"} y un cuerpo
+\texttt{return hi;}, el pre-procesador entrega al compilador
+\texttt{return "Hello world";}: la macro \texttt{hi} no llega siquiera
+a la etapa de compilación, así que no aparece en la tabla de símbolos
+del objeto.
+
+\begin{idea}
+La regla mental útil es: \emph{si está con \#, lo resuelve el
+preprocesador antes de mirar el código C}. Esa es la razón por la que
+las macros no respetan tipos ni alcance de bloques: son sustitución de
+texto pura.
+\end{idea}
+
+% =====================================================================
+\section{Archivos objeto}
+% =====================================================================
+
+\subsection{Definición y formato}
+
+\begin{definicion}
+Un \textbf{archivo objeto} (\texttt{.o}) es un binario en el formato
+definido por la \emph{ABI} del sistema. Contiene el código y los
+datos de un módulo en una representación que el linker puede combinar
+con otros objetos para producir un ejecutable o una biblioteca.
+\end{definicion}
+
+Cada plataforma usa un formato distinto:
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{ELF} (\emph{Executable and Linkable Format}) en
+        GNU/Linux y muchos UNIX modernos.
+    \item \texttt{Mach-O} en macOS y otras plataformas Apple.
+    \item \texttt{PE/COFF} (\emph{Portable Executable / Common Object
+        File Format}) en Windows.
+\end{itemize}
+
+Los detalles cambian, pero la idea conceptual es la misma: un
+\emph{header} con metadatos seguido de un conjunto de \emph{secciones}
+con propósitos bien definidos.
+
+\subsection{Secciones típicas}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{\texttt{.text}}: instrucciones del programa (código
+        ejecutable, solo lectura).
+    \item \textbf{\texttt{.data}}: variables globales y estáticas con
+        valores iniciales no nulos. Se subdivide en datos
+        \emph{inicializados} y \emph{no inicializados} (esto último a
+        veces aparece como \texttt{.bss}).
+    \item \textbf{\texttt{.rodata}} (en macOS:
+        \texttt{\_\_TEXT,\_\_cstring}): constantes y literales de
+        cadena, de solo lectura.
+    \item \textbf{Symbol table}: mapping
+        \emph{símbolo $\to$ dirección} que el linker usa para resolver
+        referencias.
+    \item \textbf{Reallocation entries}: lista de instrucciones cuyos
+        operandos hacen referencia a símbolos externos y necesitan ser
+        \emph{parchadas} por el linker.
+\end{itemize}
+
+\subsection{Símbolos: definidos y no definidos}
+
+\begin{definicion}
+Un \textbf{símbolo} es un identificador (función, variable global,
+constante) con una dirección dentro del archivo objeto. Si la
+dirección está asignada, el símbolo está \emph{definido} en ese
+módulo; si solo aparece como referencia sin definición, está
+\emph{indefinido} (\texttt{*UND*}) y el linker deberá resolverlo
+buscando el módulo o la biblioteca que lo defina.
+\end{definicion}
+
+La tabla de símbolos es un \emph{mapping} de la forma
+$\textit{symtbl}(\textit{symbol}) \to \textit{address}$. Por ejemplo,
+en un archivo \texttt{main.o} que llama a \texttt{printf} y a
+\texttt{hello}, ambos símbolos aparecen como \texttt{*UND*} porque
+sus definiciones viven en otros módulos: \texttt{libc} y
+\texttt{hello.o}, respectivamente.
+
+\subsection{Tabla de reubicación}
+
+\begin{definicion}
+La \textbf{tabla de reubicación} (\emph{relocation table}) es un
+mapping de la forma
+$\textit{relloc}(\textit{instr\_address}, \textit{instr\_type}) \to
+\textit{external\_symbol}$ que indica al linker qué operandos de qué
+instrucciones debe completar al combinar los objetos.
+\end{definicion}
+
+Las entradas de la tabla de reubicación corresponden, típicamente, a
+instrucciones de la forma \texttt{call <addr>}, \texttt{load/store
+<addr>}, etc., donde \texttt{<addr>} todavía no se conoce porque el
+símbolo es externo. El compilador deja \texttt{0} (o un valor de
+relleno) en el operando y agrega la entrada correspondiente.
+
+\subsection{Direcciones en un objeto relocatable}
+
+En un archivo objeto cada función empieza, típicamente, en el
+\emph{offset} \texttt{0x0} de su sección \texttt{.text}: cada módulo
+"se siente solo en el mundo". Las direcciones definitivas las asigna
+el linker cuando combina varios objetos en un mismo binario.
+
+% =====================================================================
+\section{Enlazado (linking)}
+% =====================================================================
+
+\subsection{Función del linker}
+
+\begin{definicion}
+El \textbf{linker} (también \emph{link-editor}) es la herramienta
+encargada de producir binarios (ejecutables o bibliotecas) a partir de
+la \emph{composición} de varios archivos objeto y bibliotecas.
+\end{definicion}
+
+Su trabajo se descompone, conceptualmente, en dos pasos:
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Concatenar} las secciones de código y datos de cada
+        archivo objeto y \emph{recalcular} las direcciones de
+        variables, constantes y funciones. Cada \texttt{.text} que
+        empezaba en offset \texttt{0} pasa a ocupar una dirección
+        absoluta en el ejecutable.
+    \item \textbf{Resolver las referencias externas}: completar los
+        operandos de las instrucciones de llamada y de los accesos a
+        variables globales externas, usando para ello las tablas de
+        símbolos y de reubicación de cada objeto.
+\end{enumerate}
+
+\subsection{Resolución estática}
+
+\begin{definicion}
+El \textbf{linking estático} es la resolución de referencias externas
+en \emph{tiempo de compilación}: el linker copia el código necesario
+dentro del ejecutable final y completa todas las direcciones.
+\end{definicion}
+
+Si el módulo \texttt{main.o} llama a \texttt{hello} (definido en
+\texttt{hello.o}), el linker, al combinar ambos, conoce la dirección
+final de \texttt{\_hello} y completa el operando del \texttt{call}
+con esa dirección. La invocación queda \emph{resuelta} y el
+ejecutable es \emph{auto-contenido} respecto de \texttt{hello}.
+
+\subsection{Resolución dinámica (introducción)}
+
+\begin{definicion}
+El \textbf{linking dinámico} es la resolución de referencias externas
+en \emph{tiempo de carga} o de \emph{primera invocación}: el código
+de la biblioteca no se copia al ejecutable, sino que se mantiene en
+una biblioteca compartida que el SO carga aparte.
+\end{definicion}
+
+Las funciones de la libc, como \texttt{printf}, viven en una
+biblioteca compartida (\texttt{libc.so}, \texttt{libSystem.B.dylib}).
+El linker estático no copia el código de \texttt{printf} al
+ejecutable: solo deja una referencia que será resuelta por el
+\emph{dynamic linker} cuando el programa se cargue. Más adelante se
+describe el mecanismo en detalle.
+
+\subsection{Ejemplo completo: tres llamadas}
+
+Ejemplificando con los programas \texttt{main.c} y \texttt{hello.c} de
+las notas: \texttt{main.o} contiene dos referencias externas
+(\texttt{\_hello} y \texttt{\_printf}). Antes del linking, el
+disassembly muestra ambos \texttt{call} apuntando a \texttt{0} (sin
+resolver):
+
+\begin{lstlisting}[style=asmstyle]
+.text section (main.o)
+_main:
+0x00  ...
+0x18  call 0x18         ; <-- _hello, sin resolver
+0x1c  call 0x1c         ; <-- _printf, sin resolver
+\end{lstlisting}
+
+Luego del linking, en el ejecutable \texttt{myprog}:
+
+\begin{lstlisting}[style=asmstyle]
+.text section (myprog)
+main:
+0x...   call hello              ; resuelto estaticamente
+0x...   call printf_stub        ; resolverá dyld
+hello:
+0x...   ...
+        ret
+\end{lstlisting}
+
+El \texttt{call} a \texttt{hello} apunta directamente al inicio de la
+función \texttt{\_hello} dentro del ejecutable. El \texttt{call} a
+\texttt{printf} apunta a un \emph{stub} (más abajo).
+
+% =====================================================================
+\section{Bibliotecas}
+% =====================================================================
+
+\begin{definicion}
+Una \textbf{biblioteca} es una colección de módulos (código y datos)
+\emph{reusables}. Generalmente contiene un conjunto de archivos
+objeto. Pueden ser de dos tipos: para \emph{enlazado estático} o de
+\emph{enlazado dinámico (shared)}.
+\end{definicion}
+
+\subsection{Bibliotecas estáticas}
+
+\begin{definicion}
+Una \textbf{biblioteca estática} es un \emph{contenedor} (formato
+\emph{archiver} en sistemas tipo UNIX) de archivos objeto. Incluye un
+\emph{índice} con los nombres de los símbolos exportados por cada
+miembro.
+\end{definicion}
+
+En sistemas tipo UNIX se generan con la herramienta \texttt{ar}:
+
+\begin{lstlisting}
+ar rcs libmilib.a file1.o file2.o ...
+\end{lstlisting}
+
+Las opciones significan: \texttt{r} reemplaza miembros existentes,
+\texttt{c} crea el archivo si no existe y \texttt{s} construye o
+actualiza el índice de símbolos. Por convención, una biblioteca
+\texttt{B} se nombra \texttt{libB.a}.
+
+Cuando el linker busca un símbolo no resuelto, consulta el índice de
+las bibliotecas estáticas pasadas en la línea de comandos. Si lo
+encuentra, copia \emph{solo el archivo objeto necesario} dentro del
+ejecutable.
+
+\begin{lstlisting}
+gcc -o myprog -L. -lhello main.o
+\end{lstlisting}
+
+El flag \texttt{-L\$DIR} agrega \texttt{\$DIR} al \emph{path} de
+búsqueda; \texttt{-lhello} le dice al linker que busque
+\texttt{libhello.a} (o, si está disponible, su versión dinámica).
+
+\subsection{Bibliotecas dinámicas}
+
+\begin{definicion}
+Una \textbf{biblioteca dinámica} (también \emph{shared library}) es
+un objeto compartible que el SO carga y enlaza bajo demanda en
+\emph{tiempo de ejecución}. Se nombra \texttt{libfoo.so} en GNU/Linux,
+\texttt{libfoo.dylib} en macOS y \texttt{foo.dll} en Windows.
+\end{definicion}
+
+\paragraph{Generación.}
+Con \texttt{gcc} se generan en dos pasos: compilar a objeto con
+código \emph{independiente de posición} (\texttt{-fPIC}) y luego
+linkear con la opción \texttt{-shared}.
+
+\begin{lstlisting}
+gcc -c -fPIC hello.c             # genera hello.o relocatable
+gcc -shared -o libhello.so hello.o
+\end{lstlisting}
+
+\paragraph{Ventajas y desventajas.}
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Ventaja:} el ejecutable no incluye el código de la
+        biblioteca; varios procesos pueden compartir una sola copia
+        cargada en memoria. Las actualizaciones de la biblioteca
+        benefician a todos los programas sin recompilar.
+    \item \textbf{Desventaja:} sobrecarga al inicio del proceso
+        (resolución de símbolos) y dependencia explícita: si la
+        biblioteca no está, el programa no arranca. Se mitiga con
+        \emph{lazy linking}.
+\end{itemize}
+
+\paragraph{Preferencia del linker.}
+Si conviven una versión estática y una dinámica de la misma
+biblioteca, el linker \emph{prefiere la dinámica} salvo que se le
+indique explícitamente lo contrario (por ejemplo, pasando
+\texttt{libhello.a} directamente).
+
+\subsection{Lazy linking}
+
+\begin{definicion}
+\textbf{Lazy linking} es la técnica por la cual las funciones de una
+biblioteca dinámica no se resuelven todas al cargar el programa,
+sino \emph{cada una en su primera invocación}. Reduce la latencia
+inicial del proceso a costo de un pequeño salto extra en cada
+llamada.
+\end{definicion}
+
+\paragraph{Mecanismo: stubs y GOT.}
+El linker estático genera, para cada función externa, un pequeño
+fragmento de código llamado \emph{stub} (ej.\ \texttt{printf\_stub}) y
+una entrada en una tabla indirecta llamada \textbf{Global Offset
+Table (GOT)}. Esquemáticamente:
+
+\begin{enumerate}[leftmargin=*]
+    \item En el ejecutable, \texttt{call printf} apunta al stub.
+    \item El stub realiza un \texttt{jmp} indirecto leyendo la
+        dirección de \texttt{GOT[printf]}.
+    \item Inicialmente, \texttt{GOT[printf]} apunta a una rutina de
+        resolución del \emph{dynamic linker}.
+    \item En la primera invocación, el dynamic linker localiza
+        \texttt{printf} en \texttt{libc.so}, escribe su dirección
+        verdadera en \texttt{GOT[printf]} y salta a ella.
+    \item Las invocaciones siguientes ya encuentran la dirección
+        correcta en la GOT y saltan directamente, sin volver a
+        invocar al dynamic linker.
+\end{enumerate}
+
+\begin{idea}
+Los \emph{stubs} usan \texttt{jmp} y no \texttt{call} porque deben
+retornar al programa que invocó originalmente, no al stub. Es la
+razón por la que la "indirección" no agrega un nivel innecesario en
+la pila.
+\end{idea}
+
+\subsection{Carga dinámica explícita: \texttt{dlopen}/\texttt{dlsym}}
+
+Hasta ahora se asume que las dependencias dinámicas se declaran en
+tiempo de linking (\texttt{-lhello}). Existe otra opción: la
+\textbf{carga dinámica explícita} mediante la API POSIX
+\texttt{<dlfcn.h>}, que permite a un programa cargar una biblioteca
+\emph{en tiempo de ejecución} sin haberla declarado al compilar.
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{dlopen("ruta", flags)}: carga la biblioteca y
+        devuelve un \emph{handle} opaco. Los flags más usados son
+        \texttt{RTLD\_NOW} (resolver todos los símbolos al cargar) y
+        \texttt{RTLD\_LAZY} (resolverlos bajo demanda).
+    \item \texttt{dlsym(handle, "nombre")}: resuelve el símbolo
+        dentro de la biblioteca cargada y devuelve su dirección.
+    \item \texttt{dlclose(handle)}: descarga la biblioteca.
+    \item \texttt{dlerror()}: devuelve el último mensaje de error y
+        limpia el estado interno.
+\end{itemize}
+
+\begin{lstlisting}[style=cstyle]
+#include <dlfcn.h>
+
+void *handle = dlopen("./libhello.so", RTLD_NOW);
+char *(*fn)(void) = dlsym(handle, "hello");
+printf("%s\n", fn());
+dlclose(handle);
+\end{lstlisting}
+
+Esta técnica es la base de los sistemas de \emph{plugins} y de
+cualquier mecanismo de extensibilidad en tiempo de ejecución
+(módulos cargables, backends seleccionables por configuración, etc.).
+
+% =====================================================================
+\section{Espacio de direcciones del ejecutable}
+% =====================================================================
+
+Cuando el SO carga un ejecutable, el espacio de direcciones del
+proceso queda dispuesto, conceptualmente, así (de direcciones bajas
+a altas):
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={draw, font=\ttfamily\small,
+                       minimum width=4cm, minimum height=0.65cm},
+    label/.style={draw=none, font=\footnotesize\itshape}
+]
+\node (text) at (0,0)        {.text  (codigo)};
+\node (rodata) [above=0pt of text]  {.rodata (constantes)};
+\node (data)   [above=0pt of rodata]{.data  (globales inicializadas)};
+\node (bss)    [above=0pt of data]  {.bss   (globales no inicializadas)};
+\node (heap)   [above=0pt of bss]   {heap (crece $\uparrow$)};
+\node (gap)    [above=0pt of heap, draw=none] {\vdots};
+\node (stack)  [above=0pt of gap]   {stack (crece $\downarrow$)};
+\node[draw=none, right=0.2cm of stack, label]   {direcciones altas};
+\node[draw=none, right=0.2cm of text, label]    {direcciones bajas};
+\end{tikzpicture}
+\end{center}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Texto (\texttt{.text})}: instrucciones del
+        programa. De solo lectura, compartible entre procesos.
+    \item \textbf{Datos inicializados (\texttt{.data})}: variables
+        globales y estáticas con valor inicial no nulo.
+    \item \textbf{Datos no inicializados (\texttt{.bss})}: variables
+        globales y estáticas sin valor inicial; el kernel las inicia
+        a cero.
+    \item \textbf{Heap}: memoria dinámica obtenida con
+        \texttt{malloc}/\texttt{brk}; crece hacia direcciones altas.
+    \item \textbf{Stack}: pila de llamadas; crece hacia direcciones
+        bajas. Cada invocación a una función crea un \emph{stack
+        frame} con sus parámetros, variables locales, dirección de
+        retorno y registros guardados.
+\end{itemize}
+
+\begin{idea}
+Una variable local \texttt{int x;} dentro de una función vive en el
+\emph{stack frame} de esa función y desaparece cuando la función
+retorna. Una variable global \texttt{int g = 42;} vive en
+\texttt{.data} durante toda la ejecución del programa. Una constante
+literal como \texttt{"hola"} vive en \texttt{.rodata} y es de solo
+lectura: intentar modificarla suele provocar \texttt{SIGSEGV}.
+\end{idea}
+
+% =====================================================================
+\section{Build systems: \texttt{make} y los Makefiles}
+% =====================================================================
+
+\subsection{Motivación}
+
+En un proyecto real, las cuatro etapas del toolchain se ejecutan
+sobre decenas o cientos de archivos. Recompilar todo desde cero ante
+cada cambio es inviable. Un \emph{build system} automatiza el proceso
+y, sobre todo, evita el trabajo redundante: solo reconstruye lo que
+realmente cambió.
+
+\subsection{GNU make}
+
+\begin{definicion}
+\texttt{make} es una herramienta que toma una especificación de
+\emph{targets} y \emph{dependencias} (escrita en un archivo
+\texttt{Makefile}) y construye automáticamente el grafo de
+dependencias. Comparando los \emph{timestamps} de los archivos,
+decide qué reglas disparar y en qué orden.
+\end{definicion}
+
+La forma básica de una regla es:
+
+\begin{lstlisting}[style=asmstyle]
+target: dependencias
+<TAB>comando
+\end{lstlisting}
+
+\textbf{Importante:} la indentación debe ser exactamente un
+\texttt{TAB}, no espacios.
+
+Ejemplo idiomático para construir \texttt{myprog} a partir de
+\texttt{main.c} y \texttt{hello.c}:
+
+\begin{lstlisting}[style=asmstyle]
+myprog: main.o hello.o
+	gcc -o myprog main.o hello.o
+
+main.o: main.c
+	gcc -c main.c
+
+hello.o: hello.c
+	gcc -c hello.c
+\end{lstlisting}
+
+\subsection{Variables automáticas y reglas de patrón}
+
+Para no repetir información, \texttt{make} ofrece \emph{variables
+automáticas}:
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{\$@}: nombre del target.
+    \item \texttt{\$\^{}}: lista completa de dependencias.
+    \item \texttt{\$<}: primera dependencia (la "fuente").
+\end{itemize}
+
+Y \emph{reglas de patrón} que generalizan la construcción:
+
+\begin{lstlisting}[style=asmstyle]
+myprog: main.o hello.o
+	gcc -o $@ $^
+
+%.o: %.c
+	gcc -c $<
+\end{lstlisting}
+
+\subsection{Compilación incremental}
+
+\texttt{make} construye un grafo de dependencias y, en cada
+invocación, decide:
+
+\begin{itemize}[leftmargin=*]
+    \item Si el target no existe o es más viejo que alguna
+        dependencia, hay que reconstruirlo.
+    \item Antes de hacerlo, hay que asegurarse de que las
+        dependencias estén actualizadas (recursión).
+\end{itemize}
+
+\begin{idea}
+Si \texttt{main.c} no cambió, \texttt{make} no recompila
+\texttt{main.o}, aunque sí pueda regenerar \texttt{hello.o} y
+relinkear el ejecutable. Es la diferencia entre un proyecto
+manejable y uno inviable.
+\end{idea}
+
+\subsection{Autotools y otros sistemas de build}
+
+Sobre \texttt{make} se construye el ecosistema de las
+\textbf{autotools}:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Autoconf:} genera el script \texttt{configure} a
+        partir de un archivo \texttt{configure.ac}; el script detecta
+        el entorno (compilador disponible, opciones) y produce un
+        \texttt{Makefile} adaptado.
+    \item \textbf{Automake:} a partir de \texttt{Makefile.am} y
+        \texttt{configure.ac} genera el \texttt{Makefile.in} portable
+        que usará \texttt{configure}.
+\end{itemize}
+
+El flujo típico para un usuario que recibe el \emph{tarball} de un
+proyecto es:
+
+\begin{lstlisting}
+tar xzvf my-package.tgz
+cd my-package
+./configure && make && sudo make install
+\end{lstlisting}
+
+Otros sistemas modernos (\texttt{CMake}, \texttt{Meson}, \texttt{Ninja},
+\texttt{Bazel}) parten de las mismas ideas y agregan portabilidad,
+paralelismo o reproducibilidad.
+
+% =====================================================================
+\section{Resumen integrador}
+% =====================================================================
+
+Conviene cerrar visualizando todo el flujo en un único ejemplo. Sea el
+comando
+
+\begin{lstlisting}
+gcc -o myprog main.c hello.c
+\end{lstlisting}
+
+Lo que ocurre detrás es lo siguiente:
+
+\begin{enumerate}[leftmargin=*]
+    \item \texttt{gcc} invoca al \emph{pre-procesador} sobre cada
+        \texttt{.c}: expande \texttt{\#include}, resuelve
+        \texttt{\#define} y produce un \texttt{.i} temporal.
+    \item Pasa el \texttt{.i} al \emph{compilador} (\texttt{cc1}),
+        que lo traduce a \emph{assembly} específico de la
+        arquitectura (\texttt{.s}).
+    \item Invoca al \emph{ensamblador} (\texttt{as}) sobre cada
+        \texttt{.s} y obtiene los archivos objeto \texttt{main.o} y
+        \texttt{hello.o}, en formato ELF/Mach-O. En cada uno, las
+        funciones empiezan en offset \texttt{0x0} y las llamadas a
+        símbolos externos quedan sin resolver, registradas en la
+        tabla de reubicación.
+    \item Llama al \emph{linker} (\texttt{ld}), que combina los
+        objetos: concatena las secciones, recalcula direcciones,
+        resuelve estáticamente \texttt{\_hello} (al estar definido
+        en \texttt{hello.o}) y deja \texttt{\_printf} pendiente, con
+        un \emph{stub} y una entrada en la GOT, para que lo resuelva
+        el \emph{dynamic linker} en ejecución.
+    \item El binario resultante (\texttt{myprog}) tiene una sección
+        \texttt{.interp} que indica el dynamic linker que debe
+        cargarlo (\texttt{/lib/ld-linux.so} en Linux,
+        \texttt{/usr/lib/dyld} en macOS) y una sección
+        \texttt{.dynamic} con la lista de bibliotecas dinámicas que
+        necesita (la libc, principalmente).
+    \item Al ejecutar \texttt{./myprog}, el SO carga el ejecutable,
+        invoca al dynamic linker, este carga \texttt{libc} (si no
+        está ya en memoria), inicializa la GOT y, finalmente, el
+        kernel salta a \texttt{\_start} (que termina invocando a
+        \texttt{main}).
+    \item Cuando \texttt{main} llama por primera vez a
+        \texttt{printf}, el stub salta vía la GOT al dynamic linker,
+        que resuelve la dirección, la escribe en la GOT y salta a la
+        verdadera \texttt{printf} de la libc. La siguiente invocación
+        ya va directa.
+\end{enumerate}
+
+Detrás de un comando aparentemente simple operan, en conjunto: el
+\emph{pre-procesador}, el \emph{compilador}, el \emph{ensamblador},
+el \emph{linker estático}, el \emph{loader} del SO, el
+\emph{dynamic linker}, las \emph{bibliotecas compartidas} y la
+\emph{tabla de reubicación} de cada objeto. El estudio de la
+compilación y el linking consiste, precisamente, en entender cómo
+todas esas piezas funcionan juntas para transformar texto en código
+en ejecución.
+
+% =====================================================================
+\section*{Referencias}
+\addcontentsline{toc}{section}{Referencias}
+% =====================================================================
+
+\begin{enumerate}[leftmargin=*]
+    \item Marcelo Arroyo. \emph{Notas del curso de Sistemas
+        Operativos}, capítulo \emph{El lenguaje C y herramientas}.
+        UNRC, 2026.\\
+        \url{https://marceloarroyo.gitlab.io/cursos/SO/index.html\#/toolchain}
+    \item Brian Kernighan, Dennis Ritchie. \emph{The C programming
+        language}, 2.\textsuperscript{a} edición. Prentice Hall, 1988.
+    \item John R.\ Levine. \emph{Linkers and Loaders}. Morgan
+        Kaufmann, 2000.
+    \item TIS Committee. \emph{Tool Interface Standard (TIS)
+        Executable and Linking Format (ELF) Specification}, v1.2.
+    \item POSIX.1-2017 / Single UNIX Specification. The Open Group,
+        2018.
+    \item Páginas de manual: \texttt{man 1 gcc}, \texttt{man 1 ld},
+        \texttt{man 1 ar}, \texttt{man 1 objdump}, \texttt{man 1 nm},
+        \texttt{man 3 dlopen}, \texttt{man 1 make}.
+\end{enumerate}
+
+\end{document}

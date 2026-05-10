@@ -93,49 +93,55 @@ Disassembly of section .text:
 80000114:	00112623          	sw	ra,12(sp)
 80000118:	00812423          	sw	s0,8(sp)
 8000011c:	01010413          	addi	s0,sp,16
-80000120:	f59ff0ef          	jal	80000078 <cpuid>
-80000124:	02051063          	bnez	a0,80000144 <kernel_main+0x34>
-80000128:	00000517          	auipc	a0,0x0
-8000012c:	0a050513          	addi	a0,a0,160 # 800001c8 <release+0x30>
-80000130:	f9dff0ef          	jal	800000cc <console_puts>
-80000134:	00c12083          	lw	ra,12(sp)
-80000138:	00812403          	lw	s0,8(sp)
-8000013c:	01010113          	addi	sp,sp,16
-80000140:	00008067          	ret
-80000144:	00000517          	auipc	a0,0x0
-80000148:	09850513          	addi	a0,a0,152 # 800001dc <release+0x44>
-8000014c:	f81ff0ef          	jal	800000cc <console_puts>
-80000150:	fe5ff06f          	j	80000134 <kernel_main+0x24>
+80000120:	00000517          	auipc	a0,0x0
+80000124:	0ec50513          	addi	a0,a0,236 # 8000020c <lk>
+80000128:	044000ef          	jal	8000016c <acquire>
+8000012c:	f4dff0ef          	jal	80000078 <cpuid>
+80000130:	02051663          	bnez	a0,8000015c <kernel_main+0x4c>
+80000134:	00000517          	auipc	a0,0x0
+80000138:	0ac50513          	addi	a0,a0,172 # 800001e0 <release+0x30>
+8000013c:	f91ff0ef          	jal	800000cc <console_puts>
+80000140:	00000517          	auipc	a0,0x0
+80000144:	0cc50513          	addi	a0,a0,204 # 8000020c <lk>
+80000148:	068000ef          	jal	800001b0 <release>
+8000014c:	00c12083          	lw	ra,12(sp)
+80000150:	00812403          	lw	s0,8(sp)
+80000154:	01010113          	addi	sp,sp,16
+80000158:	00008067          	ret
+8000015c:	00000517          	auipc	a0,0x0
+80000160:	09850513          	addi	a0,a0,152 # 800001f4 <release+0x44>
+80000164:	f69ff0ef          	jal	800000cc <console_puts>
+80000168:	fd9ff06f          	j	80000140 <kernel_main+0x30>
 
-80000154 <acquire>:
-80000154:	ff010113          	addi	sp,sp,-16
-80000158:	00112623          	sw	ra,12(sp)
-8000015c:	00812423          	sw	s0,8(sp)
-80000160:	00912223          	sw	s1,4(sp)
-80000164:	01010413          	addi	s0,sp,16
-80000168:	00050493          	mv	s1,a0
-8000016c:	f15ff0ef          	jal	80000080 <disable_interrupts>
-80000170:	00100713          	li	a4,1
-80000174:	00070793          	mv	a5,a4
-80000178:	0cf4a7af          	amoswap.w.aq	a5,a5,(s1)
-8000017c:	fe079ce3          	bnez	a5,80000174 <acquire+0x20>
-80000180:	0330000f          	fence	rw,rw
-80000184:	00c12083          	lw	ra,12(sp)
-80000188:	00812403          	lw	s0,8(sp)
-8000018c:	00412483          	lw	s1,4(sp)
-80000190:	01010113          	addi	sp,sp,16
-80000194:	00008067          	ret
+8000016c <acquire>:
+8000016c:	ff010113          	addi	sp,sp,-16
+80000170:	00112623          	sw	ra,12(sp)
+80000174:	00812423          	sw	s0,8(sp)
+80000178:	00912223          	sw	s1,4(sp)
+8000017c:	01010413          	addi	s0,sp,16
+80000180:	00050493          	mv	s1,a0
+80000184:	efdff0ef          	jal	80000080 <disable_interrupts>
+80000188:	00100713          	li	a4,1
+8000018c:	00070793          	mv	a5,a4
+80000190:	0cf4a7af          	amoswap.w.aq	a5,a5,(s1)
+80000194:	fe079ce3          	bnez	a5,8000018c <acquire+0x20>
+80000198:	0330000f          	fence	rw,rw
+8000019c:	00c12083          	lw	ra,12(sp)
+800001a0:	00812403          	lw	s0,8(sp)
+800001a4:	00412483          	lw	s1,4(sp)
+800001a8:	01010113          	addi	sp,sp,16
+800001ac:	00008067          	ret
 
-80000198 <release>:
-80000198:	ff010113          	addi	sp,sp,-16
-8000019c:	00112623          	sw	ra,12(sp)
-800001a0:	00812423          	sw	s0,8(sp)
-800001a4:	01010413          	addi	s0,sp,16
-800001a8:	0330000f          	fence	rw,rw
-800001ac:	0310000f          	fence	rw,w
-800001b0:	00052023          	sw	zero,0(a0)
-800001b4:	ed5ff0ef          	jal	80000088 <enable_interrupts>
-800001b8:	00c12083          	lw	ra,12(sp)
-800001bc:	00812403          	lw	s0,8(sp)
-800001c0:	01010113          	addi	sp,sp,16
-800001c4:	00008067          	ret
+800001b0 <release>:
+800001b0:	ff010113          	addi	sp,sp,-16
+800001b4:	00112623          	sw	ra,12(sp)
+800001b8:	00812423          	sw	s0,8(sp)
+800001bc:	01010413          	addi	s0,sp,16
+800001c0:	0330000f          	fence	rw,rw
+800001c4:	0310000f          	fence	rw,w
+800001c8:	00052023          	sw	zero,0(a0)
+800001cc:	ebdff0ef          	jal	80000088 <enable_interrupts>
+800001d0:	00c12083          	lw	ra,12(sp)
+800001d4:	00812403          	lw	s0,8(sp)
+800001d8:	01010113          	addi	sp,sp,16
+800001dc:	00008067          	ret

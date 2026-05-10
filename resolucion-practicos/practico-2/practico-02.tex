@@ -1,0 +1,1237 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- Encoding ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands]{babel}
+\usepackage{lmodern}
+
+% --- Layout ---
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{parskip}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em plus 0.2em minus 0.1em}
+
+% --- Tables and graphics ---
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta}
+\usepackage{caption}
+\usepackage{subcaption}
+
+% --- Code listings ---
+\usepackage{listings}
+\definecolor{codegray}{rgb}{0.96,0.96,0.96}
+\definecolor{codeborder}{rgb}{0.85,0.85,0.85}
+\definecolor{codecomment}{rgb}{0.30,0.55,0.30}
+\definecolor{codekeyword}{rgb}{0.10,0.30,0.70}
+\definecolor{codestring}{rgb}{0.65,0.15,0.10}
+
+\lstdefinestyle{shellstyle}{
+    language=bash,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstdefinestyle{cstyle}{
+    language=C,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    numbersep=8pt,
+    aboveskip=1em,
+    belowskip=1em,
+}
+
+\lstdefinestyle{asmstyle}{
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    commentstyle=\color{codecomment}\itshape,
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstset{style=shellstyle}
+
+% --- Hyperlinks ---
+\usepackage[colorlinks=true,
+            linkcolor=blue!60!black,
+            urlcolor=blue!50!black,
+            citecolor=blue!60!black]{hyperref}
+
+% --- Title block ---
+\title{
+    \vspace{-2.5em}
+    \textbf{Práctico 2} \\[0.3em]
+    \large Compilación y linking
+}
+\author{
+    Tomás Rodeghiero \\
+    \small Sistemas Operativos --- Universidad Nacional de Río Cuarto
+}
+\date{2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent
+Este documento presenta la resolución integral del Práctico 2 de la
+materia Sistemas Operativos (UNRC, 2026), centrado en el
+\emph{toolchain} de C: las etapas de pre-procesamiento, compilación,
+ensamblado y linking, junto con la diferencia entre bibliotecas
+estáticas y dinámicas. Cada ejercicio se justifica con la teoría del
+capítulo \emph{Herramientas de desarrollo} de las \emph{Notas del
+curso} (Marcelo Arroyo) y se acompaña con comandos, salidas y
+fragmentos de código verificados sobre macOS arm64 (formato Mach-O).
+El razonamiento es portable: en sistemas GNU/Linux las mismas ideas se
+manifiestan sobre el formato ELF y herramientas como
+\texttt{objdump}, \texttt{readelf} y \texttt{nm}.
+\end{abstract}
+
+\tableofcontents
+\bigskip
+
+% =====================================================================
+\section{Introducción}
+% =====================================================================
+
+Programar en C parece resumirse a un único comando ---\texttt{gcc -o
+myprog main.c hello.c}---, pero detrás se esconde una secuencia de
+herramientas conocida como \emph{toolchain}. Las Notas del curso la
+descomponen en cuatro etapas:
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Pre-procesamiento (\texttt{cpp}).} Expande las
+        directivas \texttt{\#include}, \texttt{\#define} y demás
+        macros. Su salida es un archivo \texttt{.i} con C ya expandido.
+    \item \textbf{Compilación (\texttt{cc1}).} Traduce el C a
+        \emph{assembly} de la arquitectura objetivo. Salida:
+        \texttt{.s}.
+    \item \textbf{Ensamblado (\texttt{as}).} Convierte el assembly en
+        un archivo objeto binario (\texttt{.o}) en el formato del SO
+        (ELF en GNU/Linux, Mach-O en macOS).
+    \item \textbf{Linking (\texttt{ld}).} Combina archivos objeto y
+        bibliotecas, recalcula direcciones y resuelve referencias
+        externas para producir el \emph{ejecutable} final.
+\end{enumerate}
+
+Las opciones \texttt{-E}, \texttt{-S} y \texttt{-c} de \texttt{gcc}
+permiten detener el proceso después de la primera, segunda y tercera
+etapa respectivamente.
+
+Cada archivo objeto está estructurado en \emph{secciones}: \texttt{.text}
+para el código, \texttt{.data} para variables globales con
+inicialización, \texttt{.rodata} (o \texttt{\_\_cstring}) para
+constantes, una \emph{tabla de símbolos} y una \emph{tabla de
+reubicación} que indica qué instrucciones tienen operandos pendientes
+de resolver. El linker realiza dos tareas conceptuales: (1)
+concatenar las secciones de todos los objetos y recalcular
+direcciones, y (2) resolver las referencias externas usando las
+tablas mencionadas. Las llamadas a funciones definidas en el mismo
+ejecutable se resuelven en \emph{linking estático}; las que viven en
+una biblioteca dinámica (como \texttt{printf} en \texttt{libc}) se
+resuelven en \emph{linking dinámico} mediante \emph{stubs} y la
+\emph{Global Offset Table} (GOT).
+
+Sobre estas bases, el práctico ejercita progresivamente los conceptos:
+generar artefactos intermedios (\texttt{.i}, \texttt{.s}, \texttt{.o}),
+inspeccionarlos con \texttt{objdump}/\texttt{otool}, observar cómo el
+linker resuelve direcciones, comprobar que las variables locales viven
+en la pila, y empaquetar código en bibliotecas estáticas y dinámicas
+---incluyendo carga explícita en tiempo de ejecución con
+\texttt{dlopen()}.
+
+% =====================================================================
+\section{Ejercicio 1 --- Pre-procesado, assembly y objeto de \texttt{hello.c}}
+% =====================================================================
+
+\subsection*{Programa fuente}
+
+\begin{lstlisting}[style=cstyle]
+/* hello.c */
+#define hi "Hello world"
+
+char *hello(void)
+{
+    return hi;
+}
+\end{lstlisting}
+
+Notar que \texttt{hi} no es una variable: es una \textbf{macro}. El
+preprocesador la reemplaza textualmente por la cadena
+\texttt{"Hello world"} antes de que el compilador vea el código.
+
+\subsection*{1.a Pre-procesamiento (\texttt{hello.i})}
+
+\begin{lstlisting}
+gcc -E hello.c -o hello.i
+\end{lstlisting}
+
+El contenido relevante de \texttt{hello.i} es:
+
+\begin{lstlisting}[style=cstyle]
+# 1 "hello.c"
+# 1 "<built-in>" 1
+...
+char *hello(void)
+{
+    return "Hello world";
+}
+\end{lstlisting}
+
+\texttt{hi} ya no aparece: la macro fue expandida y reemplazada por
+el literal \texttt{"Hello world"}. Las líneas
+\texttt{\# n "archivo"} son marcadores que el preprocesador deja para
+que los mensajes de error apunten al archivo y línea originales.
+
+\subsection*{1.b Assembly (\texttt{hello.s})}
+
+\begin{lstlisting}
+gcc -S hello.c -o hello.s
+\end{lstlisting}
+
+\begin{lstlisting}[style=asmstyle]
+        .section        __TEXT,__text,regular,pure_instructions
+        .globl  _hello
+        .p2align        2
+_hello:
+        adrp    x0, l_.str@PAGE
+        add     x0, x0, l_.str@PAGEOFF
+        ret
+        .section        __TEXT,__cstring,cstring_literals
+l_.str:
+        .asciz  "Hello world"
+\end{lstlisting}
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{\_\_TEXT,\_\_text} contiene el código de
+        \texttt{hello}.
+    \item \texttt{\_\_TEXT,\_\_cstring} contiene el literal, marcado
+        con la etiqueta local \texttt{l\_.str}.
+    \item ARM64 codifica direcciones en páginas de 4\,KiB, por eso la
+        dirección del literal se arma en dos pasos: \texttt{adrp}
+        carga la base de la página y \texttt{add} suma el offset
+        dentro de ella.
+    \item El valor de retorno se deposita en \texttt{x0} (convención
+        AAPCS64) y la función vuelve con \texttt{ret}.
+\end{itemize}
+
+\subsection*{1.c Archivo objeto (\texttt{hello.o})}
+
+\begin{lstlisting}
+gcc -c hello.c -o hello.o
+file hello.o    # -> Mach-O 64-bit object arm64
+\end{lstlisting}
+
+\texttt{hello.o} es un binario relocatable Mach-O. Ya contiene el
+código máquina de \texttt{hello()}, pero su dirección sigue siendo
+\texttt{0x0}: la asigna el linker más adelante, al combinarlo con
+otros objetos.
+
+% =====================================================================
+\section{Ejercicio 2 --- Compilar \texttt{main.c} a \texttt{main.o}}
+% =====================================================================
+
+\begin{lstlisting}[style=cstyle]
+/* main.c */
+#include <stdio.h>            /* prototipo de printf */
+
+extern char* hello(void);     /* hello vive en otro modulo */
+
+int main(void)
+{
+    printf("%s\n", hello());
+    return 0;
+}
+\end{lstlisting}
+
+Tres elementos relevantes:
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{\#include <stdio.h>} introduce el \emph{prototipo}
+        de \texttt{printf} para que el compilador valide los tipos de
+        argumentos. La definición vive en la libc.
+    \item \texttt{extern char* hello(void)} es una \emph{declaración};
+        no necesita el cuerpo, solo el perfil.
+    \item \texttt{printf} y \texttt{hello} aparecerán en \texttt{main.o}
+        como símbolos externos no resueltos (\texttt{*UND*}).
+\end{itemize}
+
+\begin{lstlisting}
+gcc -c main.c -o main.o
+file main.o     # -> Mach-O 64-bit object arm64
+\end{lstlisting}
+
+La opción \texttt{-c} detiene el proceso tras el ensamblado:
+preprocesa, compila y ensambla, pero no linkea. \texttt{main.o} contiene
+el código de \texttt{main} y un literal \texttt{"\%s\textbackslash n"},
+pero las llamadas a \texttt{hello} y \texttt{printf} todavía no están
+resueltas.
+
+Compilar a objetos en lugar de directamente al ejecutable habilita la
+\emph{compilación incremental}: si más adelante se modifica
+\texttt{hello.c} basta con regenerar \texttt{hello.o} y volver a
+linkear, sin recompilar \texttt{main.c}. Esa propiedad es la que
+explota \texttt{make}.
+
+% =====================================================================
+\section{Ejercicio 3 --- Análisis de \texttt{main.o} y \texttt{hello.o}}
+% =====================================================================
+
+\subsection*{3.a Tipo de archivo objeto}
+
+\begin{lstlisting}
+file main.o hello.o
+\end{lstlisting}
+
+\begin{lstlisting}[style=asmstyle]
+main.o:  Mach-O 64-bit object arm64
+hello.o: Mach-O 64-bit object arm64
+\end{lstlisting}
+
+Ambos son objetos relocatables Mach-O para arm64, equivalentes a un
+\texttt{.o} ELF en Linux. Las direcciones todavía no están resueltas.
+
+\subsection*{3.b Secciones (\texttt{objdump -h}) y tamaños}
+
+\begin{lstlisting}[style=asmstyle]
+main.o:
+  0 __text           00000040 0000000000000000 TEXT
+  1 __cstring        00000004 0000000000000040 DATA
+  2 __compact_unwind 00000020 0000000000000048 DATA
+
+hello.o:
+  0 __text           0000000c 0000000000000000 TEXT
+  1 __cstring        0000000c 000000000000000c DATA
+  2 __compact_unwind 00000020 0000000000000018 DATA
+\end{lstlisting}
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{l c c c}
+\toprule
+\textbf{Objeto} & \texttt{.text} & \texttt{.data} & \texttt{\_\_cstring} \\
+\midrule
+\texttt{main.o}  & \texttt{0x40} (64 B) & --- (sección ausente) & \texttt{0x04}: \texttt{"\%s\textbackslash n"} \\
+\texttt{hello.o} & \texttt{0x0c} (12 B) & --- (sección ausente) & \texttt{0x0c}: \texttt{"Hello world"} \\
+\bottomrule
+\end{tabular}
+\caption{Tamaños de secciones por objeto.}
+\end{table}
+
+\texttt{main.o} es más grande porque tiene prólogo/epílogo de
+\texttt{main}, armado de argumentos de \texttt{printf} y dos
+llamadas (\texttt{hello}, \texttt{printf}). \texttt{hello()} solo
+arma un puntero y retorna.
+
+No hay sección \texttt{\_\_DATA,\_\_data} en ningún objeto: el programa
+\textbf{no tiene variables globales con valor inicial distinto de
+cero}. El literal \texttt{"Hello world"} no va en \texttt{.data} sino
+en \texttt{\_\_cstring} porque es de solo lectura.
+
+\subsection*{3.c Contenido de cada sección}
+
+\begin{lstlisting}[style=asmstyle]
+main.o (objdump -s):
+Contents of section __TEXT,__text:
+ 0000 ff8300d1 fd7b01a9 fd430091 08008052
+ 0010 e80b00b9 bfc31fb8 00000094 e8030091
+ 0020 000100f9 00000090 00000091 00000094
+ 0030 e00b40b9 fd7b41a9 ff830091 c0035fd6
+Contents of section __TEXT,__cstring:
+ 0040 25730a00                             %s..
+
+hello.o (objdump -s):
+Contents of section __TEXT,__text:
+ 0000 00000090 00000091 c0035fd6           .........._.
+Contents of section __TEXT,__cstring:
+ 000c 48656c6c 6f20776f 726c6400           Hello world.
+\end{lstlisting}
+
+Los bytes \texttt{25 73 0a 00} son la secuencia ASCII de
+\texttt{"\%s\textbackslash n\textbackslash 0"}; los de
+\texttt{hello.o} forman \texttt{"Hello world\textbackslash 0"}.
+
+\subsection*{3.d Direcciones de \texttt{main()} y \texttt{hello()}}
+
+\begin{lstlisting}[style=asmstyle]
+main.o:
+ 0000000000000000 g     F __TEXT,__text    _main
+
+hello.o:
+ 0000000000000000 g     F __TEXT,__text    _hello
+\end{lstlisting}
+
+Ambas funciones empiezan en el offset \texttt{0x0} de su sección
+\texttt{\_\_text}. Esto es lo \emph{normal} en archivos objeto
+relocatables: cada módulo se siente solo en el mundo. El linker
+luego apila las secciones y reasigna direcciones absolutas.
+
+\subsection*{3.e Dónde se almacena el literal apuntado por \texttt{hi}}
+
+\texttt{hi} es la macro \texttt{\#define hi "Hello world"}: \emph{no}
+es una variable, así que no hay símbolo \texttt{hi} en la tabla de
+símbolos. Lo que sí hay es el literal al que la macro se expande,
+guardado en \texttt{hello.o}:
+
+\begin{lstlisting}[style=asmstyle]
+000000000000000c l     O __TEXT,__cstring  l_.str
+\end{lstlisting}
+
+Es decir, el string vive en la sección \texttt{\_\_cstring} (de solo
+lectura, equivalente a \texttt{.rodata} en ELF), con etiqueta interna
+\texttt{l\_.str}, en el offset \texttt{0x0c} de \texttt{hello.o}. La
+función \texttt{hello()} arma esa dirección con \texttt{adrp+add} y la
+devuelve en \texttt{x0}.
+
+\subsection*{3.f Tabla de símbolos y de reubicación}
+
+\textbf{\texttt{main.o}} (símbolos):
+
+\begin{lstlisting}[style=asmstyle]
+0000000000000000 l     F __TEXT,__text       ltmp0
+0000000000000040 l     O __TEXT,__cstring    l_.str
+0000000000000040 l     O __TEXT,__cstring    ltmp1
+0000000000000048 l     O __LD,__compact_unwind ltmp2
+0000000000000000 g     F __TEXT,__text       _main
+0000000000000000         *UND*                _hello
+0000000000000000         *UND*                _printf
+\end{lstlisting}
+
+\texttt{\_main} está definido (\texttt{g} global, en \texttt{\_\_text}).
+\texttt{\_hello} y \texttt{\_printf} aparecen como \texttt{*UND*},
+indicando que son referencias externas. El linker las resolverá:
+\texttt{\_hello} contra \texttt{hello.o} (linking estático),
+\texttt{\_printf} contra \texttt{libSystem.B.dylib} (linking dinámico).
+
+\textbf{\texttt{main.o}} (reubicaciones):
+
+\begin{lstlisting}[style=asmstyle]
+RELOCATION RECORDS FOR [__text]:
+ 000000000000002c ARM64_RELOC_BRANCH26     _printf
+ 0000000000000028 ARM64_RELOC_PAGEOFF12    l_.str
+ 0000000000000024 ARM64_RELOC_PAGE21       l_.str
+ 0000000000000018 ARM64_RELOC_BRANCH26     _hello
+\end{lstlisting}
+
+Esto es exactamente el mapping
+$relloc(instr\_address, instr\_type) \to external\_symbol$ descrito en
+las notas: en el offset \texttt{0x18} hay un \texttt{bl} cuyo destino
+debe completarse con \texttt{\_hello}; en \texttt{0x24/0x28} un par
+\texttt{adrp/add} que arma la dirección del literal; en \texttt{0x2c}
+otro \texttt{bl} cuyo destino es \texttt{\_printf}.
+
+\textbf{\texttt{hello.o}} solo tiene un símbolo global definido
+(\texttt{\_hello}) y dos entradas de reubicación para armar la
+dirección del literal local \texttt{l\_.str}. No tiene símbolos
+\texttt{*UND*} porque \texttt{hello()} no llama a nadie.
+
+\subsection*{3.g Instrucciones \texttt{call} en \texttt{main()}}
+
+\begin{lstlisting}[style=asmstyle]
+0000000000000000 <_main>:
+   0: sub  sp, sp, #0x20
+   4: stp  x29, x30, [sp, #0x10]
+   ...
+  18: bl   0x18 <ltmp0+0x18>     ; <-- call a _hello (sin resolver)
+  1c: mov  x8, sp
+  20: str  x0, [x8]
+  24: adrp x0, 0x0 <ltmp0>
+  28: add  x0, x0, #0x0
+  2c: bl   0x2c <ltmp0+0x2c>     ; <-- call a _printf (sin resolver)
+  ...
+  3c: ret
+\end{lstlisting}
+
+Los dos \texttt{bl} apuntan a \emph{sí mismos}: sus operandos están en
+\texttt{0}. Esto es exactamente lo que las notas del curso describen:
+en el archivo objeto los \texttt{call} a símbolos externos quedan sin
+resolver y aparecen en la tabla de reubicación. \textbf{Los operandos
+no están resueltos}; los completará el linker.
+
+\subsection*{3.h Cómo retornan los valores las funciones}
+
+Por la convención AAPCS64 de ARM64:
+
+\begin{itemize}[leftmargin=*]
+    \item El valor de retorno entero/puntero va en \texttt{x0} (o
+        \texttt{w0} para 32 bits).
+    \item La instrucción \texttt{ret} salta a la dirección guardada en
+        \texttt{x30} (\emph{Link Register}).
+\end{itemize}
+
+\texttt{hello()} arma la dirección de la cadena en \texttt{x0} y hace
+\texttt{ret}. \texttt{main()} guarda el puntero recibido como argumento
+para \texttt{printf} y devuelve el \texttt{int 0} en \texttt{w0} antes
+del \texttt{ret}. En x86-64 la idea sería la misma, pero el registro
+de retorno sería \texttt{rax}.
+
+% =====================================================================
+\section{Ejercicio 4 --- Generar el ejecutable \texttt{myprog}}
+% =====================================================================
+
+\begin{lstlisting}
+gcc main.o hello.o -o myprog
+./myprog
+# Hello world
+\end{lstlisting}
+
+\paragraph{¿Se recompilaron los programas?}
+\textbf{No.} Cuando los argumentos de \texttt{gcc} son archivos objeto,
+\texttt{gcc} actúa solo como \emph{driver} del linker. La verificación
+con \texttt{-v}:
+
+\begin{lstlisting}
+gcc -v main.o hello.o -o myprog_from_objects
+\end{lstlisting}
+
+muestra exclusivamente la invocación a \texttt{ld}:
+
+\begin{lstlisting}[style=asmstyle]
+Apple clang version 17.0.0 ...
+".../usr/bin/ld" ... -o myprog_from_objects ... main.o hello.o -lSystem ...
+\end{lstlisting}
+
+No aparecen pasos de \texttt{cc1} o \texttt{as}: el código C no se
+toca. Si los argumentos hubieran sido \texttt{main.c} y \texttt{hello.c},
+la traza mostraría las cuatro etapas (preprocesador, compilador,
+ensamblador y linker) corriendo para cada \texttt{.c}.
+
+\paragraph{Qué hace el linker.}
+Las notas describen el linking en dos pasos: (1) concatenar las
+secciones \texttt{.text}/\texttt{.data} de los objetos y \emph{recalcular}
+direcciones; (2) resolver las referencias externas usando las tablas
+de símbolos y reubicación. En \texttt{myprog}:
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{\_main} (de \texttt{main.o}) queda en
+        \texttt{0x100000460}.
+    \item \texttt{\_hello} (de \texttt{hello.o}) queda en
+        \texttt{0x1000004a0}, inmediatamente después.
+    \item El \texttt{bl \_hello} de \texttt{main} se completa con la
+        dirección real (linking estático).
+    \item El \texttt{bl \_printf} se enlaza a un \emph{symbol stub}
+        del propio ejecutable que se resolverá dinámicamente.
+\end{itemize}
+
+% =====================================================================
+\section{Ejercicio 5 --- Análisis assembly de \texttt{myprog}}
+% =====================================================================
+
+\subsection*{5.a Direcciones de \texttt{main()} y \texttt{hello()}}
+
+\begin{lstlisting}[style=asmstyle]
+$ nm -n myprog
+                 U _printf
+0000000100000000 T __mh_execute_header
+0000000100000460 T _main
+00000001000004a0 T _hello
+\end{lstlisting}
+
+Ambos símbolos están definidos en el segmento \texttt{\_\_TEXT}, uno
+detrás del otro. Es la primera tarea del linker: tomó las secciones
+\texttt{\_\_text} de \texttt{main.o} y \texttt{hello.o} (que empezaban
+en offset \texttt{0}) y las concatenó asignándoles direcciones
+absolutas únicas. \texttt{\_printf} aparece como \texttt{U}
+(\emph{undefined}) porque su dirección la resuelve \texttt{dyld} en
+ejecución.
+
+\subsection*{5.b ¿\texttt{main} \texttt{->} \texttt{hello} fue resuelto por el linker?}
+
+\textbf{Sí, en linking estático.}
+
+\begin{lstlisting}[style=asmstyle]
+_main:
+0000000100000460  sub  sp, sp, #0x20
+...
+0000000100000478  bl   _hello                       ; <-- llamada directa
+000000010000047c  mov  x8, sp
+0000000100000480  str  x0, [x8]
+0000000100000484  adrp x0, 0 ; 0x100000000
+0000000100000488  add  x0, x0, #0x4b8               ; "%s\n"
+000000010000048c  bl   0x1000004ac ; symbol stub for: _printf
+000000010000049c  ret
+_hello:
+00000001000004a0  adrp x0, 0 ; 0x100000000
+00000001000004a4  add  x0, x0, #0x4bc               ; "Hello world"
+00000001000004a8  ret
+\end{lstlisting}
+
+El \texttt{bl} en \texttt{0x...478} ahora codifica el desplazamiento
+real al inicio de \texttt{\_hello}. La invocación quedó \emph{resuelta}
+porque ambos símbolos están definidos en el mismo ejecutable.
+
+\subsection*{5.c ¿Cómo se resolvió la invocación a \texttt{printf()}?}
+
+\texttt{printf} vive en \texttt{libSystem.B.dylib} (la libc de macOS),
+una biblioteca \emph{dinámica}. El linker estático no puede poner una
+dirección absoluta porque el cargador puede ubicar la libc en
+direcciones distintas en cada ejecución (ASLR). La técnica usada es
+la del \textbf{symbol stub} con \emph{lazy linking} descrita en las
+notas:
+
+\begin{enumerate}[leftmargin=*]
+    \item \texttt{ld} genera un stub \texttt{\_printf\$stub} en
+        \texttt{\_\_TEXT,\_\_stubs}.
+    \item \texttt{main} hace \texttt{bl 0x1000004ac} a ese stub.
+    \item El stub realiza un \texttt{jmp} indirecto a través de la
+        \emph{Global Offset Table} (\texttt{\_\_DATA\_CONST,\_\_got}).
+    \item En la primera invocación, la GOT apunta al \emph{dynamic
+        linker} (\texttt{dyld}), que resuelve la dirección real de
+        \texttt{printf} en \texttt{libSystem.B.dylib} y la escribe en
+        la GOT.
+    \item Las invocaciones siguientes ya encuentran la dirección
+        verdadera y saltan directamente.
+\end{enumerate}
+
+Verificación:
+
+\begin{lstlisting}[style=asmstyle]
+$ otool -Iv myprog
+Indirect symbols for (__TEXT,__stubs) 1 entries
+address            index name
+0x00000001000004ac     3 _printf
+Indirect symbols for (__DATA_CONST,__got) 1 entries
+address            index name
+0x0000000100004000     3 _printf
+
+$ otool -L myprog
+myprog:
+    /usr/lib/libSystem.B.dylib (compatibility version 1.0.0, ...)
+\end{lstlisting}
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{l l l}
+\toprule
+\textbf{Llamada} & \textbf{Resuelve} & \textbf{Cuándo} \\
+\midrule
+\texttt{main} \texttt{->} \texttt{hello}  & Linker estático (\texttt{ld})    & En tiempo de linking \\
+\texttt{main} \texttt{->} \texttt{printf} & Linker dinámico (\texttt{dyld}) & En tiempo de carga / 1.\textsuperscript{a} llamada \\
+\bottomrule
+\end{tabular}
+\caption{Resolución estática vs.\ dinámica en \texttt{myprog}.}
+\end{table}
+
+% =====================================================================
+\section{Ejercicio 6 --- Direcciones de variables locales (stack)}
+% =====================================================================
+
+\paragraph{Marco.}
+El espacio de direcciones de un proceso se divide en regiones bien
+definidas: \texttt{.text} (código, solo lectura), datos globales
+(\texttt{.data}/\texttt{.bss}), \emph{heap} (memoria dinámica) y
+\emph{stack} (pila de llamadas). Cada invocación a una función crea un
+\emph{stack frame} con sus parámetros, variables locales, dirección de
+retorno y registros guardados. El compilador asigna las locales como
+desplazamientos relativos al puntero de marco (\texttt{x29}/\texttt{fp}
+en arm64). La pila crece hacia direcciones bajas.
+
+Para no romper el \texttt{main.c} usado en otros ejercicios, la
+modificación se hizo en una variante: \texttt{main\_stack.c}.
+
+\paragraph{Idea del experimento.}
+\begin{enumerate}[leftmargin=*]
+    \item Imprimir las direcciones de varias variables locales
+        declaradas en distintas funciones.
+    \item Obtener \emph{base} y \emph{tope} del stack del hilo
+        principal con
+        \texttt{pthread\_get\_stackaddr\_np}/\linebreak{}\texttt{pthread\_get\_stacksize\_np}.
+    \item Verificar que cada dirección local cae dentro de
+        \texttt{[base, tope)}.
+\end{enumerate}
+
+\begin{lstlisting}[style=cstyle]
+/* main_stack.c (extracto) */
+static void print_inner_locals(uintptr_t stack_base, uintptr_t stack_top)
+{
+    int inner_a = 10;
+    int inner_b = 20;
+    char inner_buf[16] = "inner";
+    report_local("&inner_a",  &inner_a,  stack_base, stack_top);
+    report_local("&inner_b",  &inner_b,  stack_base, stack_top);
+    report_local("inner_buf", inner_buf, stack_base, stack_top);
+}
+
+static void print_stack_layout(void)
+{
+    int    local_a = 1;
+    int    local_b = 2;
+    double local_c = 3.14;
+    char   local_d = 'x';
+    char   buffer[32] = "stack-local";
+    pthread_t self = pthread_self();
+    void   *stack_top  = pthread_get_stackaddr_np(self);
+    size_t  stack_size = pthread_get_stacksize_np(self);
+    void   *stack_base = (void *)((uintptr_t)stack_top - stack_size);
+    /* imprimir base, tope, tamano y direcciones de cada local */
+    print_inner_locals((uintptr_t)stack_base, (uintptr_t)stack_top);
+}
+
+int main(void) {
+    printf("%s\n", hello());
+    print_stack_layout();
+    return 0;
+}
+\end{lstlisting}
+
+Compilación y ejecución:
+
+\begin{lstlisting}
+gcc -Wall -Wextra -pedantic main_stack.c hello.c -o myprog_stack
+./myprog_stack
+\end{lstlisting}
+
+Salida típica (las direcciones absolutas cambian entre ejecuciones por
+ASLR):
+
+\begin{lstlisting}[style=asmstyle]
+Hello world
+Stack del hilo principal:
+  base (dir baja): 0x16a778000
+  tope (dir alta): 0x16af74000
+  tamano: 8372224 bytes (7.98 MiB)
+
+Locales en main/print_stack_layout:
+  &local_a    0x16af7261c   [STACK]
+  &local_b    0x16af72618   [STACK]
+  &local_c    0x16af72610   [STACK]
+  &local_d    0x16af7260f   [STACK]
+  buffer      0x16af72620   [STACK]
+
+Locales en funcion secundaria:
+  &inner_a    0x16af7255c   [STACK]
+  &inner_b    0x16af72558   [STACK]
+  inner_buf   0x16af72570   [STACK]
+\end{lstlisting}
+
+\paragraph{Análisis.}
+\begin{itemize}[leftmargin=*]
+    \item Todas las direcciones impresas caen dentro del rango
+        \texttt{[stack\_base, stack\_top)}: las variables locales
+        viven en el \textbf{stack}.
+    \item El stack del hilo principal mide $\approx$ 8\,MiB
+        (\texttt{8372224} B), valor por defecto en macOS y en muchos
+        Linux (\texttt{ulimit -s}).
+    \item Las locales de \texttt{print\_inner\_locals} están en
+        direcciones \emph{más bajas} que las de
+        \texttt{print\_stack\_layout}, evidenciando que cada llamada
+        empuja un nuevo frame hacia direcciones decrecientes.
+    \item El alineamiento se respeta: \texttt{local\_c} (un
+        \texttt{double}) cae en una dirección múltiplo de 8.
+\end{itemize}
+
+\paragraph{Respuesta.}
+Las variables locales se asignan en el \emph{stack} del proceso, una
+región del espacio de direcciones que crece hacia direcciones bajas y
+se organiza en \emph{stack frames} (uno por invocación de función).
+ASLR aleatoriza las direcciones absolutas en cada ejecución, pero la
+estructura relativa (frames internos por debajo de los externos)
+permanece.
+
+% =====================================================================
+\section{Ejercicio 7 --- Biblioteca estática \texttt{libhello.a}}
+% =====================================================================
+
+\paragraph{Marco.}
+Las notas definen una \textbf{biblioteca} como una colección de
+módulos reusables. Una biblioteca \emph{estática} es un \emph{archiver}
+(formato \texttt{.a} en UNIX) con un índice de símbolos. El linker,
+ante una referencia sin resolver, copia del \texttt{.a} solo los
+\texttt{.o} que la satisfacen y los enlaza en el ejecutable.
+
+Para no romper \texttt{main.c}, este ejercicio usa una variante
+(\texttt{main\_lib.c}) y un segundo módulo (\texttt{hello2.c}):
+
+\begin{lstlisting}[style=cstyle]
+/* hello2.c */
+#define hi2 "Hello from hello2"
+char *hello2(void) { return hi2; }
+\end{lstlisting}
+
+\begin{lstlisting}[style=cstyle]
+/* main_lib.c */
+#include <stdio.h>
+extern char *hello(void);
+extern char *hello2(void);
+int main(void) {
+    printf("%s\n", hello());
+    printf("%s\n", hello2());
+    return 0;
+}
+\end{lstlisting}
+
+\subsection*{7.a Crear la biblioteca estática}
+
+\begin{lstlisting}
+gcc -Wall -Wextra -pedantic -c hello.c  -o hello.o
+gcc -Wall -Wextra -pedantic -c hello2.c -o hello2.o
+ar rcs libhello.a hello.o hello2.o
+\end{lstlisting}
+
+Las opciones de \texttt{ar} significan: \texttt{r} reemplaza miembros
+existentes, \texttt{c} crea el archivo si no existe y \texttt{s}
+genera/actualiza el índice de símbolos. El índice es lo que permite al
+linker responder rápidamente "¿qué objeto define a \texttt{hello}?''.
+
+\subsection*{7.b Listar los módulos de la biblioteca}
+
+\begin{lstlisting}[style=asmstyle]
+$ ar -t libhello.a
+__.SYMDEF SORTED
+hello.o
+hello2.o
+\end{lstlisting}
+
+La primera entrada (\texttt{\_\_.SYMDEF SORTED}) es el índice de
+símbolos interno; los módulos reales son \texttt{hello.o} y
+\texttt{hello2.o}.
+
+\subsection*{7.c Compilar enlazando con la biblioteca}
+
+\begin{lstlisting}
+gcc -Wall -Wextra -pedantic main_lib.c -L. -lhello -o myprog_lib
+./myprog_lib
+\end{lstlisting}
+
+Salida:
+
+\begin{lstlisting}[style=asmstyle]
+Hello world
+Hello from hello2
+\end{lstlisting}
+
+Detalles del comando:
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{-L.} agrega el directorio actual al \emph{path} de
+        búsqueda del linker.
+    \item \texttt{-lhello} indica buscar una biblioteca llamada
+        \texttt{libhello}. El prefijo \texttt{lib} y el sufijo
+        (\texttt{.a}/\texttt{.dylib}/\texttt{.so}) los pone el linker.
+    \item Si convivieran versiones estática y dinámica, \emph{el
+        linker prefiere la dinámica} salvo indicación explícita. En
+        este ejercicio solo existe la estática.
+\end{itemize}
+
+El linker, al ver que \texttt{main\_lib.o} referencia \texttt{\_hello}
+y \texttt{\_hello2}, busca en el índice de \texttt{libhello.a},
+encuentra que provienen de \texttt{hello.o} y \texttt{hello2.o},
+extrae esos miembros y los integra en el ejecutable. El resultado es
+un binario \emph{autocontenido}: una vez linkeado no necesita la
+biblioteca para correr.
+
+% =====================================================================
+\section{Ejercicio 8 --- Biblioteca dinámica y \texttt{dlopen}}
+% =====================================================================
+
+\paragraph{Marco.}
+Las notas describen las \textbf{bibliotecas dinámicas}
+(\texttt{.so}/\texttt{.dylib}/\texttt{.dll}) como archivos que el SO
+carga y enlaza bajo demanda. El ejecutable no incluye su código: si
+varios procesos las usan, una sola copia en memoria los sirve a todos.
+La API POSIX \texttt{<dlfcn.h>} (\texttt{dlopen}, \texttt{dlsym},
+\texttt{dlclose}) permite cargar bibliotecas \emph{explícitamente} en
+ejecución, sin declarar la dependencia en tiempo de compilación.
+
+\subsection*{8.a Generar la biblioteca dinámica}
+
+\begin{lstlisting}
+gcc -Wall -Wextra -pedantic -fPIC -shared hello.c -o libhello.dylib
+file libhello.dylib
+# -> Mach-O 64-bit dynamically linked shared library arm64
+\end{lstlisting}
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{-fPIC} (\emph{Position Independent Code}) es
+        obligatorio: la biblioteca puede cargarse en distintas
+        direcciones en cada proceso (ASLR), por lo que el código no
+        puede asumir una dirección de carga fija.
+    \item \texttt{-shared} le indica a \texttt{gcc} que la salida es
+        una biblioteca compartida, no un ejecutable.
+\end{itemize}
+
+\subsection*{8.b/8.c Modificar \texttt{main} para carga dinámica}
+
+\begin{lstlisting}[style=cstyle]
+/* main_dlopen.c */
+#include <stdio.h>
+#include <stdlib.h>
+#include <dlfcn.h>
+
+typedef char *(*hello_fn_t)(void);
+
+int main(void)
+{
+    const char *lib_path = "./libhello.dylib";
+    void *handle = dlopen(lib_path, RTLD_NOW);
+    if (handle == NULL) {
+        fprintf(stderr, "dlopen: %s\n", dlerror());
+        return 1;
+    }
+    dlerror();   /* limpia el estado de error previo */
+
+    hello_fn_t hello_fn = NULL;
+    *(void **)(&hello_fn) = dlsym(handle, "hello");
+    const char *err = dlerror();
+    if (err != NULL) {
+        fprintf(stderr, "dlsym: %s\n", err);
+        dlclose(handle);
+        return 1;
+    }
+
+    printf("%s\n", hello_fn());
+
+    dlclose(handle);
+    return 0;
+}
+\end{lstlisting}
+
+Decisiones del diseño:
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{RTLD\_NOW} resuelve todos los símbolos al cargar.
+        \texttt{RTLD\_LAZY} los resolvería bajo demanda; para una
+        biblioteca pequeña es indistinto.
+    \item \texttt{*(void **)(\&hello\_fn) = dlsym(...)} es el modismo
+        recomendado por POSIX para evitar el \emph{warning} sobre la
+        conversión de \texttt{void *} a puntero a función.
+    \item Se llama a \texttt{dlerror()} antes y después de
+        \texttt{dlsym} para no confundir un símbolo con valor
+        legítimamente \texttt{NULL} con un símbolo no encontrado.
+\end{itemize}
+
+Compilación y ejecución (en macOS la libc provee \texttt{dlopen}; en
+Linux haría falta \texttt{-ldl}):
+
+\begin{lstlisting}
+gcc -Wall -Wextra -pedantic main_dlopen.c -o myprog_dlopen
+./myprog_dlopen
+# Hello world
+\end{lstlisting}
+
+\subsection*{8.c El código de \texttt{hello} no está en el ejecutable}
+
+\begin{lstlisting}[style=asmstyle]
+$ otool -L myprog_dlopen
+myprog_dlopen:
+    /usr/lib/libSystem.B.dylib (compatibility version 1.0.0, ...)
+\end{lstlisting}
+
+La única dependencia es \texttt{libSystem.B.dylib} (que provee
+\texttt{printf}, \texttt{dlopen}, etc.). \textbf{No hay referencia a
+\texttt{libhello.dylib}} porque el ejecutable no fue enlazado contra
+ella; la cargará el propio programa con \texttt{dlopen}. Una búsqueda
+del símbolo \texttt{\_hello} en \texttt{myprog\_dlopen} no devuelve
+nada: el código vive en la biblioteca dinámica y se carga en ejecución.
+
+\subsection*{8.d Sección de enlazado dinámico}
+
+En Linux se usaría \texttt{objdump -T myprog2} para ver
+\texttt{.dynsym}. En macOS el equivalente es \texttt{otool}:
+
+\begin{lstlisting}[style=asmstyle]
+$ otool -L libhello.dylib
+libhello.dylib:
+    libhello.dylib (compatibility version 0.0.0, current version 0.0.0)
+    /usr/lib/libSystem.B.dylib ...
+\end{lstlisting}
+
+\texttt{libhello.dylib} exporta el símbolo \texttt{\_hello}, que es
+exactamente lo que \texttt{dlsym} resuelve.
+
+\subsection*{Conexión con la teoría}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Linking dinámico implícito} (ejercicios 4-5): el
+        linker estático genera \emph{stubs} y entradas en la GOT, y el
+        \emph{dynamic linker} resuelve los símbolos en tiempo de
+        carga.
+    \item \textbf{Carga dinámica explícita} (este ejercicio): el
+        propio programa decide qué biblioteca cargar y cuándo,
+        mediante \texttt{dlopen}/\texttt{dlsym}. Es la base de los
+        \emph{plugins} y de cualquier mecanismo de extensibilidad en
+        ejecución.
+\end{itemize}
+
+% =====================================================================
+\section{Ejercicio 9 --- Automatización con \texttt{Makefile}}
+% =====================================================================
+
+\paragraph{Marco.}
+Las notas del curso (sección \emph{Build systems}) muestran que en un
+proyecto real los pasos del \emph{toolchain} no se invocan a mano: se
+automatizan con un \emph{build system}. El más clásico en UNIX es
+\textbf{GNU make}, basado en un archivo \texttt{Makefile} que describe
+los \emph{objetivos} (\emph{targets}), sus \emph{dependencias} y los
+\emph{comandos} para construirlos. La forma básica de una regla es
+
+\begin{lstlisting}[style=asmstyle]
+target: dependencies
+<TAB>command
+\end{lstlisting}
+
+\texttt{make} construye un grafo de dependencias y, comparando los
+\emph{timestamps} de cada archivo, decide qué reglas disparar. Si el
+objetivo es más nuevo que todas sus dependencias, no se reconstruye:
+de ahí la \textbf{compilación incremental}. Las notas también
+introducen las \textbf{variables automáticas} (\texttt{\$@} = nombre
+del target, \texttt{\$\^{}} = todas las dependencias, \texttt{\$<} =
+primera dependencia) y las \textbf{reglas de patrón}
+(\texttt{\%.o: \%.c}) que evitan repetir la misma acción para cada
+archivo fuente.
+
+\paragraph{Organización del proyecto.}
+Los originales \texttt{main.c} y \texttt{hello.c} viven en el
+directorio del práctico. Para mantener la convención de los demás
+ejercicios, el \texttt{Makefile} se ubica dentro de
+\texttt{ejercicio-9/} y referencia los fuentes vía la variable
+especial \texttt{VPATH}.
+
+\subsection*{9.1 Makefile usado}
+
+\begin{lstlisting}[style=asmstyle]
+# VPATH le dice a make donde buscar los archivos fuente cuando no
+# estan en el directorio actual.
+VPATH = ..
+
+CC     = gcc
+CFLAGS = -Wall -Wextra -pedantic
+
+# Objetivo por defecto: myprog
+myprog: main.o hello.o
+	$(CC) $(CFLAGS) -o $@ $^
+
+main.o: main.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+hello.o: hello.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+.PHONY: clean
+clean:
+	rm -f main.o hello.o myprog
+\end{lstlisting}
+
+Decisiones de diseño:
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{VPATH = ..} es la forma idiomática de separar
+        fuentes y artefactos de compilación: \texttt{make} encuentra
+        \texttt{main.c} y \texttt{hello.c} un nivel arriba y produce
+        los \texttt{.o} y el ejecutable en el directorio actual.
+    \item \texttt{CC} y \texttt{CFLAGS} centralizan las opciones del
+        compilador en un solo lugar.
+    \item Las variables automáticas \texttt{\$@}, \texttt{\$\^{}} y
+        \texttt{\$<} hacen las reglas más concisas y reutilizables.
+    \item \texttt{.PHONY: clean} declara \texttt{clean} como objetivo
+        ficticio: si existiera un archivo llamado \texttt{clean},
+        \texttt{make} sin esto lo consideraría "ya construido" y no
+        ejecutaría la regla.
+\end{itemize}
+
+\subsection*{9.2 Grafo de dependencias}
+
+\begin{center}
+\begin{tikzpicture}[
+    node distance=0.9cm,
+    every node/.style={draw, rounded corners, font=\ttfamily\small,
+                       minimum width=1.6cm, align=center},
+    arr/.style={-{Latex[length=2mm]}, thick}
+]
+\node (myprog) {myprog};
+\node (mainO)  [below left=of myprog]  {main.o};
+\node (helloO) [below right=of myprog] {hello.o};
+\node (mainC)  [below=of mainO]  {main.c};
+\node (helloC) [below=of helloO] {hello.c};
+\draw[arr] (mainO)  -- (myprog);
+\draw[arr] (helloO) -- (myprog);
+\draw[arr] (mainC)  -- (mainO);
+\draw[arr] (helloC) -- (helloO);
+\end{tikzpicture}
+\end{center}
+
+\texttt{make myprog} requiere \texttt{main.o} y \texttt{hello.o};
+\texttt{main.o} requiere \texttt{main.c}; \texttt{hello.o} requiere
+\texttt{hello.c}. \texttt{make} recorre el grafo en post-orden:
+primero compila los \texttt{.o} que falten o estén desactualizados y
+solo entonces invoca al linker.
+
+\subsection*{9.3 Ejecución}
+
+Desde \texttt{ejercicio-9/}:
+
+\begin{lstlisting}[style=asmstyle]
+$ make clean
+rm -f main.o hello.o myprog
+
+$ make
+gcc -Wall -Wextra -pedantic -c ../main.c -o main.o
+gcc -Wall -Wextra -pedantic -c ../hello.c -o hello.o
+gcc -Wall -Wextra -pedantic -o myprog main.o hello.o
+
+$ ./myprog
+Hello world
+\end{lstlisting}
+
+\subsection*{9.4 Compilación incremental}
+
+Si se vuelve a invocar \texttt{make} sin tocar nada, el ejecutable ya
+está al día y no se ejecuta ningún comando:
+
+\begin{lstlisting}[style=asmstyle]
+$ make
+make: `myprog' is up to date.
+\end{lstlisting}
+
+Si se modifica solo un archivo fuente, \texttt{make} rehace
+\textbf{únicamente lo necesario}:
+
+\begin{lstlisting}[style=asmstyle]
+$ touch ../hello.c
+$ make
+gcc -Wall -Wextra -pedantic -c ../hello.c -o hello.o
+gcc -Wall -Wextra -pedantic -o myprog main.o hello.o
+\end{lstlisting}
+
+\texttt{main.o} no se recompiló porque \texttt{main.c} no cambió.
+Esta es la motivación central de \texttt{make}: en proyectos grandes,
+recompilar todo desde cero es inviable; \texttt{make} escala porque
+solo toca lo que tenga que tocar.
+
+\subsection*{9.5 Versión compacta con regla de patrón}
+
+La misma funcionalidad puede escribirse aún más breve, tal como
+muestran las notas del curso, usando una regla de patrón
+\texttt{\%.o : \%.c} que define cómo construir cualquier \texttt{.o}
+a partir de un \texttt{.c}:
+
+\begin{lstlisting}[style=asmstyle]
+VPATH  = ..
+CC     = gcc
+CFLAGS = -Wall -Wextra -pedantic
+
+myprog: main.o hello.o
+	$(CC) $(CFLAGS) -o $@ $^
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+.PHONY: clean
+clean:
+	rm -f main.o hello.o myprog
+\end{lstlisting}
+
+La versión con reglas explícitas (la del Makefile activo) es más
+didáctica porque hace visibles cada uno de los tres comandos del
+toolchain. La versión con patrón es la que se usa en proyectos reales
+porque escala sin repetir reglas.
+
+\paragraph{Conexión con la teoría.}
+El \texttt{Makefile} no agrega capacidades nuevas al proceso de
+compilación; automatiza exactamente las mismas etapas vistas en los
+ejercicios 1--4: dos invocaciones a \texttt{gcc -c} (preprocesador,
+compilador y ensamblador) producen los \texttt{.o} y una invocación
+final al linker (también vía \texttt{gcc}) genera el ejecutable. Lo
+que \texttt{make} aporta es \emph{automatización con conocimiento de
+dependencias}: la herramienta que vuelve manejables los proyectos
+grandes manteniendo compilaciones rápidas y reproducibles.
+
+% =====================================================================
+\section*{Cierre}
+\addcontentsline{toc}{section}{Cierre}
+% =====================================================================
+
+A lo largo del práctico se "abrió" el proceso que normalmente queda
+oculto detrás del comando \texttt{gcc -o myprog \dots}, y se observaron
+las cuatro etapas del \emph{toolchain} en acción:
+
+\begin{itemize}[leftmargin=*]
+    \item Pre-procesamiento, compilación y ensamblado generan los
+        artefactos intermedios (\texttt{.i}, \texttt{.s}, \texttt{.o})
+        cuyo contenido fue inspeccionado con \texttt{objdump} y
+        \texttt{otool}.
+    \item Los archivos objeto contienen secciones (\texttt{.text},
+        \texttt{.data}, \texttt{.rodata}/\texttt{\_\_cstring}), una
+        tabla de símbolos y una tabla de reubicación; en ellos las
+        funciones empiezan en offset \texttt{0x0} y los \texttt{call}
+        a símbolos externos quedan sin resolver.
+    \item El linker concatena las secciones, recalcula direcciones y
+        resuelve referencias: \emph{estáticamente} las que se conocen
+        (como \texttt{hello}) y \emph{dinámicamente} las que viven en
+        bibliotecas compartidas (como \texttt{printf}).
+    \item Las variables locales se asignan en el \emph{stack}, una
+        región del espacio de direcciones del proceso que crece hacia
+        direcciones bajas; se verificó experimentalmente que las
+        direcciones impresas caen dentro del rango reportado por
+        \texttt{pthread\_get\_stackaddr\_np}.
+    \item Las bibliotecas estáticas (\texttt{libhello.a}) son
+        contenedores de \texttt{.o} con un índice de símbolos; el
+        linker extrae solo los miembros necesarios y los integra al
+        ejecutable.
+    \item Las bibliotecas dinámicas (\texttt{libhello.dylib}) se
+        cargan en tiempo de ejecución, ya sea de forma implícita (vía
+        stubs y GOT) o explícita (vía
+        \texttt{dlopen}/\texttt{dlsym}).
+    \item Todo este flujo de compilación y enlace se automatiza con
+        \texttt{make}: un \texttt{Makefile} declara objetivos,
+        dependencias y comandos, y \texttt{make} reconstruye solo lo
+        que cambió comparando \emph{timestamps}.
+\end{itemize}
+
+Toda esta maquinaria es la base de los conceptos de los prácticos
+siguientes: cómo el SO carga un ejecutable, cómo organiza la memoria
+del proceso y cómo distintos procesos pueden compartir código mediante
+bibliotecas dinámicas.
+
+% =====================================================================
+\section*{Referencias}
+\addcontentsline{toc}{section}{Referencias}
+% =====================================================================
+
+\begin{enumerate}[leftmargin=*]
+    \item Marcelo Arroyo. \emph{Notas del curso de Sistemas
+        Operativos}, capítulo \emph{Herramientas de desarrollo}.
+        UNRC, 2026.
+        \url{https://marceloarroyo.gitlab.io/cursos/SO/index.html\#/toolchain}
+    \item Brian Kernighan, Dennis Ritchie. \emph{The C programming
+        language}, 2.\textsuperscript{a} edición. Prentice Hall.
+    \item John R.\ Levine. \emph{Linkers and Loaders}. Morgan
+        Kaufmann, 2000.
+    \item Páginas de manual: \texttt{man 1 gcc}, \texttt{man 1 ld},
+        \texttt{man 1 ar}, \texttt{man 1 objdump}, \texttt{man 1
+        otool}, \texttt{man 1 nm}, \texttt{man 3 dlopen}.
+\end{enumerate}
+
+\end{document}

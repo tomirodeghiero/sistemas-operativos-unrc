@@ -1,32 +1,63 @@
-# Resolucion 3 - Practico 1
+# Resolución 3 — Práctico 1
 
-Ejercicio 3: repetir el item `2.a` pero sin usar archivos temporales (usando pipes).
+**Ejercicio 3:** repetir el inciso 2.a (lista ordenada y sin duplicados) sin
+usar archivos temporales, recurriendo a *pipes*.
 
-## Objetivo
+## Marco teórico aplicable
 
-A partir de dos archivos de correos con posibles duplicados:
+Las notas del curso introducen el *pipe* como un **buffer acotado en el
+kernel** que implementa el patrón productor/consumidor (capítulo 2, sección
+*Pipes*). El comando de shell `cmd1 | cmd2`:
 
-- `correos1.txt`
-- `correos2.txt`
+1. Crea un pipe vía `pipe(p)` antes del `fork()`.
+2. Lanza `cmd1` y `cmd2` *concurrentemente* mediante dos llamadas `fork()` +
+   `exec()`.
+3. Redirige `stdout` de `cmd1` al extremo de escritura del pipe (`p[1]`) y
+   `stdin` de `cmd2` al extremo de lectura (`p[0]`), usando `dup2()`.
+4. Cierra los descriptores que cada proceso no usa: si quedan abiertos, el
+   lector nunca verá `EOF` y se bloqueará indefinidamente.
 
-generar un archivo final ordenado y sin duplicados, evitando `/tmp` y cualquier archivo intermedio.
+El productor se bloquea cuando el buffer del kernel se llena; el consumidor
+se bloquea cuando el buffer está vacío y aún hay escritores. Cuando todos
+los escritores cierran su extremo, `read()` devuelve `0` (EOF).
 
-## Comando de resolucion (con pipes)
+## Solución
 
 ```bash
 cat correos1.txt correos2.txt | sort | uniq > correos_ordenados_sin_duplicados.txt
 ```
 
-## Explicacion
+**Análisis del flujo de datos:**
 
-- `cat correos1.txt correos2.txt` concatena ambos archivos y envía el resultado por salida estándar.
-- `| sort` recibe ese flujo y ordena las lineas.
-- `| uniq` elimina repetidos consecutivos; como la entrada ya viene ordenada por `sort`, elimina todos los duplicados globales.
-- `> correos_ordenados_sin_duplicados.txt` redirige el resultado final al archivo de salida.
+```
+correos1.txt + correos2.txt
+        │  cat (lee y concatena)
+        ▼
+   pipe (kernel)
+        │  sort (ordena)
+        ▼
+   pipe (kernel)
+        │  uniq (elimina duplicados consecutivos)
+        ▼
+correos_ordenados_sin_duplicados.txt
+```
 
-Con esto se resuelve exactamente lo pedido: mismo resultado que `2.a` pero sin temporales.
+- `cat correos1.txt correos2.txt` envía el contenido concatenado a su
+  stdout.
+- El primer `|` redirige stdout de `cat` al stdin de `sort`.
+- `sort` ordena alfabéticamente las líneas recibidas.
+- El segundo `|` redirige stdout de `sort` al stdin de `uniq`.
+- `uniq` filtra duplicados *consecutivos* (que ahora son todos los duplicados
+  porque la entrada está ordenada).
+- `>` finalmente redirige la salida de `uniq` al archivo final.
 
-## Verificacion
+**Ventaja sobre el ejercicio 2.a:** los datos viajan por buffers en memoria
+sin tocar el disco con archivos temporales. Esto reduce I/O, evita
+condiciones de carrera con `/tmp` y libera al usuario de la limpieza
+posterior. Además, los tres procesos ejecutan **concurrentemente** — el
+kernel multiplexa la CPU entre ellos.
+
+## Verificación
 
 ```bash
 cat correos_ordenados_sin_duplicados.txt

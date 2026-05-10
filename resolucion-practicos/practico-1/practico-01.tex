@@ -1,0 +1,1019 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- Encoding ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands]{babel}
+\usepackage{lmodern}
+
+% --- Layout ---
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{parskip}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em plus 0.2em minus 0.1em}
+
+% --- Tables and graphics ---
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{positioning}
+\usepackage{caption}
+\usepackage{subcaption}
+
+% --- Code listings ---
+\usepackage{listings}
+\definecolor{codegray}{rgb}{0.96,0.96,0.96}
+\definecolor{codeborder}{rgb}{0.85,0.85,0.85}
+\definecolor{codecomment}{rgb}{0.30,0.55,0.30}
+\definecolor{codekeyword}{rgb}{0.10,0.30,0.70}
+\definecolor{codestring}{rgb}{0.65,0.15,0.10}
+
+\lstdefinestyle{shellstyle}{
+    language=bash,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstdefinestyle{cstyle}{
+    language=C,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    numbersep=8pt,
+    aboveskip=1em,
+    belowskip=1em,
+}
+
+\lstset{style=shellstyle}
+
+% --- Hyperlinks ---
+\usepackage[colorlinks=true,
+            linkcolor=blue!60!black,
+            urlcolor=blue!50!black,
+            citecolor=blue!60!black]{hyperref}
+
+% --- Title block ---
+\title{
+    \vspace{-2.5em}
+    \textbf{Práctico 1} \\[0.3em]
+    \large Comandos, redirección, pipes, señales y llamadas al sistema
+}
+\author{
+    Tomás Rodeghiero \\
+    \small Sistemas Operativos --- Universidad Nacional de Río Cuarto
+}
+\date{2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent
+Este documento presenta la resolución integral del Práctico 1 de la
+materia Sistemas Operativos (UNRC, 2026). Cada ejercicio se justifica con
+la teoría de los capítulos 1, 2 y 3 de las \emph{Notas del curso}
+(Marcelo Arroyo) y del capítulo 1 de \emph{Modern Operating Systems}
+(Tannenbaum \& Bos). El objetivo es transparentar el modelo
+\texttt{fork()}/\texttt{exec()}/\texttt{wait()} junto con los mecanismos de
+redirección, pipes, señales y llamadas al sistema que provee la API POSIX.
+Todo el código fue compilado con \texttt{gcc -Wall -Wextra} y verificado en
+una distribución tipo UNIX.
+\end{abstract}
+
+\tableofcontents
+\bigskip
+
+% =====================================================================
+\section{Introducción}
+% =====================================================================
+
+Un \textbf{sistema operativo (SO)} es la capa de software que abstrae el
+hardware, administra los recursos disponibles (CPU, memoria, dispositivos
+de E/S) y ofrece servicios a las aplicaciones mediante \emph{llamadas al
+sistema}. Tannenbaum y Bos, en el capítulo 1 de \emph{Modern Operating
+Systems}, lo presentan a la vez como \emph{máquina extendida}---que oculta
+la fealdad del hardware tras abstracciones uniformes---y como
+\emph{administrador de recursos}, que multiplexa CPU y memoria en tiempo y
+en espacio entre múltiples programas.
+
+Las Notas del curso enfatizan tres elementos transversales a este
+práctico:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Modo kernel y modo usuario.} La CPU ejecuta el código
+        del SO con privilegios totales (modo supervisor) y los procesos de
+        usuario en modo restringido. El cambio se realiza vía
+        \emph{traps} (syscalls) o interrupciones.
+    \item \textbf{Proceso.} Instancia de un programa en ejecución, con
+        espacio de direcciones propio (código, datos globales, pila),
+        descriptor en el kernel (PCB) y archivos abiertos heredados.
+    \item \textbf{Multitarea / multiprogramación.} El SO mantiene varios
+        procesos en memoria y multiplexa la CPU mediante \emph{context
+        switches} (pre-emptive en sistemas de tiempo compartido).
+\end{itemize}
+
+Sobre estas bases, el shell se entiende como un intérprete REPL que
+compone procesos mediante operadores de redirección (\texttt{<},
+\texttt{>}, \texttt{>>}), secuencia (\texttt{;}), condicionales
+(\texttt{\&\&}, \texttt{||}), pipes (\texttt{|}) y ejecución concurrente
+(\texttt{\&}). Cada operador encuentra una traducción directa en
+combinaciones de las syscalls \texttt{fork()}, \texttt{exec()},
+\texttt{wait()}, \texttt{pipe()}, \texttt{dup2()} y
+\texttt{open/close/read/write}.
+
+% =====================================================================
+\section{Ejercicio 1 --- Comandos del shell}
+% =====================================================================
+
+\subsection*{1.a Procesos en ejecución y PID del primer proceso}
+
+\begin{lstlisting}
+ps -e -o pid,ppid,state,comm | head -n 20
+\end{lstlisting}
+
+\texttt{ps -e} lista todos los procesos del sistema. La opción
+\texttt{-o} permite seleccionar las columnas relevantes (PID, PPID,
+estado y nombre). El proceso con \textbf{PID 1} es el primer proceso
+lanzado por el kernel apenas concluye la inicialización del SO; en Linux
+suele ser \texttt{systemd} (o \texttt{init} en variantes clásicas), en
+macOS \texttt{launchd}. Las Notas del curso lo describen como ``el primer
+proceso de usuario preconfigurado'' que se lanza al final de la rutina de
+arranque.
+
+\subsection*{1.b Usuarios conectados y usuario actual}
+
+\begin{lstlisting}
+who
+who am i
+whoami
+\end{lstlisting}
+
+\texttt{who} lista todas las sesiones abiertas, \texttt{who am i} muestra
+únicamente la asociada a la terminal actual y \texttt{whoami} imprime el
+\emph{UID efectivo} del proceso shell. La diferencia ilustra la
+naturaleza multiusuario de UNIX: el SO mantiene una tabla de sesiones
+(\texttt{utmp}/\texttt{wtmp}) que asocia terminales con usuarios
+autenticados.
+
+\subsection*{1.c Directorio corriente}
+
+\begin{lstlisting}
+pwd
+echo "$PWD"
+\end{lstlisting}
+
+\texttt{pwd} consulta el directorio asociado al proceso shell, mientras
+que \texttt{\$PWD} es una variable de ambiente que el shell mantiene
+sincronizada. Ambos comandos cumplen el requisito del enunciado de usar
+\emph{al menos dos formas distintas}.
+
+\subsection*{1.d Directorio home del usuario}
+
+\begin{lstlisting}
+echo "$HOME"
+cd ~
+pwd
+\end{lstlisting}
+
+\texttt{HOME} es una variable de ambiente fijada en el momento del
+\emph{login} a partir de \texttt{/etc/passwd}. El símbolo \texttt{\~{}}
+es un atajo que el shell expande a \texttt{\$HOME} antes de ejecutar el
+comando.
+
+\subsection*{1.e Metadatos de archivos}
+
+\begin{lstlisting}
+ls -la .
+ls -la /
+stat README.md /
+\end{lstlisting}
+
+\texttt{ls -la} muestra entradas ocultas y metadatos básicos (permisos,
+dueño, grupo, tamaño, fecha). \texttt{stat} agrega información de bajo
+nivel: inodo, cantidad de hard links, timestamps y dispositivo
+contenedor. Recordemos que en UNIX un archivo es una secuencia de bytes
+identificada por un inodo y la entrada de directorio asocia un nombre con
+ese inodo.
+
+\subsection*{1.f Listar contenido sin editor}
+
+\begin{lstlisting}
+cat README.md
+more README.md
+less README.md
+\end{lstlisting}
+
+\texttt{cat} vuelca todo el archivo a \texttt{stdout} mediante
+\texttt{read()} y \texttt{write()}. \texttt{more} y \texttt{less} agregan
+una capa de paginación; \texttt{less} es más flexible al permitir
+desplazamiento bidireccional.
+
+\subsection*{1.g Variables de ambiente}
+
+\begin{lstlisting}
+env | sort
+\end{lstlisting}
+
+Las variables de ambiente forman parte del \emph{contexto} del proceso y
+se pasan a los hijos mediante el tercer parámetro de \texttt{main}
+(\texttt{char *envv[]}). Las más relevantes son \texttt{USER},
+\texttt{HOME}, \texttt{PWD}, \texttt{SHELL}, \texttt{PATH} y
+\texttt{LANG}.
+
+\subsection*{1.h Directorios donde el shell busca comandos}
+
+\begin{lstlisting}
+echo "$PATH" | tr ':' '\n'
+\end{lstlisting}
+
+\texttt{PATH} es una lista de directorios separados por dos puntos. Al
+recibir un comando sin barras, el shell recorre esos directorios en
+orden y ejecuta el primer archivo regular con permiso de ejecución que
+coincida. Por seguridad, el directorio actual \texttt{.} no suele estar
+incluido.
+
+\subsection*{1.i Ubicación de un comando con \texttt{which}}
+
+\begin{lstlisting}
+which cat
+\end{lstlisting}
+
+\texttt{which} reporta el \emph{full path} del primer ejecutable que el
+shell encontrará para ese nombre según el \texttt{PATH} vigente.
+
+\subsection*{1.j Crear un archivo con al menos tres comandos}
+
+\begin{lstlisting}
+touch archivo.txt
+echo "Primera linea" > archivo.txt
+date "+%Y-%m-%d %H:%M:%S" >> archivo.txt
+echo "Tercera linea" >> archivo.txt
+cat archivo.txt
+\end{lstlisting}
+
+\texttt{touch} crea (o actualiza) el archivo. El operador \texttt{>}
+trunca y reescribe; \texttt{>>} abre en modo \emph{append}. Internamente
+el shell, antes de \texttt{exec}, abre el archivo y reasigna el
+descriptor 1 con \texttt{dup2()}.
+
+\subsection*{1.k Crear un enlace simbólico}
+
+\begin{lstlisting}
+ln -s archivo.txt archivo_link.txt
+ls -li archivo.txt archivo_link.txt
+\end{lstlisting}
+
+Un enlace simbólico es un archivo cuyo contenido es la \emph{ruta} del
+destino. Tiene su propio inodo y \texttt{ls -li} muestra la flecha
+\texttt{->} hacia el archivo real.
+
+\subsection*{1.l Eliminar el enlace y comparar con hard link}
+
+\begin{lstlisting}
+rm archivo_link.txt
+ln archivo.txt archivo_hard.txt
+ls -li archivo.txt archivo_hard.txt
+\end{lstlisting}
+
+Eliminar el symlink \emph{no} afecta al original: solo se borra la
+entrada de directorio que contenía la ruta. Un \emph{hard link}, en
+cambio, crea otra entrada que comparte el mismo inodo: el archivo solo
+desaparece del disco cuando el contador \texttt{st\_nlink} llega a cero.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{p{4.5cm} p{5cm} p{5cm}}
+\toprule
+\textbf{Característica} & \textbf{Symbolic link} & \textbf{Hard link} \\
+\midrule
+Tipo de referencia & Por ruta (texto) & Por inodo \\
+Inodo propio & Sí & No (comparte) \\
+Sobrevive al rename del original & Solo si la ruta sigue válida & Sí \\
+Sobrevive al borrado del original & No (queda \emph{roto}) & Sí \\
+Cruza filesystems & Sí & No \\
+Permitido sobre directorios & Sí & Generalmente no \\
+\bottomrule
+\end{tabular}
+\caption{Comparación entre \emph{symbolic links} y \emph{hard links}.}
+\end{table}
+
+\subsection*{1.m Programa C que muestra los argumentos}
+
+\begin{lstlisting}[style=cstyle]
+#include <stdio.h>
+
+int main(int argc, char *argv[]) {
+    printf("argc = %d\n", argc);
+    for (int i = 0; i < argc; i++) {
+        printf("argv[%d] = %s\n", i, argv[i]);
+    }
+    return 0;
+}
+\end{lstlisting}
+
+Compilación y ejecución:
+
+\begin{lstlisting}
+gcc -Wall -Wextra -o hello hello.c
+./hello arg1 arg2 arg3
+\end{lstlisting}
+
+Salida:
+
+\begin{lstlisting}
+argc = 4
+argv[0] = ./hello
+argv[1] = arg1
+argv[2] = arg2
+argv[3] = arg3
+\end{lstlisting}
+
+\paragraph{¿Por qué \texttt{./hello arg1 ... argn}?}
+Cuando el usuario escribe un nombre sin barras, el shell asume que se
+trata de un comando externo y lo busca \emph{únicamente} en los
+directorios listados en \texttt{PATH}. El directorio actual \texttt{.} no
+suele estar incluido para evitar el ataque clásico de un binario
+malicioso colocado en \texttt{cwd}. El prefijo \texttt{./} indica una
+ruta relativa explícita y evita la búsqueda en \texttt{PATH}.
+
+% =====================================================================
+\section{Ejercicio 2 --- Redirección, secuencia y filtrado}
+% =====================================================================
+
+Los archivos \texttt{correos1.txt} y \texttt{correos2.txt} contienen
+direcciones de correo (una por línea) con duplicados intencionales.
+
+\subsection*{2.a Lista ordenada y sin duplicados con archivos temporales}
+
+\begin{lstlisting}
+cat correos1.txt correos2.txt > /tmp/correos_todos.txt
+sort /tmp/correos_todos.txt > /tmp/correos_ordenados.txt
+uniq /tmp/correos_ordenados.txt > correos_ordenados_sin_duplicados.txt
+\end{lstlisting}
+
+\texttt{cat} concatena ambos archivos; \texttt{sort} los ordena;
+\texttt{uniq} elimina duplicados \emph{consecutivos}. La combinación
+\texttt{sort | uniq} elimina globalmente cualquier repetición. Los
+temporales se ubican en \texttt{/tmp} porque el SO los purga
+periódicamente.
+
+\subsection*{2.b En una sola línea con operador secuencial \texttt{;}}
+
+\begin{lstlisting}
+cat correos1.txt correos2.txt > /tmp/correos_todos.txt ; sort /tmp/correos_todos.txt > /tmp/correos_ordenados.txt ; uniq /tmp/correos_ordenados.txt > correos_ordenados_sin_duplicados.txt
+\end{lstlisting}
+
+El operador \texttt{;} ejecuta los comandos en secuencia
+\emph{independientemente} del éxito o fracaso del anterior. Si quisiéramos
+abortar al primer error usaríamos \texttt{\&\&}, pero el enunciado pide
+explícitamente operador secuencial.
+
+\subsection*{2.c Filtrar y contar direcciones de \texttt{google.com}}
+
+\begin{lstlisting}
+grep -E '@google\.com$' correos_ordenados_sin_duplicados.txt | wc -l
+\end{lstlisting}
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{grep -E} interpreta el patrón como expresión regular
+        extendida.
+    \item \texttt{@google\textbackslash.com\$} fuerza coincidencia
+        literal de \texttt{@google}, un punto literal (no un comodín),
+        \texttt{com} y el ancla de fin de línea \texttt{\$}.
+    \item El pipe envía la salida de \texttt{grep} a \texttt{wc -l}, que
+        cuenta líneas.
+\end{itemize}
+
+Con los archivos de ejemplo provistos el resultado esperado es \texttt{3}.
+
+% =====================================================================
+\section{Ejercicio 3 --- Pipes, sin temporales}
+% =====================================================================
+
+\begin{lstlisting}
+cat correos1.txt correos2.txt | sort | uniq > correos_ordenados_sin_duplicados.txt
+\end{lstlisting}
+
+Las Notas del curso describen al \emph{pipe} como un buffer acotado en el
+kernel que implementa el patrón productor/consumidor. Cuando el shell ve
+\texttt{cmd1 | cmd2}:
+
+\begin{enumerate}[leftmargin=*]
+    \item Crea el pipe con \texttt{pipe(p)}.
+    \item Hace \texttt{fork()} para lanzar ambos procesos en paralelo.
+    \item Redirige \texttt{stdout} de \texttt{cmd1} al extremo de
+        escritura (\texttt{p[1]}) y \texttt{stdin} de \texttt{cmd2} al
+        extremo de lectura (\texttt{p[0]}) usando \texttt{dup2()}.
+    \item Cierra los descriptores que cada proceso no usa: si quedaran
+        abiertos, el lector nunca vería EOF.
+\end{enumerate}
+
+\begin{center}
+\begin{tikzpicture}[node distance=1.4cm, every node/.style={font=\ttfamily\small}]
+\node[draw, rounded corners] (cat) {cat correos*.txt};
+\node[draw, rounded corners, right=of cat] (sort) {sort};
+\node[draw, rounded corners, right=of sort] (uniq) {uniq};
+\node[draw, rounded corners, right=of uniq] (out) {> archivo.txt};
+\draw[->, thick] (cat) -- node[above]{|} (sort);
+\draw[->, thick] (sort) -- node[above]{|} (uniq);
+\draw[->, thick] (uniq) -- (out);
+\end{tikzpicture}
+\end{center}
+
+A diferencia del ejercicio 2, los datos viajan por buffers en memoria sin
+crear archivos en el disco, los tres procesos ejecutan concurrentemente y
+no hay limpieza posterior.
+
+% =====================================================================
+\section{Ejercicio 4 --- Shell scripts y permisos}
+% =====================================================================
+
+\subsection*{4.1 Probar el script con \texttt{sh}}
+
+Archivo \texttt{procesar\_correos\_sin\_interprete.sh} (sin shebang):
+
+\begin{lstlisting}[style=shellstyle]
+cat correos1.txt correos2.txt | sort | uniq > correos_ordenados_sin_duplicados.txt
+echo "Archivo generado: correos_ordenados_sin_duplicados.txt"
+\end{lstlisting}
+
+Invocación:
+
+\begin{lstlisting}
+sh procesar_correos_sin_interprete.sh
+\end{lstlisting}
+
+Como \texttt{sh} se invoca explícitamente, el archivo no necesita
+permiso de ejecución; basta con poder leerlo.
+
+\subsection*{4.2 Agregar shebang y permisos}
+
+\begin{lstlisting}[style=shellstyle]
+#!/bin/sh
+set -eu
+cat correos1.txt correos2.txt | sort | uniq > correos_ordenados_sin_duplicados.txt
+echo "Archivo generado: correos_ordenados_sin_duplicados.txt"
+\end{lstlisting}
+
+\begin{lstlisting}
+chmod +x procesar_correos.sh
+./procesar_correos.sh
+\end{lstlisting}
+
+El shebang \texttt{\#!/bin/sh} le indica al kernel qué intérprete usar al
+invocar \texttt{execve()}. La opción \texttt{set -eu} aborta al primer
+error y trata como error variables sin definir; no es exigida por el
+enunciado pero es buena práctica defensiva.
+
+% =====================================================================
+\section{Ejercicio 5 --- Programa C con \texttt{exit status}}
+% =====================================================================
+
+\begin{lstlisting}[style=cstyle]
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(int argc, char *argv[]) {
+    char *endptr = NULL;
+    long value;
+
+    if (argc != 2) {
+        fprintf(stderr, "Uso: %s <0-255>\n", argv[0]);
+        return 2;
+    }
+
+    errno = 0;
+    value = strtol(argv[1], &endptr, 10);
+
+    if (errno != 0 || endptr == argv[1] || *endptr != '\0') {
+        fprintf(stderr, "Error: el argumento debe ser un entero.\n");
+        return 2;
+    }
+
+    if (value < 0 || value > 255) {
+        fprintf(stderr, "Error: exit status valido entre 0 y 255.\n");
+        return 2;
+    }
+
+    return (int)value;
+}
+\end{lstlisting}
+
+\paragraph{Justificación.}
+Las Notas del curso describen \texttt{exit(code)} como la syscall que
+finaliza un proceso \emph{limpiamente} y entrega el código al kernel,
+quien luego se lo pasa al padre vía \texttt{wait}/\texttt{waitpid}. Por
+convención \texttt{0} significa éxito y cualquier valor distinto, error.
+El kernel solo expone los \textbf{8 bits inferiores} del exit code en la
+variable \texttt{\$?} del shell, lo que justifica la validación de rango
+\texttt{[0,255]}.
+
+\subsection*{5.a Ejecutar y consultar el exit status}
+
+\begin{lstlisting}
+./myprog 7
+echo $?       # imprime 7
+\end{lstlisting}
+
+\subsection*{5.b Ejecutar otro comando si finaliza con éxito}
+
+\begin{lstlisting}
+./myprog 0 && echo "myprog termino con exito"
+\end{lstlisting}
+
+\texttt{\&\&} dispara el segundo comando solo si el primero retornó
+\texttt{0}.
+
+\subsection*{5.c Ejecutar otro comando si finaliza con error}
+
+\begin{lstlisting}
+./myprog 5 || echo "myprog termino con error"
+\end{lstlisting}
+
+\texttt{||} dispara el segundo comando solo si el primero retornó un
+valor distinto de cero.
+
+% =====================================================================
+\section{Ejercicio 6 --- Versión propia de \texttt{system()}}
+% =====================================================================
+
+La libc estándar provee \texttt{int system(const char *cmd)} como una
+abstracción sobre el patrón \texttt{fork()}/\texttt{exec()}/\texttt{wait()}.
+Una implementación equivalente es:
+
+\begin{lstlisting}[style=cstyle]
+#include <errno.h>
+#include <unistd.h>
+#include <sys/wait.h>
+
+int mysystem(const char *command) {
+    pid_t pid;
+    int status;
+
+    if (command == NULL) {
+        return access("/bin/sh", X_OK) == 0;
+    }
+
+    pid = fork();
+    if (pid < 0) return -1;
+
+    if (pid == 0) {
+        execl("/bin/sh", "sh", "-c", command, (char *)NULL);
+        _exit(127); /* exec falló: convención "comando no ejecutable" */
+    }
+
+    while (waitpid(pid, &status, 0) < 0) {
+        if (errno != EINTR) return -1;
+    }
+    return status;
+}
+\end{lstlisting}
+
+\paragraph{Decisiones de diseño relevantes.}
+\begin{itemize}[leftmargin=*]
+    \item \textbf{\texttt{/bin/sh -c <cmd>}} en lugar de \texttt{execvp}:
+        permite que el comando contenga operadores de shell (pipes,
+        redirecciones, \texttt{\&\&}, etc.).
+    \item \textbf{\texttt{\_exit(127)}} si \texttt{exec} falla: usa
+        \texttt{\_exit} y no \texttt{exit} para evitar que las funciones
+        registradas con \texttt{atexit} y los buffers de \texttt{stdio}
+        corran dos veces.
+    \item \textbf{Reintento ante \texttt{EINTR}}: una señal puede
+        interrumpir \texttt{waitpid} antes de que el hijo termine.
+\end{itemize}
+
+El \texttt{main} de prueba decodifica el \texttt{status} con
+\texttt{WIFEXITED}/\texttt{WEXITSTATUS} para reportar el exit code. Esta
+mecánica de dos pasos (\texttt{fork} + \texttt{exec}) es exactamente la
+que el shell usa para implementar redirecciones: el padre ajusta el
+ambiente del hijo (descriptores, variables) antes de invocar al nuevo
+programa.
+
+% =====================================================================
+\section{Ejercicio 7 --- Comunicación padre/hijo por \texttt{pipe()}}
+% =====================================================================
+
+\paragraph{Idea.}
+\texttt{pipe(p)} retorna dos descriptores: \texttt{p[0]} (lectura) y
+\texttt{p[1]} (escritura). Como \texttt{fork()} duplica los descriptores,
+ambos procesos los heredan; cada uno debe cerrar el extremo que no usa.
+Si el padre olvida cerrar el extremo de escritura, el hijo nunca verá
+EOF y se bloqueará indefinidamente.
+
+\begin{lstlisting}[style=cstyle]
+int p[2];
+pipe(p);
+pid_t pid = fork();
+
+if (pid == 0) {
+    /* Hijo: lee del pipe, imprime en stdout. */
+    close(p[1]);
+    char buffer[256];
+    ssize_t n;
+    printf("Hijo recibio: "); fflush(stdout);
+    while ((n = read(p[0], buffer, sizeof(buffer))) > 0)
+        write(STDOUT_FILENO, buffer, n);
+    close(p[0]);
+    _exit(0);
+}
+
+/* Padre: escribe el mensaje y cierra. */
+close(p[0]);
+write(p[1], msg, strlen(msg));
+close(p[1]);   /* dispara EOF en el hijo */
+waitpid(pid, NULL, 0);
+\end{lstlisting}
+
+Compilación y ejecución:
+
+\begin{lstlisting}
+gcc -Wall -Wextra -o pipe_padre_hijo pipe_padre_hijo.c
+./pipe_padre_hijo "Hola desde el padre"
+\end{lstlisting}
+
+Salida:
+
+\begin{lstlisting}
+Hijo recibio: Hola desde el padre
+\end{lstlisting}
+
+\textbf{Limitación:} un pipe sin nombre solo sirve entre procesos
+emparentados, porque los descriptores solo se heredan vía \texttt{fork}.
+Esa limitación se resuelve en el ejercicio siguiente.
+
+% =====================================================================
+\section{Ejercicio 8 --- Comunicación por FIFO}
+% =====================================================================
+
+Un \textbf{FIFO} (\emph{named pipe}) es un pipe con un nombre en el
+sistema de archivos. Aparece en \texttt{ls -l} con la marca \texttt{p} en
+los permisos. Se crea con la syscall \texttt{mkfifo(path, mode)} (o el
+comando equivalente) y se abre con la API estándar de archivos. Los datos
+\emph{no se almacenan en disco}: solo el \emph{nombre} vive en el
+filesystem; el buffer real está en el kernel, igual que un pipe común.
+
+\begin{lstlisting}[style=cstyle]
+#define FIFO_PATH "/tmp/practico1_fifo_pipe"
+
+mkfifo(FIFO_PATH, 0600);
+
+if (fork() == 0) {
+    int fd = open(FIFO_PATH, O_RDONLY);
+    char buf[256]; ssize_t n;
+    printf("Hijo recibio: ");
+    while ((n = read(fd, buf, sizeof(buf))) > 0)
+        write(STDOUT_FILENO, buf, n);
+    close(fd); _exit(0);
+}
+
+int fd = open(FIFO_PATH, O_WRONLY);
+write(fd, msg, strlen(msg));
+close(fd);
+wait(NULL);
+unlink(FIFO_PATH);
+\end{lstlisting}
+
+\paragraph{Sincronización implícita.}
+\texttt{open(fifo, O\_RDONLY)} se bloquea hasta que algún proceso abra
+el otro extremo (\texttt{O\_WRONLY}), y viceversa. Esta propiedad permite
+coordinar procesos que se conocen únicamente por la ruta del FIFO.
+
+\paragraph{Limpieza.}
+El FIFO sobrevive al cierre de ambos extremos; hay que removerlo
+explícitamente con \texttt{unlink()}.
+
+% =====================================================================
+\section{Ejercicio 9 --- Mini shell \texttt{minish}}
+% =====================================================================
+
+El programa \texttt{minish.c} implementa un mini shell que lee comandos
+en bucle hasta recibir \texttt{Ctrl-D} (EOF en \texttt{stdin}) y reconoce
+los siguientes operadores binarios:
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{l l}
+\toprule
+\textbf{Operador} & \textbf{Mecanismo} \\
+\midrule
+\texttt{cmd1 ; cmd2}     & Ejecutar \texttt{cmd1}, luego \texttt{cmd2}. \\
+\texttt{cmd1 \&\& cmd2}  & Ejecutar \texttt{cmd2} solo si \texttt{cmd1} retornó \texttt{0}. \\
+\texttt{cmd1 || cmd2}    & Ejecutar \texttt{cmd2} solo si \texttt{cmd1} retornó \texttt{!= 0}. \\
+\texttt{cmd1 \& cmd2}    & \texttt{cmd1} en background, \texttt{cmd2} en foreground. \\
+\texttt{cmd1 | cmd2}     & \texttt{pipe(p)} + dos \texttt{fork}/\texttt{exec} + \texttt{dup2}. \\
+\texttt{cmd < archivo}   & \texttt{open(archivo, O\_RDONLY)} + \texttt{dup2(fd, 0)}. \\
+\texttt{cmd > archivo}   & \texttt{open(...,O\_WRONLY|O\_CREAT|O\_TRUNC)} + \texttt{dup2(fd, 1)}. \\
+\texttt{cmd >> archivo}  & \texttt{open(...,O\_WRONLY|O\_CREAT|O\_APPEND)} + \texttt{dup2(fd, 1)}. \\
+\bottomrule
+\end{tabular}
+\caption{Operadores reconocidos por \texttt{minish} y su mecanismo POSIX.}
+\end{table}
+
+\paragraph{Estructura.}
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Loop principal} (\texttt{getline()}). Si retorna $<0$
+        (EOF) el shell sale.
+    \item \textbf{Tokenización} por espacios y tabulaciones; los tokens
+        se almacenan en un arreglo de punteros al buffer original
+        modificado in-situ con \texttt{\textbackslash 0}.
+    \item \textbf{Despacho recursivo} (\texttt{dispatch}). Busca
+        operadores en orden de prioridad baja a alta y descompone el
+        comando en \texttt{(left, op, right)} llamando recursivamente a
+        cada lado.
+    \item \textbf{Comando simple}: \texttt{fork} + (opcional
+        \texttt{dup2}) + \texttt{execvp}; el padre llama a
+        \texttt{waitpid} salvo en background.
+    \item \textbf{Pipe}: dos \texttt{fork} con un \texttt{pipe} previo;
+        el padre cierra ambos extremos para que los hijos vean EOF.
+\end{enumerate}
+
+\paragraph{Salida esperada.}
+\begin{lstlisting}
+$ ./minish
+minish$ echo hola ; echo mundo
+hola
+mundo
+minish$ sleep 1 & echo "sigo en foreground"
+[bg] pid=12345
+sigo en foreground
+minish$ true && echo "se ejecuto AND"
+se ejecuto AND
+minish$ false || echo "se ejecuto OR"
+se ejecuto OR
+minish$ echo hola | tr a-z A-Z
+HOLA
+minish$ ^D
+\end{lstlisting}
+
+\paragraph{Limitaciones.}
+El parsing es deliberadamente simple: no soporta comillas, expansión de
+variables ni globbing. El propósito didáctico es ilustrar el modelo
+\texttt{fork/exec/wait/pipe/dup2}, no reimplementar \texttt{bash}. La
+implementación completa se encuentra en \texttt{resolucion-9/minish.c}.
+
+% =====================================================================
+\section{Ejercicio 10 --- Captura de \texttt{SIGINT}}
+% =====================================================================
+
+\paragraph{Marco teórico.}
+Las Notas del curso describen las señales como un mecanismo básico de
+comunicación entre procesos para notificar eventos. \texttt{SIGINT}
+(interrupción) es la señal por defecto que el shell envía al proceso de
+\emph{foreground} cuando el usuario presiona \texttt{Ctrl-C}. Sin
+manejador, el kernel termina el proceso. Este ejercicio invierte ese
+comportamiento preguntando antes de finalizar.
+
+\begin{lstlisting}[style=cstyle]
+#include <ctype.h>
+#include <errno.h>
+#include <signal.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+
+static void sigint_handler(int sig) {
+    const char prompt[] =
+        "\nSIGINT recibida. Desea finalizar el proceso? [s/N]: ";
+    char answer[64];
+    ssize_t nread;
+    (void)sig;
+
+    write(STDOUT_FILENO, prompt, sizeof(prompt) - 1);
+    do {
+        nread = read(STDIN_FILENO, answer, sizeof(answer));
+    } while (nread < 0 && errno == EINTR);
+
+    for (ssize_t i = 0; i < nread; i++) {
+        unsigned char c = (unsigned char)answer[i];
+        if (!isspace(c)) {
+            if (c == 's' || c == 'S' || c == 'y' || c == 'Y')
+                _exit(0);
+            _exit(-1);
+        }
+    }
+    _exit(-1);
+}
+
+int main(void) {
+    struct sigaction sa = {0};
+    sa.sa_handler = sigint_handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_RESTART;
+    sigaction(SIGINT, &sa, NULL);
+
+    printf("Proceso en ejecucion. PID=%d\n", (int)getpid());
+    for (;;) pause();
+}
+\end{lstlisting}
+
+\paragraph{Funciones async-signal-safe.}
+Las funciones de \texttt{<stdio.h>} no son seguras para invocar dentro de
+un handler porque usan buffers y mutexes internos. POSIX define un
+subconjunto reducido de funciones \emph{async-signal-safe} (\texttt{read},
+\texttt{write}, \texttt{\_exit}, \texttt{sigaction}, etc.) y este código
+las usa exclusivamente.
+
+\paragraph{Detalle del exit \texttt{-1}.}
+El kernel solo expone los 8 bits inferiores en \texttt{\$?}, así que
+\texttt{\_exit(-1)} se observa como \texttt{255}. El programa retorna
+lógicamente \texttt{-1}; la representación en el shell es un detalle de
+codificación.
+
+% =====================================================================
+\section{Ejercicio 11 --- Mínimo global con \texttt{p} hijos y un pipe}
+% =====================================================================
+
+\paragraph{Esquema.}
+El padre crea \texttt{p} procesos hijos. Cada hijo recibe un bloque de
+\texttt{N/p} elementos (la asignación se hace por simple aritmética
+\texttt{[i*chunk, (i+1)*chunk)}), calcula su \emph{mínimo local} y lo
+envía al padre por un pipe único compartido. El padre lee \texttt{p}
+mensajes, va aplicando \texttt{min}, y reporta el resultado tras esperar
+a todos los hijos con \texttt{waitpid}.
+
+\begin{lstlisting}[style=cstyle]
+typedef struct {
+    int child_id;
+    int local_min;
+} ChildResult;
+
+/* ... validaciones de p y N ... */
+pipe(fd);
+for (int i = 0; i < p; i++) {
+    pid_t pid = fork();
+    if (pid == 0) {
+        int start = i * chunk, end = start + chunk;
+        int local_min = arr[start];
+        for (int k = start + 1; k < end; k++)
+            if (arr[k] < local_min) local_min = arr[k];
+
+        ChildResult r = { i, local_min };
+        close(fd[0]);
+        write_full(fd[1], &r, sizeof r);
+        close(fd[1]);
+        _exit(0);
+    }
+    children[i] = pid;
+}
+close(fd[1]);
+
+int global_min = INT_MAX;
+for (int i = 0; i < p; i++) {
+    ChildResult r;
+    read_full(fd[0], &r, sizeof r);
+    if (r.local_min < global_min) global_min = r.local_min;
+}
+close(fd[0]);
+for (int i = 0; i < p; i++) waitpid(children[i], NULL, 0);
+\end{lstlisting}
+
+\paragraph{¿Por qué un solo pipe basta?}
+POSIX garantiza que escrituras de hasta \texttt{PIPE\_BUF} bytes son
+\textbf{atómicas} en un pipe: dos escritores nunca mezclan sus mensajes.
+Como \texttt{sizeof(ChildResult)} es muy pequeño ($<\!\!16$ bytes), el
+padre puede leer mensajes completos en cualquier orden sin corrupción.
+
+\paragraph{Ejemplo.}
+\begin{lstlisting}
+./minimo_global_pipe 3 8 4 7 10 -2 5
+Hijo 0 -> minimo local = 4
+Hijo 1 -> minimo local = 7
+Hijo 2 -> minimo local = -2
+Minimo global = -2
+\end{lstlisting}
+
+% =====================================================================
+\section{Ejercicio 12 --- Lectura con \texttt{timeout} usando \texttt{alarm}}
+% =====================================================================
+
+\paragraph{Marco teórico.}
+Las Notas del curso muestran (Listado 6) cómo implementar timeouts: el
+kernel envía la señal \texttt{SIGALRM} cuando vence el tiempo programado
+con \texttt{alarm(N)}. El handler asociado puede marcar una bandera y, al
+volver de la syscall bloqueante, el programa decide si retornó por dato
+disponible o por interrupción.
+
+\begin{lstlisting}[style=cstyle]
+static volatile sig_atomic_t timed_out = 0;
+
+static void alarm_handler(int sig) {
+    (void)sig;
+    timed_out = 1;
+}
+
+int main(int argc, char *argv[]) {
+    int N = atoi(argv[1]);
+    char buf[256];
+
+    struct sigaction sa = {0};
+    sa.sa_handler = alarm_handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;          /* sin SA_RESTART */
+    sigaction(SIGALRM, &sa, NULL);
+
+    alarm(N);
+    ssize_t n = read(STDIN_FILENO, buf, sizeof(buf) - 1);
+    alarm(0);
+
+    if (n > 0)  { buf[n] = 0; printf("Dato: %s", buf); return 0; }
+    if (n == 0) { puts("EOF"); return 0; }
+    if (errno == EINTR && timed_out) {
+        printf("Timeout: sin datos en %d s\n", N);
+        return 124;
+    }
+    perror("read");
+    return 1;
+}
+\end{lstlisting}
+
+\paragraph{Por qué sin \texttt{SA\_RESTART}.}
+Si el handler se instalara con \texttt{SA\_RESTART}, el kernel reanudaría
+automáticamente la syscall \texttt{read} después de la señal y nunca
+veríamos \texttt{EINTR}. El timeout sería invisible. Sin
+\texttt{SA\_RESTART}, \texttt{read} retorna \texttt{-1} con
+\texttt{errno = EINTR} y podemos detectar la condición consultando la
+bandera \texttt{timed\_out}.
+
+\paragraph{Por qué \texttt{volatile sig\_atomic\_t}.}
+\texttt{volatile} impide que el compilador optimice la lectura asumiendo
+que la variable no cambia entre dos accesos. \texttt{sig\_atomic\_t} es
+el tipo más amplio que el sistema garantiza poder leer y escribir
+atómicamente desde un handler.
+
+\paragraph{Por qué \texttt{124} como exit status.}
+\texttt{coreutils} usa \texttt{124} como convención para indicar
+finalización por timeout, igual que el comando \texttt{timeout(1)}. No es
+mágico, pero facilita scripts que distinguen este caso de otros errores.
+
+\paragraph{Pruebas.}
+\begin{lstlisting}
+(sleep 1; echo "hola") | ./lee_con_timeout 5
+Dato recibido: hola
+
+(sleep 3; echo "tarde") | ./lee_con_timeout 1
+Timeout: no se recibieron datos en 1 segundos.
+echo $?  # imprime 124
+\end{lstlisting}
+
+% =====================================================================
+\section*{Cierre}
+\addcontentsline{toc}{section}{Cierre}
+% =====================================================================
+
+A lo largo del práctico se ejercitó la API POSIX como manifestación
+concreta de los conceptos teóricos del SO: el modelo de procesos
+(\texttt{fork}/\texttt{exec}/\texttt{wait}), la abstracción de archivos y
+descriptores (\texttt{open}/\texttt{read}/\texttt{write}/\texttt{dup2}),
+los mecanismos de comunicación (\texttt{pipe}, FIFO) y de notificación
+asíncrona (\texttt{signal}, \texttt{alarm}). Los operadores del shell
+funcionan exactamente como combinaciones de esas syscalls; el mini shell
+del ejercicio 9 hace explícita esa correspondencia. La materia en los
+prácticos siguientes profundiza en los temas de planificación de CPU,
+gestión de memoria y sistemas de archivos que se asoman aquí en su
+forma más cruda.
+
+% =====================================================================
+\section*{Referencias}
+\addcontentsline{toc}{section}{Referencias}
+% =====================================================================
+
+\begin{enumerate}[leftmargin=*]
+    \item Marcelo Arroyo. \emph{Notas del curso de Sistemas Operativos},
+        capítulos 1, 2 y 3. UNRC, 2026.
+        \url{https://marceloarroyo.gitlab.io/cursos/SO/}
+    \item Andrew S. Tanenbaum, Herbert Bos. \emph{Modern Operating
+        Systems}, capítulo 1, 5\textsuperscript{a} edición. Pearson,
+        2024.
+    \item POSIX.1-2017 / Single UNIX Specification. The Open Group,
+        2018.
+    \item Sección 2 de \texttt{man} (manuales de las syscalls): \texttt{man
+        2 fork}, \texttt{man 2 execve}, \texttt{man 2 pipe}, \texttt{man
+        2 sigaction}, etc.
+\end{enumerate}
+
+\end{document}

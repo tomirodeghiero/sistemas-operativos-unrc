@@ -1,0 +1,1103 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- Encoding ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands]{babel}
+\usepackage{lmodern}
+
+% --- Layout ---
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{parskip}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em plus 0.2em minus 0.1em}
+
+% --- Tables and graphics ---
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{positioning,shapes.geometric,arrows.meta}
+\usepackage{caption}
+
+% --- Code listings ---
+\usepackage{listings}
+\definecolor{codegray}{rgb}{0.96,0.96,0.96}
+\definecolor{codeborder}{rgb}{0.85,0.85,0.85}
+\definecolor{codecomment}{rgb}{0.30,0.55,0.30}
+\definecolor{codekeyword}{rgb}{0.10,0.30,0.70}
+\definecolor{codestring}{rgb}{0.65,0.15,0.10}
+
+\lstdefinestyle{cstyle}{
+    language=C,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    numbersep=8pt,
+    aboveskip=1em,
+    belowskip=1em,
+}
+
+\lstdefinestyle{shellstyle}{
+    language=bash,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstset{style=shellstyle}
+
+% --- Definition box ---
+\usepackage[most]{tcolorbox}
+\newtcolorbox{definicion}[1][]{
+    colback=blue!5!white,
+    colframe=blue!50!black,
+    fonttitle=\bfseries,
+    title=Definición,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{idea}[1][]{
+    colback=orange!5!white,
+    colframe=orange!60!black,
+    fonttitle=\bfseries,
+    title=Idea intuitiva,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+
+% --- Hyperlinks ---
+\usepackage[colorlinks=true,
+            linkcolor=blue!60!black,
+            urlcolor=blue!50!black,
+            citecolor=blue!60!black]{hyperref}
+
+% --- Title ---
+\title{
+    \vspace{-2.5em}
+    \textbf{Resumen teórico --- Sistemas Operativos} \\[0.3em]
+    \large Capítulos 1 a 3 de las Notas del curso y capítulo 1 de Tannenbaum \& Bos
+}
+\author{
+    Tomás Rodeghiero \\
+    \small Sistemas Operativos --- Universidad Nacional de Río Cuarto
+}
+\date{2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent
+Este documento es un resumen teórico de los temas iniciales de la materia
+Sistemas Operativos de la UNRC. Se basa en los capítulos 1, 2 y 3 de las
+\emph{Notas del curso} (Marcelo Arroyo) y en el capítulo 1 del libro
+\emph{Modern Operating Systems} (Tannenbaum \& Bos). El objetivo es servir
+como material de estudio: las definiciones formales se acompañan de
+explicaciones intuitivas, ejemplos y conexiones entre conceptos, de modo
+que el lector pueda preparar tanto el examen teórico como el Práctico 1
+con una comprensión sólida y articulada de los fundamentos.
+\end{abstract}
+
+\tableofcontents
+\bigskip
+
+% =====================================================================
+\section{Introducción}
+% =====================================================================
+
+Una computadora moderna es un conjunto enorme de componentes
+heterogéneos: uno o varios procesadores, memoria principal, discos,
+periféricos de entrada y salida, controladores, buses, redes. Si cada
+programador tuviera que tratar directamente con todos esos detalles, el
+desarrollo de aplicaciones sería virtualmente imposible. El
+\textbf{sistema operativo} (SO) resuelve ese problema: es la capa de
+software que se interpone entre el hardware y los programas de usuario,
+les ofrece abstracciones uniformes y administra el uso de los recursos
+disponibles.
+
+\begin{definicion}
+Un \textbf{sistema operativo} es la pieza de software que abstrae el
+hardware, administra los recursos del sistema (CPU, memoria,
+dispositivos, archivos) y ofrece a las aplicaciones servicios uniformes
+mediante \emph{llamadas al sistema}.
+\end{definicion}
+
+Las dos formas habituales de mirar al SO son complementarias:
+
+\begin{itemize}[leftmargin=*]
+    \item Como \textbf{máquina extendida}: oculta la fealdad del
+        hardware (registros del controlador de disco, bits de estado de
+        cada periférico, particularidades de cada arquitectura) y
+        presenta a los programas un modelo limpio basado en archivos,
+        procesos, sockets, etc. Tannenbaum lo resume diciendo que ``el
+        SO convierte lo feo en lo bello''.
+    \item Como \textbf{administrador de recursos}: la CPU, la memoria y
+        los dispositivos son recursos limitados que múltiples procesos
+        quieren usar al mismo tiempo. El SO multiplexa el acceso de
+        forma ordenada, justa y protegida.
+\end{itemize}
+
+\begin{idea}
+Si pensamos en un editor de video, un navegador y un cliente de correo
+abiertos a la vez en una notebook, ninguno de los tres se entera del
+otro. El SO logra esa ilusión multiplexando el procesador, partiendo la
+memoria en zonas privadas y arbitrando el acceso al disco y a la red.
+\end{idea}
+
+% =====================================================================
+\section{Estructura general de un sistema de cómputo}
+% =====================================================================
+
+\subsection{Capas de software y hardware}
+
+Las Notas del curso presentan una estratificación típica:
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Hardware:} CPUs, RAM, dispositivos.
+    \item \textbf{Kernel del SO:} corre en \emph{modo kernel}, tiene
+        acceso total al hardware.
+    \item \textbf{Bibliotecas y utilidades del sistema:} \texttt{libc},
+        shells, compiladores, servicios (\emph{daemons}). Corren en
+        \emph{modo usuario} pero son piezas del entorno operativo.
+    \item \textbf{Aplicaciones de usuario:} programas que interactúan con
+        el SO mediante la API que provee \texttt{libc} y otras
+        bibliotecas.
+\end{enumerate}
+
+La frontera entre el modo usuario y el modo kernel es central para la
+seguridad y la estabilidad del sistema. Solo el código del kernel puede
+ejecutar instrucciones privilegiadas como deshabilitar interrupciones,
+acceder a puertos de dispositivos o manipular las tablas de páginas.
+
+\subsection{Hardware mínimo de interés}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{CPU.} Ejecuta el ciclo
+        \emph{fetch--decode--execute}. Posee registros generales,
+        registros especiales (program counter, stack pointer,
+        \emph{Program Status Word}), un conjunto de instrucciones
+        propio (x86, ARM, RISC-V, \ldots) y \emph{modos de operación}.
+        Las CPUs modernas usan \emph{pipelines} y diseños
+        \emph{superscalares} que ejecutan varias instrucciones en
+        paralelo, e incluso son \emph{multi-core}.
+    \item \textbf{ROM.} Memoria no volátil con el firmware de arranque
+        (BIOS o UEFI).
+    \item \textbf{RAM.} Memoria principal volátil donde reside lo que la
+        CPU está ejecutando.
+    \item \textbf{Buses y puertos de E/S.} Conectan la CPU con
+        dispositivos. Los \emph{controladores} (controllers) ofrecen
+        registros que el kernel programa para iniciar transferencias.
+    \item \textbf{DMA.} Transfiere datos entre dispositivo y memoria sin
+        intervención de la CPU; al terminar, dispara una interrupción.
+    \item \textbf{Jerarquía de memoria.} Registros, caché L1/L2, RAM,
+        disco, todo con capacidades crecientes y velocidades
+        decrecientes.
+\end{itemize}
+
+\begin{idea}
+La idea fundamental para entender lo que viene es: la CPU pasa la mayor
+parte del tiempo \emph{esperando}. Sin algún mecanismo que aproveche el
+tiempo libre durante una operación de E/S, la máquina sería un
+desperdicio. El SO se construye alrededor de esa observación.
+\end{idea}
+
+% =====================================================================
+\section{Historia y evolución de los sistemas operativos}
+% =====================================================================
+
+Conviene mirar la evolución para entender por qué los conceptos modernos
+existen.
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Primera generación (1945--1955), tubos de vacío.}
+        No había SO. Los programas eran \emph{auto-contenidos}: cada
+        uno incluía su propio código de E/S y rutinas matemáticas. Se
+        cargaban manualmente vía \emph{plugboards} o cintas.
+    \item \textbf{Segunda generación (1955--1965), transistores y batch
+        systems.} Aparecen los \emph{lotes (batch)}: una pila de
+        \emph{jobs} se ejecuta secuencialmente. El SO incipiente
+        gestiona la sucesión de comandos
+        (\$JOB, \$FORTRAN, \$LOAD, \$RUN, \$END).
+    \item \textbf{Tercera generación (1965--1980), circuitos integrados
+        y multiprogramación.} La CPU se vuelve más rápida que la E/S, así
+        que se carga \emph{más de un programa} en memoria a la vez y, al
+        bloquearse uno por E/S, otro toma la CPU. Esta es la idea de
+        \textbf{multiprogramación}. El \emph{spooling} permite leer
+        nuevos jobs desde disco. Aparece el \textbf{tiempo compartido
+        (timesharing)} para dar respuesta interactiva
+        (CTSS, MULTICS). Surge UNIX.
+    \item \textbf{Cuarta generación (1980--presente), computadoras
+        personales.} CP/M, MS-DOS, MacOS, Windows, Linux. Los SO se
+        vuelven \emph{multiusuario} y \emph{multitarea} en hardware
+        protegido. Se popularizan las interfaces gráficas (GUI).
+    \item \textbf{Quinta generación (1990--presente), móviles.} Symbian,
+        iOS, Android. Misma teoría, pero adaptada a recursos limitados,
+        consumo y entornos táctiles.
+\end{enumerate}
+
+Una idea recurrente que aparece en el libro de Tannenbaum: las
+tecnologías y técnicas se reinventan cíclicamente (``ontogeny
+recapitulates phylogeny''). Cada nueva clase de dispositivos
+(minicomputadoras, micros, smartphones, smartcards) suele empezar
+\emph{primitiva} y va incorporando, a medida que el hardware lo
+permite, las mismas técnicas que ya existían en mainframes.
+
+% =====================================================================
+\section{Funciones y objetivos del sistema operativo}
+% =====================================================================
+
+\subsection{Objetivos generales}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Abstraer el hardware.} Por ejemplo, en UNIX los
+        dispositivos aparecen como \emph{archivos especiales} en
+        \texttt{/dev}, y el almacenamiento masivo se modela como un
+        \emph{sistema de archivos} con directorios y nombres
+        simbólicos.
+    \item \textbf{Administrar recursos.} Multiplexa la CPU entre
+        procesos, particiona la memoria, arbitra el acceso a los
+        dispositivos.
+    \item \textbf{Proveer servicios.} Las \emph{llamadas al sistema}
+        ofrecen E/S, manejo de procesos, archivos, comunicación, redes,
+        sincronización.
+    \item \textbf{Proteger el sistema.} Aislar los procesos entre sí y
+        proteger al kernel de errores y abusos del software de usuario.
+\end{itemize}
+
+\subsection{Multiplexión en tiempo y en espacio}
+
+Tannenbaum distingue dos modos de compartir un recurso:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Multiplexión en tiempo:} los usuarios o procesos se
+        turnan. La CPU es un caso paradigmático: en un instante dado
+        solo puede ejecutar un proceso, así que el SO conmuta entre
+        ellos rápidamente. Otro ejemplo es la cola de impresión.
+    \item \textbf{Multiplexión en espacio:} cada cliente recibe una
+        \emph{porción} del recurso al mismo tiempo. La memoria principal
+        se divide entre procesos y el espacio de disco entre archivos.
+\end{itemize}
+
+\subsection{Tipos de sistemas operativos}
+
+Las Notas y el libro coinciden en un \emph{zoo} de variantes:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Mainframes:} priorizan el procesamiento de muchos jobs
+        en paralelo (batch, transaccional, timesharing).
+    \item \textbf{Servidores:} multiusuario, atienden clientes por red.
+    \item \textbf{Multiprocesadores:} con varios CPUs (o cores) en una
+        sola máquina.
+    \item \textbf{PCs y portátiles (escritorio):} buscan dar buen
+        soporte a un usuario interactivo.
+    \item \textbf{Móviles:} multiplican GUIs táctiles, gestión agresiva
+        de la batería y servicios de red.
+    \item \textbf{Embedded y RTOS:} corren en dispositivos donde el
+        software es fijo (microondas, automóviles, control industrial).
+        Los \emph{RTOS} garantizan respuestas dentro de plazos
+        acotados; pueden ser \emph{hard} (deadlines absolutos) o
+        \emph{soft}.
+    \item \textbf{Sensor-node y smartcards:} extremadamente reducidos.
+\end{itemize}
+
+% =====================================================================
+\section{Kernel, modo usuario y modo kernel}
+% =====================================================================
+
+\subsection{El kernel}
+
+\begin{definicion}
+El \textbf{kernel} es el núcleo del sistema operativo: la porción de
+código que corre en \emph{modo supervisor} y tiene acceso completo al
+hardware. Incluye el manejo de procesos, la gestión de memoria, los
+\emph{device drivers}, el sistema de archivos y la pila de red.
+\end{definicion}
+
+Un programa de usuario común \emph{no} es parte del kernel, aun si es
+fundamental (la \texttt{libc}, el shell, los servicios de impresión
+viven en \emph{user space}). La frontera precisa puede ser borrosa: en
+sistemas tipo microkernel hasta el sistema de archivos puede vivir en
+modo usuario.
+
+\subsection{Modos de operación de la CPU}
+
+Las CPUs modernas implementan al menos dos \emph{niveles de privilegio}:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Modo kernel (supervisor).} Toda instrucción es legal:
+        habilitar/deshabilitar interrupciones, acceder a puertos,
+        modificar registros de control de memoria, cambiar el modo.
+    \item \textbf{Modo usuario.} Solo un subconjunto seguro de
+        instrucciones está permitido. Cualquier intento de ejecutar una
+        instrucción privilegiada genera una excepción y el kernel toma
+        el control.
+\end{itemize}
+
+El bit que determina el modo está en el \emph{Program Status Word}
+(PSW). El cambio de modo solo se produce mediante mecanismos
+controlados: una interrupción, una excepción o una llamada al sistema.
+
+\subsection{Mecanismos de protección}
+
+Para que la multiprogramación sea segura se necesitan, según las Notas:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Confinamiento:} cada proceso solo puede acceder a su
+        propio espacio de memoria. La CPU genera una \emph{segmentation
+        fault} si lo viola.
+    \item \textbf{Control:} los procesos no deben poder ejecutar
+        instrucciones privilegiadas que les permitan tomar el control
+        del kernel.
+\end{itemize}
+
+\begin{idea}
+Sin protección, un \emph{bug} en un programa podría apagar el sistema o
+robar datos de otro. El hardware moderno (MMU, anillos de privilegio)
+está diseñado precisamente para ofrecerle al SO los mecanismos
+necesarios para implementar esos invariantes.
+\end{idea}
+
+% =====================================================================
+\section{Arquitecturas de kernel}
+% =====================================================================
+
+Tanto las Notas como el libro discuten varios estilos de diseño:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Monolíticos.} Todos los subsistemas se compilan y
+        enlazan en un único ejecutable; se invocan entre sí como
+        funciones ordinarias. Son simples y eficientes, pero un bug en
+        un módulo puede afectar a todo el kernel. Ejemplos:
+        UNIX clásico, Linux, FreeBSD.
+    \item \textbf{Microkernels.} El kernel es muy pequeño y solo provee
+        mecanismos básicos (planificación, IPC). Los subsistemas
+        (filesystems, drivers, redes) corren como procesos
+        independientes que se comunican por mensajes. Más robustos
+        pero con sobrecarga de IPC. Ejemplos: Minix, L4, MS-Windows
+        moderno (en parte).
+    \item \textbf{Híbridos.} Combinan ambas ideas; ejemplo: macOS, que
+        sobre el microkernel Mach corre buena parte de BSD UNIX como
+        servicios.
+    \item \textbf{Máquinas virtuales.} Un \emph{hypervisor} multiplexa
+        el hardware entre varios SO huéspedes, cada uno corriendo
+        encima de su propio entorno virtual. Ejemplos: KVM,
+        Xen, VMware.
+    \item \textbf{Contenedores.} \emph{No son virtualización}: comparten
+        un mismo kernel, pero aíslan grupos de procesos y recursos
+        (filesystems, redes virtuales, namespaces). En GNU-Linux se
+        implementan con \emph{cgroups}; ejemplo de uso: Docker.
+\end{itemize}
+
+Un principio de diseño recurrente: separar \emph{mecanismos} (en las
+capas bajas) de \emph{políticas} (en las capas altas) para favorecer la
+flexibilidad. Por ejemplo, el kernel implementa el mecanismo de cambio
+de contexto y el planificador define la política.
+
+% =====================================================================
+\section{Booting: arranque del sistema}
+% =====================================================================
+
+Resumen del proceso descripto en las Notas:
+
+\begin{enumerate}[leftmargin=*]
+    \item Al encender, la CPU comienza a ejecutar código en una
+        dirección fija de la ROM: el \emph{firmware} (BIOS o UEFI).
+    \item El firmware verifica RAM, dispositivos, y carga el primer
+        sector del disco de arranque (MBR) o, en UEFI, un ejecutable
+        de la partición EFI.
+    \item Ese código suele ser un \emph{bootloader} (GRUB) que carga
+        el kernel del SO en memoria y le transfiere el control.
+    \item El kernel inicializa subsistemas (drivers, planificador,
+        sistemas de archivos) y, finalmente, lanza el primer proceso de
+        usuario (en UNIX: \texttt{init}, \texttt{systemd} o
+        \texttt{launchd}). Ese proceso es el ancestro de todos los
+        demás.
+\end{enumerate}
+
+% =====================================================================
+\section{API, ABI y POSIX}
+% =====================================================================
+
+\begin{definicion}
+La \textbf{API} (\emph{Application Programming Interface}) es la
+interfaz a nivel de código fuente: declaraciones de funciones, tipos de
+datos y constantes que el programador usa para invocar servicios del
+sistema.
+\end{definicion}
+
+\begin{definicion}
+La \textbf{ABI} (\emph{Application Binary Interface}) es la interfaz de
+bajo nivel que especifica cómo se pasan argumentos, cómo se llaman las
+funciones, qué registros se preservan, y qué formato tienen los
+ejecutables (\texttt{ELF} en GNU-Linux, \texttt{Mach-O} en macOS,
+\texttt{PE} en Windows).
+\end{definicion}
+
+\begin{definicion}
+\textbf{POSIX} (\emph{Portable Operating System Interface}) es un
+estándar del IEEE que define una API mínima común para los sistemas
+tipo UNIX. Especifica syscalls (\texttt{open}, \texttt{read},
+\texttt{write}, \texttt{fork}, \texttt{exec}, \ldots), utilidades de
+shell y semánticas asociadas. Un programa que respeta POSIX corre, con
+mínimas adaptaciones, en cualquier UNIX certificado.
+\end{definicion}
+
+% =====================================================================
+\section{Programas, procesos y espacios de direcciones}
+% =====================================================================
+
+\subsection{Programa vs.\ proceso}
+
+Un \textbf{programa} es un archivo ejecutable: una secuencia de
+instrucciones de máquina y datos almacenados en disco. Un
+\textbf{proceso}, en cambio, es ese programa \emph{en ejecución}, con
+todo el contexto que necesita: registros, memoria, archivos abiertos,
+etc.
+
+\begin{definicion}
+Un \textbf{proceso} es una instancia de un programa en ejecución. En un
+sistema multitarea pueden coexistir múltiples instancias del mismo
+programa.
+\end{definicion}
+
+\subsection{Imagen de memoria de un proceso}
+
+En UNIX un proceso tiene tres áreas principales (segmentos):
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Texto (text):} las instrucciones del programa. Es de
+        solo lectura y se puede compartir entre instancias.
+    \item \textbf{Datos (data):} variables globales y constantes
+        inicializadas o no. Crece con \texttt{brk}/\texttt{sbrk} (y, en
+        la práctica, vía \texttt{malloc}).
+    \item \textbf{Pila (stack):} marcos de activación de funciones, con
+        parámetros, variables locales y direcciones de retorno. Crece
+        en sentido contrario a los datos.
+\end{itemize}
+
+Entre la pila y los datos queda un hueco de direcciones libres. La pila
+crece hacia abajo (direcciones decrecientes) y los datos hacia arriba.
+
+\subsection{Process control block (PCB)}
+
+El kernel representa cada proceso con una estructura llamada \emph{PCB}
+(o \emph{task descriptor}) que contiene:
+
+\begin{itemize}[leftmargin=*]
+    \item Identificador del proceso (\texttt{pid}).
+    \item Estado: \texttt{RUNNING}, \texttt{READY}, \texttt{WAITING},
+        \texttt{ZOMBIE}, \ldots
+    \item Valor de los registros, incluido el \emph{program counter} y
+        el \emph{stack pointer}.
+    \item Lista de áreas de memoria en uso.
+    \item Tabla de archivos abiertos (descriptores).
+    \item Información de seguridad (UID, GID), señales pendientes,
+        prioridad, padre, hijos.
+\end{itemize}
+
+\subsection{Espacio de direcciones y memoria virtual}
+
+Cada proceso ve su propio espacio de direcciones lineal, típicamente
+desde la dirección 0 hasta un máximo (por ejemplo, $2^{64}-1$ en una
+plataforma de 64 bits). La \emph{MMU} (\emph{Memory Management Unit})
+traduce esas direcciones \emph{virtuales} a direcciones \emph{físicas}
+de RAM, posibilitando además la \textbf{memoria virtual}: páginas que
+no se usan se llevan al disco y se traen a demanda. Esto permite
+ejecutar programas más grandes que la memoria física.
+
+\subsection{Árbol de procesos}
+
+Cuando un proceso crea hijos, los hijos pueden a su vez crear nietos,
+formando un árbol. Ejemplo típico: \texttt{init} es la raíz, lanza
+\texttt{getty}/\texttt{login}, que lanzan el shell del usuario, que a
+su vez lanza los comandos.
+
+% =====================================================================
+\section{Llamadas al sistema (syscalls)}
+% =====================================================================
+
+\subsection{Definición y mecanismo}
+
+\begin{definicion}
+Una \textbf{llamada al sistema} es una función que un proceso de
+usuario invoca para pedir un servicio al kernel. Se implementan con
+una instrucción especial (\emph{trap}, \emph{syscall},
+\emph{software interrupt}) que provoca un cambio de modo.
+\end{definicion}
+
+El proceso típico de una syscall, según la figura 1-17 del libro:
+
+\begin{enumerate}[leftmargin=*]
+    \item El programa apila los parámetros en la pila o los pone en
+        registros, según la ABI.
+    \item Llama a la función de biblioteca correspondiente (por
+        ejemplo, \texttt{read} de \texttt{libc}).
+    \item Esa función coloca el \emph{número de syscall} en un
+        registro convenido.
+    \item Ejecuta la instrucción \texttt{TRAP} (o \texttt{syscall}, en
+        x86-64).
+    \item La CPU cambia a modo kernel y salta a un punto fijo del
+        kernel: el \emph{trap handler}.
+    \item El handler usa el número para indexar una tabla de
+        despachadores y llama a la rutina del kernel que corresponde.
+    \item Cuando la rutina termina, el kernel restaura el contexto y
+        retorna al punto siguiente al \texttt{TRAP}, ya en modo
+        usuario.
+\end{enumerate}
+
+\begin{idea}
+Una syscall es \emph{como} una llamada a función ordinaria, pero con
+dos diferencias importantes: (i) cambia de modo de privilegio y (ii) no
+salta a una dirección arbitraria, sino a un punto fijo del kernel.
+\end{idea}
+
+\subsection{Las syscalls POSIX más usadas}
+
+A continuación, una selección de las que aparecen en las Notas y en el
+libro (Figura 1-18 de Tannenbaum), agrupadas por área:
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{p{4.5cm} p{9cm}}
+\toprule
+\textbf{Syscall} & \textbf{Función} \\
+\midrule
+\multicolumn{2}{l}{\emph{Procesos}} \\
+\midrule
+\texttt{pid = fork()} & Crea un proceso hijo, copia exacta del padre. \\
+\texttt{exit(status)} & Finaliza el proceso con el código indicado. \\
+\texttt{waitpid(pid,\&st,opts)} & Espera la terminación de un hijo. \\
+\texttt{execve(path,argv,envv)} & Reemplaza la imagen de memoria por
+otro programa. \\
+\texttt{getpid() / getppid()} & Devuelve el PID propio o del padre. \\
+\texttt{kill(pid, sig)} & Envía una señal a un proceso. \\
+\texttt{sleep(n)} & Bloquea al proceso \texttt{n} segundos. \\
+\midrule
+\multicolumn{2}{l}{\emph{Archivos}} \\
+\midrule
+\texttt{fd = open(path,mode)} & Abre un archivo y devuelve un
+descriptor. \\
+\texttt{n = read(fd,buf,n)} & Lee \texttt{n} bytes en el buffer. \\
+\texttt{n = write(fd,buf,n)} & Escribe \texttt{n} bytes desde el
+buffer. \\
+\texttt{close(fd)} & Cierra el descriptor. \\
+\texttt{lseek(fd,off,whence)} & Mueve el offset interno de E/S. \\
+\texttt{stat(path,\&st)} & Obtiene metadatos del archivo. \\
+\texttt{dup(fd)} & Duplica un descriptor en el siguiente slot libre. \\
+\texttt{pipe(p)} & Crea un pipe sin nombre. \\
+\midrule
+\multicolumn{2}{l}{\emph{Directorios y filesystems}} \\
+\midrule
+\texttt{chdir(dir)} & Cambia el directorio de trabajo. \\
+\texttt{mkdir(name,mode)} & Crea un directorio. \\
+\texttt{link(f1,f2)} & Crea un \emph{hard link}. \\
+\texttt{unlink(name)} & Elimina una entrada de directorio. \\
+\texttt{mount/umount} & Monta o desmonta un filesystem. \\
+\midrule
+\multicolumn{2}{l}{\emph{Misceláneas}} \\
+\midrule
+\texttt{chmod(name,mode)} & Cambia los bits de protección. \\
+\texttt{time(\&t)} & Devuelve segundos desde el 1/1/1970. \\
+\texttt{alarm(n)} & Programa la señal \texttt{SIGALRM}. \\
+\bottomrule
+\end{tabular}
+\caption{Algunas de las syscalls POSIX más comunes.}
+\end{table}
+
+% =====================================================================
+\section{Interrupciones y excepciones}
+% =====================================================================
+
+Las interrupciones son la forma estándar en que el hardware notifica
+eventos asincrónicos al software:
+
+\begin{itemize}[leftmargin=*]
+    \item Un dispositivo termina una transferencia y dispara una
+        \emph{interrupt request} (IRQ).
+    \item El controlador de interrupciones le avisa a la CPU.
+    \item La CPU termina la instrucción actual, salva el PC y el PSW
+        en la pila, conmuta a modo kernel y salta al \emph{interrupt
+        handler} indexado en el \emph{interrupt vector}.
+    \item El handler atiende la interrupción y retorna; la CPU
+        restaura el contexto y continúa el flujo previo.
+\end{itemize}
+
+Las \emph{excepciones} son disparadas por la propia CPU en respuesta a
+condiciones del programa: división por cero, acceso a memoria
+prohibida, instrucción ilegal. El kernel decide si terminar el
+proceso, ignorar el problema o convertirlo en una señal manejable.
+
+Un detalle importante: las syscalls también se implementan con un
+mecanismo similar al de las interrupciones (instrucción \texttt{TRAP}
+o \emph{software interrupt}), por lo que comparten infraestructura.
+
+\subsection{Métodos de E/S}
+
+Tannenbaum distingue tres formas de hacer entrada/salida:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Busy waiting (polling):} el driver inicia la
+        operación y se queda en un bucle preguntando por el estado del
+        dispositivo. Simple, pero desperdicia CPU.
+    \item \textbf{Por interrupciones:} el driver inicia la operación y
+        retorna; cuando el dispositivo termina, dispara una
+        interrupción que despierta al proceso.
+    \item \textbf{DMA:} el chip DMA copia datos entre dispositivo y
+        memoria sin intervenir la CPU; al terminar, una interrupción
+        cierra el ciclo.
+\end{itemize}
+
+% =====================================================================
+\section{Multiprogramación, multitarea y tiempo compartido}
+% =====================================================================
+
+\begin{definicion}
+La \textbf{multiprogramación} es la técnica de mantener varios
+procesos cargados en memoria al mismo tiempo y multiplexar la CPU
+entre ellos para mantenerla ocupada incluso durante operaciones de
+E/S.
+\end{definicion}
+
+\begin{definicion}
+La \textbf{multitarea} es la propiedad de un SO de ejecutar
+aparentemente varios procesos en simultáneo. Puede ser
+\emph{cooperativa} (los procesos ceden voluntariamente la CPU) o
+\emph{preemptiva} (el kernel les puede sacar la CPU).
+\end{definicion}
+
+\begin{definicion}
+El \textbf{tiempo compartido (timesharing)} es una variante de
+multiprogramación interactiva en la que el kernel, ante una
+interrupción periódica del reloj, puede quitarle la CPU al proceso
+corriente y dársela a otro.
+\end{definicion}
+
+El cambio de proceso se llama \textbf{context switch}. Implica salvar
+el estado del proceso saliente (registros, PC, PSW, mappings de la
+MMU) en su PCB y restaurar el del proceso entrante. Es una operación
+relativamente costosa que el SO trata de minimizar.
+
+\begin{idea}
+La sensación de simultaneidad surge porque el SO multiplexa muy
+rápido. En un único instante, una CPU mononúcleo solo está ejecutando
+\emph{un} proceso; la ilusión de paralelismo se construye sobre el
+hecho de que cada proceso recibe muchos rebanadas pequeñas de tiempo
+por segundo.
+\end{idea}
+
+% =====================================================================
+\section{El shell y la sesión de usuario}
+% =====================================================================
+
+\subsection{Sesiones, login y multiusuario}
+
+Un sistema multiusuario maneja \emph{sesiones}. Una terminal autentica
+al usuario (\emph{login}), levanta un shell con sus credenciales
+(\texttt{UID}, \texttt{GID}, \texttt{HOME}) y queda lista para recibir
+comandos. El cierre de la sesión (\texttt{Ctrl-D} o \texttt{exit})
+termina ese shell; \texttt{init} reinicia el ciclo en esa terminal.
+
+\subsection{El shell}
+
+\begin{definicion}
+Un \textbf{shell} es un intérprete REPL (read--eval--print loop) que
+recibe comandos del usuario, los analiza y ejecuta el programa
+correspondiente. Implementa además operadores que combinan procesos
+(redirección, secuencia, pipes, condicionales).
+\end{definicion}
+
+Cada vez que el usuario escribe un comando, el shell hace
+\texttt{fork}, en el hijo aplica las redirecciones pedidas y ejecuta
+\texttt{execve}; el padre espera con \texttt{waitpid}. El esqueleto
+mínimo aparece en Tannenbaum (Figura 1-19) como:
+
+\begin{lstlisting}[style=cstyle]
+while (TRUE) {
+    type_prompt();
+    read_command(command, parameters);
+    if (fork() != 0) {
+        waitpid(-1, &status, 0);   /* padre espera al hijo */
+    } else {
+        execve(command, parameters, 0);  /* hijo ejecuta el comando */
+    }
+}
+\end{lstlisting}
+
+\subsection{Operadores del shell}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Secuenciales:} \texttt{cmd1 ; cmd2} ejecuta los dos
+        en orden, sin importar el éxito.
+    \item \textbf{Condicionales:} \texttt{cmd1 \&\& cmd2} ejecuta
+        \texttt{cmd2} solo si \texttt{cmd1} terminó con
+        \texttt{exit\_code = 0}; \texttt{cmd1 || cmd2} hace lo
+        contrario.
+    \item \textbf{Background:} \texttt{cmd \&} lanza el comando como
+        proceso de fondo; el shell asigna un \emph{job id} y devuelve
+        el control de inmediato.
+    \item \textbf{Redirección:} \texttt{cmd > file} (sobreescribe),
+        \texttt{cmd >> file} (append), \texttt{cmd < file}, \texttt{cmd
+        2> file} (redirige stderr).
+    \item \textbf{Pipes:} \texttt{cmd1 | cmd2} envía la salida estándar
+        del primero a la entrada estándar del segundo.
+\end{itemize}
+
+\subsection{Variables de ambiente y \texttt{PATH}}
+
+Cada sesión tiene un conjunto de \emph{variables de ambiente} que se
+heredan a los procesos hijos en el tercer parámetro de \texttt{main}
+(\texttt{char *envv[]}). Las relevantes:
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{HOME}: directorio personal.
+    \item \texttt{PWD}: directorio actual.
+    \item \texttt{USER}: usuario actual.
+    \item \texttt{SHELL}: intérprete configurado.
+    \item \texttt{PATH}: lista de directorios separados por
+        \texttt{:} donde el shell busca ejecutables. Si el comando se
+        invoca con barras (\texttt{./prog} o \texttt{/usr/bin/prog}) se
+        toma como ruta directa; si no, se busca en \texttt{PATH}.
+\end{itemize}
+
+% =====================================================================
+\section{Archivos y sistemas de archivos}
+% =====================================================================
+
+\subsection{Archivos como secuencia de bytes}
+
+Para la mayoría de los SO modernos, un archivo es simplemente una
+secuencia de bytes. La estructura interna (texto, ELF, JPEG, \ldots)
+la imponen las aplicaciones, no el kernel. Los archivos se identifican
+por su \emph{path}, que puede ser \emph{absoluto} (empieza en la raíz
+\texttt{/}) o \emph{relativo} al directorio de trabajo.
+
+Cada archivo tiene metadatos (tamaño, propietario, permisos,
+timestamps, contador de enlaces, tipo) almacenados en una estructura
+llamada \textbf{inodo}. La entrada de directorio asocia un nombre con
+un inodo.
+
+\subsection{Tipos de archivos en UNIX}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Regulares:} datos de usuario, código binario, texto.
+    \item \textbf{Directorios:} contienen pares
+        \emph{(nombre, inodo)}. Cada uno tiene siempre \texttt{.} y
+        \texttt{..}.
+    \item \textbf{Archivos especiales} (en \texttt{/dev}): representan
+        dispositivos. Pueden ser \emph{block special} (discos) o
+        \emph{character special} (terminales, mouse).
+    \item \textbf{Pipes con nombre (FIFO):} archivos especiales para
+        comunicación entre procesos no emparentados.
+    \item \textbf{Enlaces:} ya sean \emph{symbolic} (apuntan por ruta)
+        o \emph{hard} (otra entrada al mismo inodo).
+\end{itemize}
+
+\subsection{Descriptores de archivo}
+
+\begin{definicion}
+Un \textbf{descriptor de archivo} es un entero no negativo que el
+kernel le asigna a un proceso al abrir un recurso. El proceso lo usa
+en las syscalls posteriores (\texttt{read}, \texttt{write},
+\texttt{close}, \texttt{lseek}).
+\end{definicion}
+
+Cada proceso, al ser lanzado por \texttt{init}, hereda tres
+descriptores conectados a la terminal:
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{0}: \emph{stdin} (entrada estándar, teclado).
+    \item \texttt{1}: \emph{stdout} (salida estándar, pantalla).
+    \item \texttt{2}: \emph{stderr} (salida de errores, pantalla).
+\end{itemize}
+
+La syscall \texttt{dup(fd)} duplica un descriptor en el primer slot
+libre; combinada con \texttt{close} y \texttt{open}, es la base de las
+redirecciones de E/S del shell.
+
+\subsection{Filesystem jerárquico}
+
+Las Notas y el libro coinciden en describir el filesystem como un
+árbol con un único directorio raíz \texttt{/}. Los filesystems
+removibles (CDs, USB, particiones) se incorporan al árbol mediante la
+syscall \texttt{mount}, que los \emph{ata} a un directorio existente.
+\texttt{umount} hace lo contrario.
+
+\subsection{Permisos UNIX}
+
+Cada archivo tiene un \emph{modo} de 9 bits agrupados en tres
+ternas (dueño, grupo, otros) con los flags \texttt{r} (lectura),
+\texttt{w} (escritura) y \texttt{x} (ejecución). Por ejemplo, el modo
+\texttt{rwxr--r--} permite al dueño leer, escribir y ejecutar; al
+grupo y a otros, solo leer. Para directorios, \texttt{x} significa
+permiso para \emph{atravesarlos}.
+
+% =====================================================================
+\section{Pipes y FIFOs (IPC)}
+% =====================================================================
+
+\subsection{Pipes sin nombre}
+
+\begin{definicion}
+Un \textbf{pipe} es un buffer acotado en el kernel con dos extremos
+(lectura y escritura) que implementa el patrón productor/consumidor.
+La syscall \texttt{pipe(p)} crea uno y devuelve dos descriptores:
+\texttt{p[0]} (lectura) y \texttt{p[1]} (escritura).
+\end{definicion}
+
+Los pipes solo permiten comunicar procesos \emph{emparentados} porque
+los descriptores se comparten vía \texttt{fork}. El comando shell
+\texttt{cmd1 | cmd2} se implementa así:
+
+\begin{lstlisting}[style=cstyle]
+int p[2];
+pipe(p);
+if (fork() == 0) {                 /* primer hijo: cmd1 */
+    close(p[0]);                   /* no lee del pipe */
+    dup2(p[1], STDOUT_FILENO);     /* su stdout va al pipe */
+    close(p[1]);
+    execvp("cmd1", args1);
+}
+if (fork() == 0) {                 /* segundo hijo: cmd2 */
+    close(p[1]);                   /* no escribe en el pipe */
+    dup2(p[0], STDIN_FILENO);      /* su stdin viene del pipe */
+    close(p[0]);
+    execvp("cmd2", args2);
+}
+close(p[0]); close(p[1]);
+wait(NULL); wait(NULL);
+\end{lstlisting}
+
+\textbf{Importante:} si el padre no cierra ambos extremos, el lector
+nunca verá EOF y se quedará bloqueado para siempre.
+
+\subsection{FIFOs (pipes con nombre)}
+
+Un \textbf{FIFO} es un pipe que tiene un nombre en el sistema de
+archivos. Se crea con \texttt{mkfifo(path, mode)} y se abre con
+\texttt{open}/\texttt{read}/\texttt{write}/\texttt{close}. Permite
+comunicar procesos \emph{independientes} (sin parentesco). Los datos
+no se almacenan en disco; el archivo solo da un punto de encuentro y
+los datos viven en el buffer del kernel mientras hay procesos
+conectados.
+
+% =====================================================================
+\section{Señales y alarmas}
+% =====================================================================
+
+\subsection{Señales}
+
+\begin{definicion}
+Una \textbf{señal} es una notificación asíncrona de un evento enviada
+por el kernel (o por otro proceso vía \texttt{kill}) a un proceso
+destinatario. Es el ``equivalente software'' de una interrupción.
+\end{definicion}
+
+Algunos ejemplos:
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{SIGINT} (\texttt{Ctrl-C}): interrumpir el proceso.
+    \item \texttt{SIGTSTP} (\texttt{Ctrl-Z}): suspenderlo.
+    \item \texttt{SIGSEGV}: acceso a memoria inválida.
+    \item \texttt{SIGFPE}: error aritmético (división por cero).
+    \item \texttt{SIGALRM}: alarma vencida.
+    \item \texttt{SIGKILL}: terminación incondicional. No se puede
+        manejar ni ignorar.
+\end{itemize}
+
+Un proceso puede instalar un \emph{handler} con \texttt{signal} o
+\texttt{sigaction}; cuando el kernel le entrega la señal, le
+\emph{salta} al handler antes de continuar el flujo normal. Si no hay
+handler, el kernel ejecuta la acción por defecto (terminar, ignorar,
+suspender, según la señal).
+
+\textbf{Restricción importante:} dentro de un handler solo deben
+invocarse funciones \emph{async-signal-safe}: \texttt{read},
+\texttt{write}, \texttt{\_exit}, \texttt{sigaction}, etc. Las
+funciones de \texttt{stdio} (\texttt{printf}, \texttt{fgets},
+\texttt{scanf}) usan buffers internos que pueden quedar en estado
+inconsistente al ser interrumpidos.
+
+\subsection{Alarmas}
+
+La syscall \texttt{alarm(n)} le pide al kernel que envíe
+\texttt{SIGALRM} luego de \texttt{n} segundos. Es la base para
+implementar \emph{timeouts} sobre operaciones bloqueantes:
+
+\begin{lstlisting}[style=cstyle]
+signal(SIGALRM, on_alarm);
+alarm(5);                         /* 5 segundos */
+nread = read(STDIN_FILENO, buf, n);
+alarm(0);                         /* cancelar si llegó dato */
+\end{lstlisting}
+
+% =====================================================================
+\section{Hilos y concurrencia (introducción)}
+% =====================================================================
+
+Un proceso clásico tiene un único hilo de ejecución (un \emph{program
+counter}, una pila). Un \textbf{thread} es un hilo de ejecución
+independiente que comparte el espacio de direcciones con otros hilos
+del mismo proceso. Los threads se introducen en el capítulo 1 como
+``procesos livianos'' y permiten paralelizar dentro de una misma
+aplicación. La sincronización (mutexes, semáforos, condiciones) es
+necesaria para acceder a datos compartidos sin condiciones de carrera;
+ese tema se desarrolla en prácticos posteriores.
+
+% =====================================================================
+\section{El lenguaje C y la cadena de herramientas}
+% =====================================================================
+
+Las Notas dedican el capítulo 3 a presentar C y la \emph{toolchain}
+porque son el vehículo natural para programar el SO y las
+aplicaciones que ejercitan sus syscalls. Conceptos relevantes:
+
+\subsection{Tipos y construcciones}
+
+\begin{itemize}[leftmargin=*]
+    \item Tipos básicos: \texttt{char}, \texttt{int}, \texttt{long}
+        (con/sin signo), \texttt{float}, \texttt{double}.
+    \item Compuestos: arreglos, strings (terminados en \texttt{\textbackslash 0}),
+        \texttt{struct}, \texttt{union}.
+    \item Punteros y aritmética de punteros.
+    \item Funciones: pasaje por valor, simulación de pasaje por
+        referencia con punteros, funciones variádicas como
+        \texttt{printf}.
+    \item Módulos: separación en archivos \texttt{.c} y cabeceras
+        \texttt{.h}; \texttt{\#include} y declaraciones \texttt{extern}.
+\end{itemize}
+
+\subsection{Pasos de compilación}
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Pre-procesado} (\texttt{cpp}): expande
+        \texttt{\#include}, \texttt{\#define} y demás directivas.
+    \item \textbf{Compilación} (\texttt{cc1}): traduce de C a
+        \emph{assembly}.
+    \item \textbf{Ensamblado} (\texttt{as}): genera archivos objeto
+        \texttt{.o}.
+    \item \textbf{Linking} (\texttt{ld}): combina objetos y bibliotecas
+        en un ejecutable, resolviendo símbolos y referencias externas.
+\end{enumerate}
+
+\subsection{Bibliotecas estáticas y dinámicas}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Estáticas} (\texttt{libfoo.a}): el código de la
+        biblioteca se incrusta en el ejecutable durante el linking.
+        Resultado: ejecutables más grandes pero auto-contenidos.
+    \item \textbf{Dinámicas} (\texttt{libfoo.so} en Linux,
+        \texttt{.dylib} en macOS, \texttt{.dll} en Windows): el
+        ejecutable solo guarda referencias; el \emph{dynamic linker}
+        las resuelve en tiempo de carga (o, con \emph{lazy linking}, en
+        la primera invocación). Ejecutables más chicos y biblioteca
+        compartida en memoria entre procesos.
+\end{itemize}
+
+\subsection{\texttt{make} y los Makefiles}
+
+\texttt{make} automatiza la compilación a partir de reglas
+\texttt{target: dependencias}. Recompila solo lo necesario comparando
+\emph{timestamps}. Las \emph{autotools} (\texttt{autoconf},
+\texttt{automake}) generan Makefiles portables.
+
+% =====================================================================
+\section{Resumen integrador}
+% =====================================================================
+
+Para fijar las ideas, conviene visualizar cómo todos estos conceptos
+encajan al ejecutar un comando de shell, por ejemplo:
+
+\begin{lstlisting}
+$ ls -l | wc -l > cuentas.txt
+\end{lstlisting}
+
+\begin{enumerate}[leftmargin=*]
+    \item El usuario tipea el comando en la terminal. El \emph{tty}
+        driver del kernel envía los caracteres al shell.
+    \item El shell parsea la línea: detecta el pipe (\texttt{|}) y la
+        redirección (\texttt{>}).
+    \item Llama a \texttt{pipe(p)} para crear un pipe entre los dos
+        comandos.
+    \item Hace \texttt{fork} dos veces:
+        \begin{itemize}
+            \item El primer hijo redirige su \texttt{stdout} al
+                extremo de escritura del pipe (\texttt{dup2}) y ejecuta
+                \texttt{ls -l} con \texttt{execve}.
+            \item El segundo hijo redirige su \texttt{stdin} al
+                extremo de lectura, abre \texttt{cuentas.txt} con
+                \texttt{O\_WRONLY|O\_CREAT|O\_TRUNC}, redirige su
+                \texttt{stdout} a ese archivo y ejecuta \texttt{wc -l}.
+        \end{itemize}
+    \item El padre cierra ambos extremos del pipe y llama a
+        \texttt{waitpid} dos veces para esperar a los hijos.
+    \item Cada \texttt{execve} hace que el kernel cargue el ELF
+        correspondiente, prepare el espacio de direcciones (texto,
+        datos, pila), enlace dinámicamente \texttt{libc} y salte a
+        \texttt{main}.
+    \item Los procesos ejecutan, hacen \texttt{read} y \texttt{write}
+        contra los descriptores que el shell les preparó. Cuando
+        \texttt{ls} termina, cierra sus descriptores y el extremo de
+        escritura del pipe se libera; \texttt{wc} ve EOF, termina y
+        cierra su archivo de salida.
+    \item El shell recoge los exit status, actualiza \texttt{\$?} y
+        vuelve a mostrar el prompt.
+\end{enumerate}
+
+Detrás de un comando aparentemente simple operan, simultáneamente:
+\emph{procesos}, \emph{multiplexión de CPU}, \emph{descriptores y
+redirección}, \emph{pipes como IPC}, \emph{permisos del filesystem},
+\emph{libc dinámica}, \emph{cambios de modo} para cada syscall y
+\emph{interrupciones} cada vez que el kernel hace context switch o
+atiende una E/S. El estudio de los sistemas operativos consiste,
+precisamente, en entender cómo todas esas piezas funcionan en conjunto.
+
+% =====================================================================
+\section*{Referencias}
+\addcontentsline{toc}{section}{Referencias}
+% =====================================================================
+
+\begin{enumerate}[leftmargin=*]
+    \item Marcelo Arroyo. \emph{Notas del curso de Sistemas
+        Operativos}, capítulos 1, 2 y 3. UNRC, 2026.\\
+        \url{https://marceloarroyo.gitlab.io/cursos/SO/}
+    \item Andrew S. Tanenbaum, Herbert Bos. \emph{Modern Operating
+        Systems}, capítulo 1, 5\textsuperscript{a} edición. Pearson,
+        2024.
+    \item Remzi y Andrea Arpaci-Dusseau. \emph{Operating Systems: Three
+        Easy Pieces}. \url{https://pages.cs.wisc.edu/~remzi/OSTEP/}
+    \item Avi Silberschatz, Peter B. Galvin, Greg Gagne. \emph{Operating
+        System Concepts}, 9\textsuperscript{a} edición.
+    \item POSIX.1-2017 / Single UNIX Specification. The Open Group.
+\end{enumerate}
+
+\end{document}
