@@ -142,3 +142,45 @@ Si en cambio se usa un archivo regular, hay que recordar `fsync` para forzar per
 | `sem_unlink(name)`                       | Quita el nombre del namespace; los procesos que lo tienen abierto siguen usandolo |
 | `shm_open(name, flags, mode)`            | Crea/abre una region de memoria compartida POSIX                      |
 | `mmap(NULL, size, ..., MAP_SHARED, fd, 0)` | Mapea esa region en el espacio del proceso                          |
+
+## Conexion con la teoria
+
+El algoritmo implementado es exactamente el del Listado 8 de la teoria (Notas 5-6, *Semaforos*):
+
+```c
+buffer buf[N];
+semaphore mutex = 1, full = N, empty = 0;
+
+void producer() { while (true) {
+    value = gen_value();
+    sem_wait(&full);     // (en la teoria: full cuenta empties; en este codigo, los nombres estan invertidos -- ver nota)
+    add_to_buffer(value);
+    sem_signal(&empty);
+}}
+
+void consumer() { while (true) {
+    sem_wait(&empty);
+    value = get_from_buffer();
+    sem_signal(&full);
+    process(value);
+}}
+```
+
+> Nota terminologica: en la teoria, `full` cuenta los slots libres y `empty` los ocupados (al reves del nombre intuitivo). En este README y en los archivos `prod_cons_*.c`, se eligio el convenio inverso (mas comun en la literatura): `empty` cuenta los slots libres, `full` los ocupados. La logica es identica; solo cambian los nombres.
+
+Lo interesante es que el ejercicio cubre los **dos modelos de concurrencia** vistos en la teoria:
+
+1. **Memoria compartida** (`prod_cons_threads.c`): los hilos viven en el mismo proceso, comparten todas las variables globales naturalmente. Los semaforos `sem_t` se inicializan con `sem_init()` y viven en memoria del proceso.
+
+2. **Pasaje por shared memory entre procesos** (`prod_cons_processes.c`): los procesos no comparten memoria por defecto, asi que hace falta crear una region explicitamente con `shm_open` + `mmap`. Los semaforos requieren ser **named semaphores** (`sem_open`) porque tienen que ser visibles desde namespaces de procesos distintos. Esto corresponde al mecanismo de IPC *Shared memory* de la Tabla 1 de la teoria (*IPC en UNIX*).
+
+La eleccion de **tres semaforos** (`empty`, `full`, `mtx`) viene de un patron clasico:
+
+- Los dos semaforos contadores resuelven la **sincronizacion por condicion**: bloquean al productor cuando el buffer esta lleno y al consumidor cuando esta vacio. Reemplazan al `wait()`/`signal()` sobre variables de condicion del modelo de monitores (Listado 9 de la teoria).
+- El mutex binario resuelve la **exclusion mutua** sobre la actualizacion del buffer y los indices, cumpliendo el rol del lock interno del monitor (capitulo *Monitores*).
+
+Una observacion final sobre robustez: la solucion no tiene los tres problemas clasicos de la concurrencia descritos en la teoria.
+
+- **Sin deadlock**: ambos productores y consumidores adquieren los semaforos en el mismo orden (`empty` o `full` antes que `mtx`), rompiendo la condicion de *espera circular* (capitulo *Uso de locks*).
+- **Sin livelock**: las primitivas son bloqueantes, no de espera ocupada; los procesos dormidos no consumen CPU.
+- **Sin lost wakeup**: a diferencia de las variables de condicion crudas, los semaforos contadores recuerdan los `post()` aunque no haya nadie esperando. Si el productor hace `sem_post(full)` antes de que el consumidor haga `sem_wait(full)`, el consumidor lo encuentra con valor 1 y atraviesa sin bloquearse.

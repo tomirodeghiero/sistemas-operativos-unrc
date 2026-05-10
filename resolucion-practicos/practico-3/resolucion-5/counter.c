@@ -12,6 +12,8 @@ int main()
     int pid = getpid(), i;
     int fd = open("counter.dat", O_RDWR);
 
+    (void)pid;
+
     for (i=0; i<1000; i++) {
         char s[N];
         int n;

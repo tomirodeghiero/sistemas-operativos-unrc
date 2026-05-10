@@ -109,3 +109,18 @@ kill -KILL $PID   # SIGKILL si lo anterior no alcanzo
 | `SIGKILL` | 9            | Termina de inmediato (no se puede ignorar) |
 
 El par `SIGSTOP`/`SIGCONT` es justamente la herramienta que el shell usa internamente cuando uno aprieta Ctrl-Z (`SIGTSTP`) y despues escribe `fg` o `bg` para reactivar el job.
+
+## Conexion con la teoria
+
+El experimento materializa el diagrama de estados que aparece en la teoria (Figura 5 de las Notas 5-6, *Procesos y threads*). Cada paso del ejercicio corresponde a una transicion concreta:
+
+| Paso | Senal       | Transicion en el modelo teorico                       | `STAT` observado |
+|------|-------------|-------------------------------------------------------|------------------|
+| 2.1  | (lanzamiento)| `NEW` -> `RUNNABLE` -> `RUNNING`                     | `R`              |
+| 2.3  | `SIGSTOP`   | `RUNNING` -> *Stopped* (estado especial fuera del scheduler) | `T`     |
+| 2.4  | `SIGCONT`   | *Stopped* -> `RUNNABLE` -> `RUNNING`                  | `R`              |
+| 2.5  | `SIGTERM`/fin| `RUNNING` -> `ZOMBIE` -> `TERMINATED`                | (desaparece)    |
+
+La diferencia entre `SIGTERM` y `SIGKILL` es relevante en la practica: `SIGTERM` puede ser capturada por el proceso (`signal(SIGTERM, handler)`) para hacer una salida ordenada (cerrar archivos, liberar locks); `SIGKILL` y `SIGSTOP`, en cambio, son enviadas al kernel directamente y no pueden ser interceptadas. Esto las convierte en herramientas seguras para detener y matar procesos colgados.
+
+`SIGSTOP` es justamente el ejemplo concreto en el que la teoria habla de "estado controlado por el SO": el proceso no esta `SLEEPING` (no espera I/O), no esta `RUNNABLE` (no compite por CPU), simplemente fue sacado de toda cola de planificacion hasta recibir `SIGCONT`. Es por eso que su contador interno (`SECONDS` en el script) se congela mientras dura el `T`: el script no avanza ni una sola instruccion.

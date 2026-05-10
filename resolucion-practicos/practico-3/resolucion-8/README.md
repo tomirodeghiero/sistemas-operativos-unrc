@@ -145,3 +145,36 @@ Puntos clave que pide el ejercicio:
 3. El estado del proceso en el PCB queda en **`RUNNABLE`** (ni `SLEEPING` ni `ZOMBIE`).
 4. Entre los dos `swtch()` (saliente al scheduler, entrante a `Q`) hay tiempo arbitrario donde otros procesos pueden ejecutar.
 5. La vuelta a usuario se hace por `usertrapret`/`userret`/`sret`, restaurando exactamente el estado guardado en el trapframe.
+
+## Conexion con la teoria
+
+La descripcion sigue de cerca el esquema simplificado de la teoria (Notas 5-6, *Implementacion de tareas/procesos en el kernel*), donde el handler de trap del kernel decide segun el motivo:
+
+```c
+trap(trap_number) {
+    push_cpu_registers();
+    switch (trap_number) {
+        case TIMER:
+            ticks++;
+            set_next_timer_interrupt();
+            if (current_task_used_quantum())
+                yield();   // preempt CPU
+            break;
+        // ...
+    }
+    restore_cpu_registers();
+    return_from_trap();
+}
+```
+
+`yield()` (de la teoria, capitulo *Cambios de contexto*) hace exactamente:
+
+```c
+void yield() {
+    if (current->state == RUNNING)
+        current->state = RUNNABLE;
+    context_switch(&current->ctx, &sched_ctx);
+}
+```
+
+La conclusion clave es que **la interrupcion del timer es la implementacion concreta de la *preemtive multitasking*** descrita en clase: gracias a ella el kernel puede recuperar la CPU sin la cooperacion del proceso, evitando que un thread que no invoca `yield()` voluntariamente monopolice la CPU. Como el proceso no esta esperando ningun evento externo, la transicion correcta es a `RUNNABLE` (vuelve a la cola de listos), no a `SLEEPING` (que se reservaria para esperas por I/O u otros eventos, como muestra el ejercicio 9).

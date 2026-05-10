@@ -36,6 +36,20 @@ La columna `STAT` codifica el estado actual del proceso. En macOS (que es BSD), 
 
 Ademas de la letra principal, `ps` agrega flags: `<` indica nice negativo (alta prioridad), `N` lo opuesto. `s` marca al lider de sesion, `+` al proceso en foreground, `l` a uno multi-hilo y `L` a paginas lockeadas en RAM.
 
+### Correspondencia con los estados de la teoria
+
+La teoria del curso (capitulo *Procesos y threads*, Notas 5-6) define cuatro estados logicos por los que pasa toda tarea: `RUNNING`, `RUNNABLE` (o `READY`), `SLEEPING` (o `WAITING`), `ZOMBIE` y `TERMINATED`. Los codigos de `ps` son las distintas formas en que esos estados se exponen al usuario en cada UNIX:
+
+| Estado teorico                 | Linux (`ps`) | macOS (`ps`) | Significado kernel                                                   |
+|--------------------------------|--------------|--------------|----------------------------------------------------------------------|
+| `RUNNING` / `RUNNABLE`         | `R`          | `R`          | Tarea en la CPU o en la cola de listos del scheduler                 |
+| `SLEEPING` (interrumpible)     | `S`          | `S` / `I`    | Dormida en una `wait_queue`, se despierta por evento o senal         |
+| `SLEEPING` (no interrumpible)  | `D`          | `U`          | Dormida durante I/O sincrono, no se la puede despertar con senales   |
+| Detenida por senal             | `T`          | `T`          | Recibio `SIGSTOP`/`SIGTSTP`, sale por `SIGCONT`                      |
+| `ZOMBIE`                       | `Z`          | `Z`          | Termino con `exit()` pero el padre todavia no hizo `wait()`          |
+
+El estado `TERMINATED` no se ve con `ps` porque, una vez que el padre hace `wait()`, el descriptor se libera y el proceso desaparece de la tabla del kernel.
+
 Para ver de un vistazo cuantos procesos hay en cada estado:
 
 ```bash
@@ -71,3 +85,15 @@ ps aux | awk -v u="$USER" '$1 == u'
 ```
 
 Las dos alternativas listan los procesos del usuario que esta corriendo el shell, que es lo que pide el ejercicio.
+
+## Conexion con la teoria
+
+`ps` no es un comando autonomo: lee la informacion directamente de las estructuras del kernel que la teoria llama *task descriptors*. En Linux esta informacion vive bajo `/proc/<PID>/` (un pseudo-filesystem expuesto por el kernel) y `ps` la formatea para el usuario. Cada columna que devuelve corresponde a un campo del descriptor:
+
+- `PID` -> identificador unico de la tarea.
+- `STAT` -> campo `state` del descriptor.
+- `%CPU` y `TIME` -> contadores de tiempo de ejecucion acumulados por el scheduler.
+- `VSZ` y `RSS` -> tamano del *mapa de memoria* del proceso (espacio virtual reservado vs paginas residentes).
+- `COMMAND` -> programa del cual el proceso es una instancia.
+
+El ejercicio sirve por lo tanto para *ver materializados* los conceptos abstractos vistos en clase: la tabla de procesos, los estados de cada tarea y los recursos asociados (memoria, CPU, terminal).

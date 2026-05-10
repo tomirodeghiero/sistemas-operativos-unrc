@@ -1,0 +1,1841 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- Encoding ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands]{babel}
+\usepackage{lmodern}
+
+% --- Layout ---
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{parskip}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em plus 0.2em minus 0.1em}
+
+% --- Tables and graphics ---
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{amsmath,amssymb}
+
+% --- Code listings ---
+\usepackage{listings}
+\definecolor{codegray}{rgb}{0.96,0.96,0.96}
+\definecolor{codeborder}{rgb}{0.85,0.85,0.85}
+\definecolor{codecomment}{rgb}{0.30,0.55,0.30}
+\definecolor{codekeyword}{rgb}{0.10,0.30,0.70}
+\definecolor{codestring}{rgb}{0.65,0.15,0.10}
+
+\lstdefinestyle{shellstyle}{
+    language=bash,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstdefinestyle{cstyle}{
+    language=C,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    numbersep=8pt,
+    aboveskip=1em,
+    belowskip=1em,
+}
+
+\lstdefinestyle{javastyle}{
+    language=Java,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    numbersep=8pt,
+    aboveskip=1em,
+    belowskip=1em,
+}
+
+\lstdefinestyle{textstyle}{
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstset{style=shellstyle}
+
+% --- Hyperlinks ---
+\usepackage[colorlinks=true,
+            linkcolor=blue!60!black,
+            urlcolor=blue!50!black,
+            citecolor=blue!60!black]{hyperref}
+
+% --- Title block ---
+\title{
+    \vspace{-2.5em}
+    \textbf{Práctico 3} \\[0.3em]
+    \large Procesos, threads y concurrencia
+}
+\author{
+    Tomás Rodeghiero \\
+    \small Sistemas Operativos --- Universidad Nacional de Río Cuarto
+}
+\date{2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent
+Este documento presenta la resolución integral del Práctico 3 de la
+materia Sistemas Operativos (UNRC, 2026), centrado en la administración
+de \emph{procesos} y \emph{threads}, los mecanismos de \emph{planificación}
+de CPU y los problemas de \emph{concurrencia} y \emph{sincronización}.
+Cada ejercicio se justifica con la teoría de los capítulos
+\emph{Procesos y threads} y \emph{Concurrencia e IPC} de las
+\emph{Notas del curso} (Marcelo Arroyo) y se acompaña con comandos,
+salidas, fragmentos de código y experimentos verificados sobre
+GNU/Linux y macOS. La discusión recorre los estados de un proceso, el
+control con señales, el árbol de procesos, la planificación con prioridades,
+las condiciones de carrera, la sincronización con \texttt{flock}, mutexes
+POSIX, monitores Java, las operaciones del kernel ante interrupciones de
+timer y de I/O, la prueba semi-formal del algoritmo de Peterson y la
+implementación del problema productor-consumidor con semáforos POSIX.
+\end{abstract}
+
+\tableofcontents
+\bigskip
+
+% =====================================================================
+\section{Introducción}
+% =====================================================================
+
+Un \emph{proceso} es una instancia de un programa en ejecución; un
+\emph{thread} (o \emph{tarea}) es la unidad mínima planificable por el
+kernel. Un proceso tiene siempre al menos un thread, su \emph{main
+thread}, y puede crear threads adicionales que comparten el espacio de
+memoria del proceso pero tienen pilas independientes. Los recursos
+asignados a un proceso ---memoria, descriptores de archivos, manejadores
+de señales, áreas de memoria compartida--- son administrados
+explícitamente por el kernel mediante una \emph{tabla de procesos}.
+
+La teoría del curso modela el ciclo de vida de un proceso con cinco
+estados: \texttt{NEW}, \texttt{RUNNING}, \texttt{RUNNABLE} (o
+\texttt{READY}), \texttt{WAITING} (o \texttt{SLEEPING}), \texttt{ZOMBIE}
+y \texttt{TERMINATED}. Las transiciones se disparan por
+\emph{interrupciones}, \emph{traps} y \emph{llamadas al sistema}: el
+timer fuerza la transición \texttt{RUNNING}~$\rightarrow$~\texttt{RUNNABLE}
+al consumir el quantum; un \texttt{read} sobre disco produce
+\texttt{RUNNING}~$\rightarrow$~\texttt{SLEEPING}; un \texttt{wakeup}
+produce \texttt{SLEEPING}~$\rightarrow$~\texttt{RUNNABLE}; \texttt{exit}
+lleva al proceso a \texttt{ZOMBIE} hasta que el padre haga \texttt{wait}.
+
+Cuando varias tareas comparten un recurso aparece la \emph{concurrencia}.
+La porción de código que accede al recurso compartido se llama
+\emph{región crítica} y la dependencia del resultado en el orden de
+ejecución se llama \emph{condición de carrera} (\emph{race condition}).
+Para evitar trazas no deseadas el SO ofrece una jerarquía de
+\emph{mecanismos de sincronización}: spinlocks, sleep locks, semáforos,
+variables de condición, monitores y mensajes. Cada uno apunta a un
+escenario distinto: regiones cortas vs. largas, monoprocesador vs.
+multiprocesador, memoria compartida vs. procesos aislados.
+
+El práctico ejercita progresivamente todos estos conceptos: parte del
+\emph{observable} (estados de los procesos visibles con \texttt{ps},
+control con señales, árbol con \texttt{pstree}), pasa por la
+\emph{planificación con prioridades} (\texttt{nice}/\texttt{renice}),
+introduce las \emph{race conditions} (\texttt{counter.c} con dos
+procesos, \texttt{pthreads-example.c} con dos hilos) y sus correcciones
+(\texttt{flock}, \texttt{pthread\_mutex\_t}, \texttt{synchronized} de
+Java), describe el comportamiento del kernel en dos escenarios típicos
+(timer y \texttt{read} con I/O), demuestra semi-formalmente el algoritmo
+de Peterson y termina con el clásico problema del \emph{productor-consumidor}
+implementado con semáforos POSIX, en sus dos variantes: con threads
+(memoria compartida) y con procesos (named semaphores y shared memory).
+
+% =====================================================================
+\section{Ejercicio 1 --- Estado de los procesos con \texttt{ps}}
+% =====================================================================
+
+Se pide ejecutar \texttt{ps aux}, identificar los estados de los
+procesos, ordenar por uso de CPU y de memoria, y listar los procesos
+del usuario actual.
+
+\subsection*{1.a Lectura de la salida y estados}
+
+\begin{lstlisting}
+ps aux | head -n 5
+\end{lstlisting}
+
+Cada fila representa una tarea. Las columnas claves son:
+\texttt{USER} y \texttt{PID} (identificación), \texttt{\%CPU}/\texttt{\%MEM}
+(consumo instantáneo), \texttt{VSZ}/\texttt{RSS} (memoria virtual y
+residente), \texttt{TTY} (terminal controladora), \texttt{STAT} (estado
+codificado), \texttt{TIME} (CPU acumulado) y \texttt{COMMAND} (línea de
+comando).
+
+La columna \texttt{STAT} expone los estados teóricos del modelo de
+tareas. La correspondencia entre los códigos \texttt{ps} y los estados
+del PCB es:
+
+\begin{center}
+\small
+\begin{tabular}{@{}lllp{6.5cm}@{}}
+\toprule
+Estado teórico & Linux & macOS & Significado en el kernel \\
+\midrule
+\texttt{RUNNING}/\texttt{RUNNABLE} & \texttt{R} & \texttt{R} & En la CPU o en la cola de \emph{ready} \\
+\texttt{SLEEPING} interrumpible & \texttt{S} & \texttt{S}/\texttt{I} & En \emph{wait queue}; despertable por señal \\
+\texttt{SLEEPING} no interrumpible & \texttt{D} & \texttt{U} & I/O síncrono; no despertable por señal \\
+Detenido por señal & \texttt{T} & \texttt{T} & \texttt{SIGSTOP}/\texttt{SIGTSTP} \\
+\texttt{ZOMBIE} & \texttt{Z} & \texttt{Z} & Terminó pero el padre no hizo \texttt{wait()} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+El estado \texttt{TERMINATED} no aparece en \texttt{ps} porque, una vez
+hecho el \texttt{wait()}, el descriptor se libera y el proceso desaparece
+de la tabla. Los flags adicionales (\texttt{<}, \texttt{N}, \texttt{s},
+\texttt{+}, \texttt{l}, \texttt{L}) refinan la información: prioridad
+no estándar, líder de sesión, foreground, multi-hilo, páginas
+\emph{locked} en RAM.
+
+\subsection*{1.b Ordenar por CPU y memoria}
+
+En Linux:
+
+\begin{lstlisting}
+ps aux --sort=-%cpu | head
+ps aux --sort=-%mem | head
+\end{lstlisting}
+
+En macOS, \texttt{ps} hereda de BSD y no soporta \texttt{--sort}. El
+equivalente es:
+
+\begin{lstlisting}
+ps aux -r | head -n 10   # por CPU descendente
+ps aux -m | head -n 10   # por memoria residente descendente
+\end{lstlisting}
+
+\subsection*{1.c Procesos del usuario actual}
+
+\begin{lstlisting}
+ps -U "$USER" -o user,pid,%cpu,%mem,stat,command
+\end{lstlisting}
+
+Alternativamente, filtrando con \texttt{awk}:
+
+\begin{lstlisting}
+ps aux | awk -v u="$USER" '$1 == u'
+\end{lstlisting}
+
+\subsection*{Conexión con la teoría}
+
+\texttt{ps} no es un comando autónomo: lee directamente las estructuras
+del kernel que la teoría llama \emph{task descriptors}. En Linux la
+información vive bajo \texttt{/proc/<PID>/} (un \emph{pseudo-filesystem}
+expuesto por el kernel) y \texttt{ps} la formatea para el usuario. Cada
+columna corresponde a un campo del descriptor: \texttt{PID}~$\rightarrow$
+identificador, \texttt{STAT}~$\rightarrow$ campo \texttt{state},
+\texttt{\%CPU}/\texttt{TIME}~$\rightarrow$ contadores acumulados por el
+scheduler, \texttt{VSZ}/\texttt{RSS}~$\rightarrow$ \emph{mapa de memoria}
+del proceso, \texttt{COMMAND}~$\rightarrow$ programa del que es instancia.
+
+% =====================================================================
+\section{Ejercicio 2 --- Control de un proceso con señales}
+% =====================================================================
+
+Se pide manipular el estado del script \texttt{runseconds.sh} (un
+busy-wait de 120 segundos) lanzándolo en background, deteniéndolo con
+\texttt{SIGSTOP}, reanudándolo con \texttt{SIGCONT} y finalmente
+esperando o matándolo.
+
+\subsection*{2.a El script}
+
+\begin{lstlisting}[style=shellstyle]
+#!/bin/bash
+# Run for 120 seconds
+end=$((SECONDS + 120))
+
+while [ $SECONDS -lt $end ]; do
+    : # this command does nothing
+done
+
+echo "Done!"
+\end{lstlisting}
+
+La variable \texttt{SECONDS} es interna del shell y avanza solo cuando
+el shell se está ejecutando: si el proceso está en estado \texttt{T}
+(detenido), \texttt{SECONDS} no avanza y la duración total se mide en
+tiempo de CPU corrido, no en tiempo real.
+
+\subsection*{2.b Lanzar en background y verificar \texttt{R}}
+
+\begin{lstlisting}
+chmod +x runseconds.sh
+./runseconds.sh &
+PID=$!
+ps -o pid,stat,command -p $PID
+\end{lstlisting}
+
+\begin{lstlisting}[style=textstyle]
+  PID STAT CMD
+12345 R    bash ./runseconds.sh
+\end{lstlisting}
+
+\subsection*{2.c Pasar a \texttt{T} con \texttt{SIGSTOP}}
+
+\begin{lstlisting}
+kill -STOP $PID
+ps -o pid,stat,command -p $PID
+\end{lstlisting}
+
+\begin{lstlisting}[style=textstyle]
+  PID STAT COMMAND
+12345 T    bash ./runseconds.sh
+\end{lstlisting}
+
+\texttt{SIGSTOP} (señal 19 en Linux) no puede ser ignorada ni capturada;
+el kernel saca al proceso de toda cola de planificación hasta recibir
+\texttt{SIGCONT}.
+
+\subsection*{2.d Reanudar con \texttt{SIGCONT}}
+
+\begin{lstlisting}
+kill -CONT $PID
+ps -o pid,stat,command -p $PID
+\end{lstlisting}
+
+El estado vuelve a \texttt{R}.
+
+\subsection*{2.e Esperar o terminar}
+
+\begin{lstlisting}
+wait $PID         # esperar a que termine solo
+kill $PID         # SIGTERM (terminacion ordenada)
+kill -KILL $PID   # SIGKILL (no se puede ignorar)
+\end{lstlisting}
+
+\subsection*{Conexión con la teoría}
+
+Cada paso del ejercicio corresponde a una transición concreta del
+diagrama de estados (Figura 5 de las Notas 5--6):
+
+\begin{center}
+\small
+\begin{tabular}{@{}llp{8.0cm}@{}}
+\toprule
+Paso & Señal & Transición en el modelo teórico \\
+\midrule
+2.b & (lanzamiento) & \texttt{NEW}~$\rightarrow$~\texttt{RUNNABLE}~$\rightarrow$~\texttt{RUNNING} \\
+2.c & \texttt{SIGSTOP} & \texttt{RUNNING}~$\rightarrow$~\emph{Stopped} (fuera del scheduler) \\
+2.d & \texttt{SIGCONT} & \emph{Stopped}~$\rightarrow$~\texttt{RUNNABLE}~$\rightarrow$~\texttt{RUNNING} \\
+2.e & \texttt{SIGTERM}/fin & \texttt{RUNNING}~$\rightarrow$~\texttt{ZOMBIE}~$\rightarrow$~\texttt{TERMINATED} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\texttt{SIGSTOP} es el ejemplo concreto del estado \emph{controlado por
+el SO}: el proceso no espera I/O (no está \texttt{SLEEPING}) ni compite
+por CPU (no está \texttt{RUNNABLE}); fue retirado de toda cola hasta
+recibir \texttt{SIGCONT}. \texttt{SIGTERM} puede ser capturada por el
+proceso para hacer una salida ordenada; \texttt{SIGKILL} y \texttt{SIGSTOP}
+las maneja el kernel directamente y no pueden ser interceptadas, lo
+que las convierte en herramientas seguras contra procesos colgados.
+
+% =====================================================================
+\section{Ejercicio 3 --- Árbol de procesos con \texttt{pstree}}
+% =====================================================================
+
+Se pide visualizar el árbol de procesos del sistema y determinar el
+primer proceso lanzado y su PID.
+
+\subsection*{3.a Salida de \texttt{pstree}}
+
+En GNU/Linux \texttt{pstree} viene preinstalado como parte de
+\emph{psmisc}. En macOS hace falta instalar la versión de Fred Hucht
+con Homebrew (\texttt{brew install pstree}); las opciones difieren
+ligeramente de las de Linux.
+
+\begin{lstlisting}
+pstree
+\end{lstlisting}
+
+Las primeras líneas son aproximadamente:
+
+\begin{lstlisting}[style=textstyle]
+-+= 00001 root /sbin/launchd        (macOS)
+ |--= 00312 root /usr/libexec/logd
+ |--= 00313 root /usr/libexec/smd
+ ...
+\end{lstlisting}
+
+Los conectores \texttt{-+=} y \texttt{|--=} arman la jerarquía y los
+números de cinco dígitos son los PIDs.
+
+\subsection*{3.b El primer proceso}
+
+El primer proceso de espacio de usuario tiene siempre \textbf{PID~1} y
+es ancestro de todos los demás:
+
+\begin{lstlisting}
+ps -p 1 -o pid,ppid,user,comm
+\end{lstlisting}
+
+\begin{lstlisting}[style=textstyle]
+  PID  PPID USER COMM
+    1     0 root /sbin/launchd
+\end{lstlisting}
+
+El \texttt{PPID = 0} corresponde al proceso interno del kernel
+(\emph{scheduler/swapper}) que no aparece en espacio de usuario. Quién
+ejecuta como PID~1 depende del sistema: \texttt{launchd} en macOS,
+\texttt{systemd} en Linux moderno, \texttt{init} (SysV/BusyBox) en
+Linux tradicional, \texttt{init} en FreeBSD.
+
+\subsection*{Conexión con la teoría}
+
+La Figura 6 del capítulo \emph{Procesos y threads} describe la secuencia
+de \emph{bootstrapping} en sistemas tipo UNIX:
+
+\begin{lstlisting}[style=textstyle]
+initcode  (pid=1, hardcoded en el kernel)
+   | exec("init")
+init      (pid=1)
+   | fork(); child: exec("tty")
+tty       (pid=2)
+   | exec("login")
+login     (pid=3)
+   | exec("sh")
+shell     (pid=4)
+\end{lstlisting}
+
+El kernel construye \texttt{initcode} en una página especial al terminar
+el boot. Ese código invoca \texttt{exec("init")}, que reemplaza la imagen
+del proceso PID~1 por el binario del \emph{init} del sistema. Toda otra
+tarea de espacio de usuario surge por \texttt{fork()} desde algún
+descendiente de PID~1: por construcción, \texttt{pstree} produce un
+árbol y nunca un bosque.
+
+Esta arquitectura justifica la \emph{adopción de huérfanos} por parte
+de PID~1: si un proceso muriese sin hacer \texttt{wait()} sobre sus
+hijos, estos quedarían en estado \texttt{ZOMBIE} indefinidamente.
+Reasignando los huérfanos a init, el sistema asegura que tarde o
+temprano alguien hará \texttt{wait()} y la tabla de procesos se mantenga
+limpia.
+
+% =====================================================================
+\section{Ejercicio 4 --- Planificación con \texttt{nice} y \texttt{renice}}
+% =====================================================================
+
+Se pide ejecutar un proceso CPU-bound, lanzar una segunda instancia con
+menor prioridad y observar las diferencias en \emph{context switches}
+con \texttt{cat /proc/<PID>/sched | grep nr\_switches}. Después,
+modificar la prioridad en caliente y, finalmente, lanzar un proceso
+con prioridad superior.
+
+\subsection*{4.a Programa de carga}
+
+\begin{lstlisting}[style=shellstyle]
+#!/bin/bash
+# busyloop.sh: ciclo infinito, 100% CPU.
+while :; do :; done
+\end{lstlisting}
+
+\subsection*{4.b Una instancia, observada con \texttt{top}}
+
+\begin{lstlisting}
+./busyloop.sh
+# en otra terminal:
+top   # tecla P ordena por %CPU; q sale
+\end{lstlisting}
+
+\texttt{bash busyloop.sh} consume cerca del 100\% de un núcleo, con
+\texttt{NI=0} y \texttt{PR} por defecto.
+
+\subsection*{4.c Segunda instancia con \texttt{nice +15}}
+
+\begin{lstlisting}
+nice -n 15 bash ./busyloop.sh
+\end{lstlisting}
+
+\texttt{top} muestra las dos instancias compitiendo: la nueva con
+\texttt{NI=15} y \texttt{PR} numéricamente más alto (recordar que en
+Linux un \texttt{PR} mayor significa \emph{menos} prioridad).
+
+\paragraph{Cambios de contexto.} El kernel expone los context switches
+acumulados de cada proceso en \texttt{/proc/<PID>/sched}:
+
+\begin{lstlisting}
+cat /proc/<PID>/sched | grep nr_switches
+\end{lstlisting}
+
+\textbf{¿El proceso de menor prioridad ejecuta más o menos cambios de
+contexto por unidad de tiempo? Más.} El razonamiento usa la regla
+central del CFS (\emph{Completely Fair Scheduler}) de Linux: el
+\emph{quantum} asignado a una tarea es proporcional a su \emph{peso},
+y el peso es decreciente con \texttt{nice}. Concretamente, el peso
+aproximado es $1024 \cdot 1{.}25^{-\text{nice}}$, de modo que cada
+incremento unitario de \texttt{nice} reduce el peso en $\sim 20\%$.
+Un proceso con \texttt{nice=15} tiene un peso aproximadamente
+$15$ veces menor que uno con \texttt{nice=0}, por lo que:
+
+\begin{itemize}[leftmargin=*]
+    \item recibe \emph{time slices} más cortos $\rightarrow$ es desalojado
+        más seguido $\rightarrow$ \texttt{nr\_switches} crece más rápido
+        por unidad de tiempo (paradójicamente, el \emph{menos prioritario}
+        hace \emph{más} context switches);
+    \item pero la cantidad \textbf{total} de CPU que recibe es menor.
+\end{itemize}
+
+Para verlo en vivo:
+
+\begin{lstlisting}
+watch -n1 "cat /proc/<PID_NICE15>/sched | grep nr_switches"
+\end{lstlisting}
+
+\subsection*{4.d Cambiar prioridad en caliente con \texttt{renice}}
+
+\begin{lstlisting}
+renice -n  5 -p <PID>     # subir nice (bajar prioridad)
+renice -n -5 -p <PID>     # bajar nice (subir prioridad, requiere root)
+ps -o pid,ni,pri,comm -p <PID>
+\end{lstlisting}
+
+\subsection*{4.e Mayor prioridad y por qué pide \texttt{sudo}}
+
+\begin{lstlisting}
+sudo nice -n -10 bash ./busyloop.sh
+\end{lstlisting}
+
+Bajar \texttt{nice} a un valor negativo aumenta la prioridad por encima
+de la del resto de los procesos del usuario y, por eso, requiere
+\textbf{root}. La razón es de \emph{seguridad y equidad}: si cualquier
+usuario pudiera mejorarse a sí mismo la prioridad, podría desplazar a
+procesos del sistema y monopolizar la CPU, transformando una limitación
+del scheduler en una herramienta de \emph{denegación de servicio}. Por
+eso la convención histórica de UNIX es que solo \texttt{root} puede
+asignar \texttt{nice} negativos. Un usuario sin privilegios sí puede
+\emph{subir} el \texttt{nice} de un proceso suyo (cederle prioridad a
+otros), nunca lo opuesto. Esto refleja la regla general:
+\emph{cada usuario puede ceder sus propios recursos pero no apropiarse
+de los ajenos}.
+
+\subsection*{Conexión con la teoría}
+
+El \emph{quantum} es ``el período de tiempo máximo de uso de la CPU''
+(Notas 5--6, \emph{Cambios de contexto}). La interrupción del
+\emph{timer} es la implementación concreta del \emph{preemptive
+multitasking}: gracias a ella el kernel puede recuperar la CPU sin la
+cooperación del proceso, evitando que un thread que no invoca
+\texttt{yield()} voluntariamente monopolice el procesador. Cada
+desalojo es un \emph{context switch involuntario} contabilizado en
+\texttt{nr\_switches}.
+
+\paragraph{Limpieza.}
+
+\begin{lstlisting}
+pkill -f busyloop.sh
+\end{lstlisting}
+
+% =====================================================================
+\section{Ejercicio 5 --- \texttt{counter.c}, race condition y \texttt{flock}}
+% =====================================================================
+
+Se pide compilar \texttt{counter.c}, observar que ejecuciones secuenciales
+producen 2000 pero ejecuciones concurrentes pierden incrementos, explicar
+la causa y solucionarlo con \texttt{flock()}. Por último, justificar si
+\texttt{fd} es una variable compartida entre las distintas instancias.
+
+\subsection*{5.a El programa}
+
+\begin{lstlisting}[style=cstyle]
+#include <fcntl.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <sys/file.h>
+
+#define N 10
+
+int main()
+{
+    int pid = getpid(), i;
+    int fd = open("counter.dat", O_RDWR);
+    (void)pid;
+
+    for (i=0; i<1000; i++) {
+        char s[N];
+        int n;
+
+        lseek(fd, 0, SEEK_SET);
+        read(fd, s, N);
+        n = atoi(s);
+        sprintf(s, "%d", n+1);
+        lseek(fd, 0, SEEK_SET);   // rewind
+        write(fd, s, strlen(s));
+        fsync(fd);
+    }
+    close(fd);
+    return 0;
+}
+\end{lstlisting}
+
+\begin{lstlisting}
+gcc -Wall -Wextra -o counter counter.c
+echo 0 > counter.dat
+\end{lstlisting}
+
+\subsection*{5.b Ejecución secuencial}
+
+\begin{lstlisting}
+echo 0 > counter.dat
+./counter ; ./counter
+cat counter.dat        # 2000
+\end{lstlisting}
+
+Cada ejecución empieza después de que la anterior cerró el archivo, así
+que ningún incremento se pierde.
+
+\subsection*{5.c Ejecución concurrente sin lock}
+
+\begin{lstlisting}
+echo 0 > counter.dat
+./counter & ./counter
+wait
+cat counter.dat        # < 2000, no determinista
+\end{lstlisting}
+
+El resultado es menor a $2000$ y cambia entre corridas: $1826$, $1740$,
+$1766$, etc.
+
+\paragraph{Por qué se pierden incrementos.} La secuencia
+\emph{leer-modificar-escribir} no es atómica. Con dos procesos $A$ y $B$
+en paralelo, una traza típica es:
+
+\begin{lstlisting}[style=textstyle]
+A lseek(0); read -> "100"          (v=100)
+                            B lseek(0); read -> "100"  (v=100)
+A sprintf("101"); write 3 bytes
+                            B sprintf("101"); write 3 bytes
+                                <-- pisa con el mismo valor
+\end{lstlisting}
+
+Es el patrón clásico de \emph{lost update}: ambos procesos leen el mismo
+valor, ambos escriben el mismo resultado, y un incremento se pierde
+silenciosamente. \texttt{fsync()} solo garantiza persistencia en disco;
+no excluye a otro proceso que esté queriendo escribir.
+
+\subsection*{5.d Solución con \texttt{flock()}}
+
+\begin{lstlisting}[style=cstyle]
+for (i=0; i<1000; i++) {
+    char s[N];
+    int n;
+
+    flock(fd, LOCK_EX);
+
+    lseek(fd, 0, SEEK_SET);
+    read(fd, s, N);
+    n = atoi(s);
+    sprintf(s, "%d", n+1);
+    lseek(fd, 0, SEEK_SET);
+    write(fd, s, strlen(s));
+    fsync(fd);
+
+    flock(fd, LOCK_UN);
+}
+\end{lstlisting}
+
+\begin{lstlisting}
+echo 0 > counter.dat
+./counter_locked & ./counter_locked
+wait
+cat counter.dat        # 2000, deterministico
+\end{lstlisting}
+
+\texttt{flock(fd, LOCK\_EX)} toma un lock exclusivo \emph{advisory} sobre
+el descriptor. Mientras un proceso lo retiene, cualquier otro que intente
+\texttt{LOCK\_EX} se duerme hasta que el primero llame \texttt{LOCK\_UN}.
+La región crítica queda lo más corta posible: solo el read-modify-write,
+no todo el bucle, lo que preserva el paralelismo cuando la región no se
+está ejecutando.
+
+\subsection*{5.e ¿Es \texttt{fd} una variable compartida?}
+
+\textbf{No.} Cuando dos procesos hacen \texttt{./counter} por separado,
+cada uno corre en su propio espacio de direcciones y cada uno hace su
+propio \texttt{open("counter.dat", O\_RDWR)}. El kernel les devuelve un
+descriptor en la \emph{tabla de descriptores} \emph{de cada proceso},
+que casualmente probablemente sea \texttt{3} en ambos (porque
+\texttt{0}, \texttt{1}, \texttt{2} ya están ocupados por
+\texttt{stdin/stdout/stderr}), pero son entradas en tablas distintas.
+Apuntan al mismo \emph{inodo} del filesystem, no a la misma
+\texttt{struct file} del kernel; cada uno tiene su propio offset.
+
+Esto explica por qué la race se da: como los offsets son independientes,
+ambos procesos pueden hacer \texttt{lseek(0)} y \texttt{read} sin que el
+kernel los serialice. El recurso compartido entre las dos instancias
+\textbf{no es \texttt{fd}}, sino el \textbf{archivo en disco}, y la
+sincronización tiene que hacerse sobre ese archivo (con \texttt{flock}).
+
+\subsection*{Conexión con la teoría}
+
+Las Notas 5--6 (\emph{Concurrencia e IPC}) definen la \emph{condición
+de carrera} como ``el comportamiento del sistema que depende de la
+secuencia de la ocurrencia de eventos externos que pueden generar flujos
+de ejecución no deseados''. En este ejercicio la \emph{región crítica}
+es el bloque \texttt{lseek + read + atoi + sprintf + lseek + write}, el
+\emph{recurso compartido} es \texttt{counter.dat}, y el \emph{interleaving
+no deseado} es el \emph{lost update} mostrado arriba.
+
+\texttt{flock()} es la implementación concreta del patrón
+\emph{acquire-uso-release} (Listado 1 del capítulo \emph{Locks}):
+
+\begin{lstlisting}[style=cstyle]
+acquire(&l);     // flock(fd, LOCK_EX)
+use_resource(r); // operacion sobre el archivo
+release(&l);    // flock(fd, LOCK_UN)
+\end{lstlisting}
+
+provee \emph{exclusión mutua} sobre la región crítica.
+
+% =====================================================================
+\section{Ejercicio 6 --- \texttt{pthreads-example.c}, mutex y stacks}
+% =====================================================================
+
+Se pide ejecutar el programa, observar que falla, corregirlo con
+\texttt{pthread\_mutex\_t}, mostrar la dirección de la variable local
+\texttt{tid} en cada hilo y verificar experimentalmente que todos los
+hilos ejecutan en el mismo espacio de memoria del proceso.
+
+\subsection*{6.a Programa original y bug}
+
+\begin{lstlisting}[style=cstyle]
+int counter = 0; // Shared resource
+
+void* increment(void* thread_id) {
+    int tid = *((int *) thread_id);
+    for (int i = 0; i < 100000; i++) {
+        if (i == 0) {
+            printf("Thread %d running...\n", tid);
+            printf("Address of local variable: %p\n", &tid);
+        }
+        counter++;
+    }
+    return NULL;
+}
+
+int main() {
+    pthread_t t1, t2;
+    int tn1 = 1, tn2 = 2;
+
+    pthread_create(&t1, NULL, increment, &tn1);
+    pthread_create(&t2, NULL, increment, &tn2);
+
+    pthread_join(t1, NULL);
+    pthread_join(t2, NULL);
+
+    printf("Final Counter Value: %d\n", counter);
+    return 0;
+}
+\end{lstlisting}
+
+\begin{lstlisting}
+gcc -Wall -Wextra -pthread -o pthreads-example pthreads-example.c
+./pthreads-example
+\end{lstlisting}
+
+Salida (ejemplo):
+
+\begin{lstlisting}[style=textstyle]
+Thread 1 running...
+Address of local variable: 0x16fcdefb4
+Thread 2 running...
+Address of local variable: 0x16fd6afb4
+Final Counter Value: 102483
+\end{lstlisting}
+
+El valor final es menor a $200000$. La causa es que \texttt{counter++}
+no es atómico: en máquina se traduce aproximadamente a tres instrucciones
+\emph{load-modify-store}:
+
+\begin{lstlisting}[style=textstyle]
+lw   t0, counter
+addi t0, t0, 1
+sw   t0, counter
+\end{lstlisting}
+
+Dos hilos pueden leer el mismo valor antes de que cualquiera escriba; el
+último \texttt{store} pisa al otro. Como ambos hilos viven en el mismo
+proceso, comparten la misma página de memoria que aloja \texttt{counter}:
+no hay copias separadas, hay una única palabra de memoria.
+
+\subsection*{6.b Corrección con \texttt{pthread\_mutex\_t}}
+
+\begin{lstlisting}[style=cstyle]
+pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
+
+for (int i = 0; i < 100000; i++) {
+    if (i == 0) {
+        printf("Thread %d running...\n", tid);
+        printf("Address of local variable: %p\n", &tid);
+    }
+    pthread_mutex_lock(&mtx);
+    counter++;
+    pthread_mutex_unlock(&mtx);
+}
+\end{lstlisting}
+
+\begin{lstlisting}[style=textstyle]
+Thread 1 running...
+Address of local variable: 0x16f702fb4
+Thread 2 running...
+Address of local variable: 0x16f78efb4
+Final Counter Value: 200000
+\end{lstlisting}
+
+Siempre $200000$, de manera determinista. El mutex implementa un
+\emph{sleep lock}: si un hilo intenta tomar un lock ocupado, el kernel
+lo pone en \texttt{SLEEPING} hasta que el otro hilo lo libere. Esto
+contrasta con un \emph{spinlock}, que haría busy-wait.
+
+\subsection*{6.c Direcciones de \texttt{tid} y distancia entre stacks}
+
+\begin{lstlisting}[style=textstyle]
+Thread 2 running...
+Address of local variable: 0x16fb26fb4
+Thread 1 running...
+Address of local variable: 0x16fa9afb4
+\end{lstlisting}
+
+\begin{lstlisting}[style=textstyle]
+|&tid_2 - &tid_1| = |0x16fb26fb4 - 0x16fa9afb4| = 0x8c000
+                  ~ 573 440 bytes ~ 560 KB
+\end{lstlisting}
+
+El valor exacto varía entre ejecuciones (ASLR del kernel), pero la
+\emph{distancia} entre stacks consecutivos es constante y corresponde
+al \textbf{tamaño del stack reservado por hilo}:
+
+\begin{itemize}[leftmargin=*]
+    \item macOS (Darwin): $\sim 512$ KB para hilos no-main.
+    \item Linux/glibc: $8$ MB ($0\text{x}800000$, equivalente a
+        \texttt{ulimit -s = 8192} KB).
+    \item FreeBSD: $2$ MB.
+\end{itemize}
+
+\textbf{¿Están en la misma pila? No.} Cada hilo tiene su propio stack,
+asignado por la biblioteca de \emph{pthreads} con \texttt{mmap} privado
+al momento de \texttt{pthread\_create}. La distancia observada confirma
+que son stacks separados.
+
+\subsection*{6.d Experimento: todos los hilos comparten el address space}
+
+Para verlo de manera directa, basta con que cada hilo imprima la
+dirección del global \texttt{counter}, su PID, y la dirección de su
+\texttt{tid} local:
+
+\begin{lstlisting}[style=cstyle]
+printf("[T%d] pid=%d, &counter=%p, &tid=%p\n",
+       tid, getpid(), (void*)&counter, (void*)&tid);
+\end{lstlisting}
+
+\begin{lstlisting}[style=textstyle]
+[T1] pid=44213, &counter=0x10054af80, &tid=0x16fa9afb4
+[T2] pid=44213, &counter=0x10054af80, &tid=0x16fb26fb4
+\end{lstlisting}
+
+Lo observado:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Mismo PID} $\rightarrow$ son tareas dentro del mismo
+        proceso.
+    \item \textbf{Misma dirección para \texttt{\&counter}} $\rightarrow$
+        la variable global vive en la misma página virtual; ambos hilos
+        usan la misma tabla de páginas. \emph{Por eso} el
+        \texttt{counter++} sin lock genera la race condition.
+    \item \textbf{\texttt{\&tid} distintos} $\rightarrow$ stacks
+        independientes.
+\end{itemize}
+
+\subsection*{Conexión con la teoría}
+
+El experimento es la confirmación empírica del modelo de proceso
+multithreaded de las Notas 5--6 (Figura 1):
+``cada thread usa su propia pila aunque todos los threads comparten el
+espacio de memoria del proceso''. Texto, datos, heap y variables
+globales como \texttt{counter} son \textbf{compartidos} entre todos los
+hilos. El stack es \textbf{privado} a cada hilo. La elección entre
+spinlock y sleep lock (mutex) sigue la regla de la teoría: spinlock
+para regiones cortas, mutex para regiones largas o con alta contención.
+
+% =====================================================================
+\section{Ejercicio 7 --- Multithreading en Java}
+% =====================================================================
+
+Se pide analizar (1) los mecanismos de creación y control de threads en
+Java, (2) los mecanismos de sincronización y su clasificación, y (3)
+implementar el equivalente del Ejercicio~6 sin race conditions.
+
+\subsection*{7.a Creación y control de threads}
+
+Java provee soporte de hilos de \emph{primera clase} en la JVM. Cada
+hilo Java se corresponde uno-a-uno con un hilo nativo del sistema
+operativo. Hay dos formas equivalentes de crearlos:
+
+\begin{lstlisting}[style=javastyle]
+// Forma 1: extender Thread (poco flexible)
+class MiHilo extends Thread {
+    @Override public void run() { /* ... */ }
+}
+new MiHilo().start();
+
+// Forma 2: implementar Runnable (preferida)
+class Tarea implements Runnable {
+    @Override public void run() { /* ... */ }
+}
+new Thread(new Tarea()).start();
+new Thread(() -> { /* ... */ }).start();   // con lambda
+\end{lstlisting}
+
+Métodos clave:
+
+\begin{center}
+\small
+\begin{tabular}{@{}lp{8.5cm}@{}}
+\toprule
+Método & Qué hace \\
+\midrule
+\texttt{start()}        & Pide a la JVM crear el hilo y ejecutar \texttt{run()} en paralelo \\
+\texttt{run()}          & Cuerpo del hilo. Llamarlo directo NO crea hilo \\
+\texttt{join()}         & Bloquea al llamador hasta que el hilo termine \\
+\texttt{Thread.sleep(ms)} & Pone al hilo actual en \texttt{TIMED\_WAITING} \\
+\texttt{Thread.yield()} & Sugiere ceder la CPU \\
+\texttt{interrupt()}    & Marca el hilo como interrumpido (lo despierta de \texttt{sleep}/\texttt{wait}) \\
+\texttt{setDaemon(true)} & El hilo no impide la terminación del proceso \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+El ciclo de vida de un hilo Java tiene los estados \texttt{NEW},
+\texttt{RUNNABLE}, \texttt{BLOCKED}, \texttt{WAITING},
+\texttt{TIMED\_WAITING} y \texttt{TERMINATED}, alineado con el modelo
+de la teoría (la JVM agrupa ``ejecutando'' y ``listo'' en
+\texttt{RUNNABLE}).
+
+\subsection*{7.b Sincronización: \texttt{synchronized} y \texttt{wait}/\texttt{notify}}
+
+Java provee dos primitivas integradas, sostenidas por una abstracción
+común: el \emph{monitor}. Cada objeto Java lleva implícitamente un
+monitor (mutex + variable de condición) que se activa con la palabra
+clave \texttt{synchronized}.
+
+\begin{lstlisting}[style=javastyle]
+// Bloque sincronizado: el lock es el objeto entre parentesis.
+synchronized (obj) { /* region critica */ }
+
+// Metodo de instancia sincronizado: lock implicito = this.
+public synchronized void m() { /* ... */ }
+
+// Metodo estatico sincronizado: lock implicito = Class del tipo.
+public static synchronized void m() { /* ... */ }
+\end{lstlisting}
+
+Los locks son \emph{reentrantes} y se liberan automáticamente al salir
+del bloque, incluso por excepción.
+
+\paragraph{\texttt{wait}/\texttt{notify}/\texttt{notifyAll}.} Solo
+pueden invocarse mientras se posee el monitor del objeto.
+\texttt{obj.wait()} libera atómicamente el monitor de \texttt{obj} y
+duerme al hilo. \texttt{obj.notify()} despierta a uno (cualquiera) de
+los hilos esperando; \texttt{obj.notifyAll()}, a todos.
+
+La regla canónica es esperar siempre dentro de un \texttt{while} (no
+de un \texttt{if}) por \emph{spurious wakeups} y por el patrón
+multi-productor/multi-consumidor:
+
+\begin{lstlisting}[style=javastyle]
+synchronized (obj) {
+    while (!condicion) obj.wait();
+    // ahora la condicion es cierta y tengo el monitor
+}
+\end{lstlisting}
+
+\paragraph{Clasificación.} Las primitivas se agrupan en dos familias
+clásicas: exclusión mutua y sincronización por condición. Java cubre
+ambas:
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+Mecanismo Java & Categoría & Equivalente POSIX \\
+\midrule
+\texttt{synchronized} & Exclusión mutua (mutex/monitor) & \texttt{pthread\_mutex\_t} / \texttt{flock} \\
+\texttt{wait}/\texttt{notify} & Variable de condición & \texttt{pthread\_cond\_wait}/\texttt{cond\_signal} \\
+\texttt{Thread.join()} & Sincronización por finalización & \texttt{pthread\_join} / \texttt{wait()} syscall \\
+\texttt{volatile} & Visibilidad entre threads & \texttt{\_\_atomic\_*} / barreras de memoria \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Además, \texttt{java.util.concurrent} ofrece \texttt{ReentrantLock},
+\texttt{Semaphore}, \texttt{CountDownLatch}, \texttt{CyclicBarrier},
+\texttt{BlockingQueue}, etc.
+
+\subsection*{7.c Equivalente Java sin race conditions}
+
+\begin{lstlisting}[style=javastyle]
+public class CounterExample {
+    private static int counter = 0;
+    private static final Object lock = new Object();
+    private static final int N = 100_000;
+
+    public static void main(String[] args) throws InterruptedException {
+        Thread t1 = new Thread(new Incrementer(1));
+        Thread t2 = new Thread(new Incrementer(2));
+
+        t1.start();
+        t2.start();
+
+        t1.join();
+        t2.join();
+
+        System.out.println("Final Counter Value: " + counter);
+    }
+
+    static class Incrementer implements Runnable {
+        private final int tid;
+
+        Incrementer(int tid) { this.tid = tid; }
+
+        @Override
+        public void run() {
+            System.out.println("Thread " + tid + " running...");
+            for (int i = 0; i < N; i++) {
+                synchronized (lock) {
+                    counter++;
+                }
+            }
+        }
+    }
+}
+\end{lstlisting}
+
+\begin{lstlisting}
+javac CounterExample.java
+java CounterExample
+\end{lstlisting}
+
+\begin{lstlisting}[style=textstyle]
+Thread 1 running...
+Thread 2 running...
+Final Counter Value: 200000
+\end{lstlisting}
+
+Por qué funciona: \texttt{synchronized (lock)} garantiza
+\textbf{exclusión mutua} (un solo hilo a la vez en el bloque) y
+\textbf{visibilidad} (el modelo de memoria de Java establece la relación
+\emph{happens-before} entre \texttt{unlock} y el siguiente \texttt{lock}).
+El incremento se vuelve atómico respecto de los otros hilos y el
+resultado es determinístico.
+
+\subsection*{Conexión con la teoría}
+
+Los bloques \texttt{synchronized} de Java son la implementación a nivel
+de lenguaje de los \emph{monitores} descritos por la teoría
+(Notas 5--6, \emph{Monitores}): cada objeto Java es un monitor con
+mutex implícito y una variable de condición asociada
+(\texttt{wait}/\texttt{notify}). La equivalencia conceptual es exacta:
+\texttt{synchronized (obj)} corresponde a \texttt{acquire(\&obj.lock)};
+salir del bloque, a \texttt{release(\&obj.lock)};
+\texttt{obj.wait()}, a \texttt{wait(\&obj.cond, \&obj.lock)};
+\texttt{obj.notify()}, a \texttt{signal(\&obj.cond)}.
+
+% =====================================================================
+\section{Ejercicio 8 --- Operaciones del kernel ante interrupción del timer}
+% =====================================================================
+
+Se pide describir las operaciones del kernel cuando un proceso es
+interrumpido por el \emph{timer} y ya consumió su \emph{quantum},
+hasta retornar de la interrupción, indicando en qué estado el kernel
+deja al proceso. La descripción sigue el modelo xv6 sobre RISC-V.
+
+\subsection*{Punto de partida}
+
+Un proceso $P$ está corriendo en modo usuario cuando ocurre una IRQ
+del timer (CLINT). La IRQ está delegada de M-mode a S-mode y
+configurada por el kernel al inicializarse.
+
+\subsection*{Paso 1. La CPU atrapa la interrupción (hardware)}
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item Verifica que las interrupciones del modo S estén habilitadas
+        (\texttt{sstatus.SIE = 1}).
+    \item Salva en \texttt{sepc} la próxima instrucción de $P$.
+    \item Salva el modo previo en \texttt{sstatus.SPP} (\texttt{U}).
+    \item Codifica el motivo en \texttt{scause} (timer en supervisor).
+    \item Cambia el modo a supervisor.
+    \item Salta a \texttt{stvec} (que apuntaba a \texttt{uservec}).
+\end{enumerate}
+
+\subsection*{Paso 2. \texttt{uservec}}
+
+Salva todos los registros de propósito general en el \texttt{trapframe}
+del proceso, conmuta a la pagetable del kernel, carga el stack del
+kernel y salta a \texttt{usertrap()}.
+
+\subsection*{Paso 3. \texttt{usertrap()}}
+
+Setea \texttt{stvec = kernelvec}, salva \texttt{sepc} en el trapframe,
+identifica la causa con \texttt{devintr()} y, al ser timer, llama a
+\texttt{yield()}.
+
+\subsection*{Paso 4. \texttt{yield()} cambia el estado a \texttt{RUNNABLE}}
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item Toma \texttt{p->lock}.
+    \item Cambia \texttt{p->state} de \texttt{RUNNING} a
+        \textbf{\texttt{RUNNABLE}}.
+    \item Llama \texttt{sched()}, que termina haciendo
+        \texttt{swtch(\&p->context, \&cpu->scheduler)}.
+\end{enumerate}
+
+A partir de aquí, $P$ está \textbf{congelado en \texttt{RUNNABLE}}, sin
+CPU.
+
+\subsection*{Pasos 5--6. El scheduler ejecuta otros procesos y luego vuelve}
+
+\texttt{scheduler()} elige una tarea \texttt{RUNNABLE} $Q$ y le da CPU.
+Más adelante el scheduler vuelve a seleccionar $P$ y hace
+\texttt{swtch(\&cpu->scheduler, \&p->context)}, reanudándolo dentro de
+\texttt{sched()}.
+
+\subsection*{Pasos 7--8. \texttt{usertrapret} $\rightarrow$ \texttt{userret} $\rightarrow$ \texttt{sret}}
+
+\texttt{usertrapret()} prepara el regreso (\texttt{stvec},
+\texttt{sepc}, \texttt{sstatus.SPP=0}, configura el trapframe).
+\texttt{userret} conmuta a la pagetable del proceso, restaura los
+registros y ejecuta \texttt{sret}, que en una sola operación atómica
+restaura \texttt{pc} desde \texttt{sepc}, restaura el modo a \texttt{U}
+y rehabilita interrupciones. $P$ vuelve a ejecutar como si nada
+hubiese ocurrido.
+
+\subsection*{Estado final del proceso}
+
+A lo largo de la rutina hay dos estados clave:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Mientras $P$ está fuera de la CPU (entre los pasos 4 y 6), su
+        estado en el PCB es \textbf{\texttt{RUNNABLE}}. Esa es la
+        respuesta directa al ejercicio: el kernel deja a $P$ en
+        \texttt{RUNNABLE} después de consumir su quantum.
+    \item Cuando finalmente retorna de la interrupción, $P$ está
+        nuevamente en \texttt{RUNNING}.
+\end{itemize}
+
+La interrupción del timer no \emph{bloquea} al proceso: solo lo
+desaloja para darle CPU a otro. Por eso el estado correcto es
+\texttt{RUNNABLE} (sigue siendo elegible para ser planificado), no
+\texttt{SLEEPING} (que se reservaría para esperas por eventos como I/O,
+caso del Ejercicio~9).
+
+\subsection*{Ruta completa, esquemática}
+
+\begin{lstlisting}[style=textstyle]
+[user mode, P]
+   | HW: timer irq -> sepc, SPP, scause, salta a stvec
+   v
+uservec (trampoline.S)        <-- salva regs en trapframe
+   |
+usertrap() en trap.c           <-- reconoce timer via devintr()
+   |
+yield() -> p->state = RUNNABLE  <-- aca el kernel deja a P
+   |
+sched() -> swtch(&p->context, &cpu->scheduler)   <-- 1er ctx switch
+   v
+scheduler() elige otro Q
+   | swtch(&cpu->scheduler, &Q->context)
+   |  ... eventualmente, scheduler vuelve a P ...
+   v
+swtch() reanuda en sched()/yield() de P
+   v
+usertrapret -> userret -> sret  <-- vuelve a modo usuario
+   v
+[user mode, P sigue ejecutando]
+\end{lstlisting}
+
+% =====================================================================
+\section{Ejercicio 9 --- Operaciones del kernel ante \texttt{read} sobre disco}
+% =====================================================================
+
+Se pide la misma descripción del Ejercicio~8 pero cuando el proceso
+ejecuta el \emph{syscall} \texttt{read} sobre un archivo en disco
+(operación lenta) y describir cómo continúa la ejecución.
+
+\subsection*{Punto de partida}
+
+\begin{lstlisting}[style=cstyle]
+n = read(fd, buf, len);
+\end{lstlisting}
+
+La función de la libc deja los argumentos en registros y dispara
+\texttt{ECALL} (RISC-V) para entrar al kernel.
+
+\subsection*{Paso 1. Trap por syscall (HW + uservec + usertrap)}
+
+Identico al Ejercicio~8 pero \texttt{scause = 8} (\emph{environment
+call from U-mode}). \texttt{usertrap()} reconoce que es syscall, avanza
+\texttt{sepc} para que la vuelta apunte a la instrucción siguiente al
+\texttt{ECALL}, habilita interrupciones y llama a \texttt{syscall()}.
+
+\subsection*{Paso 2. Despacho a \texttt{sys\_read}}
+
+\texttt{syscall()} consulta \texttt{a7} y ejecuta \texttt{sys\_read()},
+que recupera \texttt{fd}, \texttt{buf}, \texttt{len} del trapframe,
+valida y llama a \texttt{fileread()} $\rightarrow$ \texttt{readi()}
+$\rightarrow$ \texttt{bread(dev, blockno)}.
+
+\subsection*{Paso 3. Cache miss: arranca I/O y se duerme}
+
+\texttt{bread()} busca el bloque en la \emph{buffer cache}.
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Cache hit: el bloque está en RAM, se sigue copiando datos al
+        usuario sin bloquearse.
+    \item Cache miss: \texttt{virtio\_disk\_rw(bp, 0)} encola la
+        lectura al controlador VirtIO y luego:
+\end{itemize}
+
+\begin{lstlisting}[style=cstyle]
+while ((bp->flags & B_VALID) == 0)
+    sleep(bp, &lock);
+\end{lstlisting}
+
+\texttt{sleep(chan, lock)} es la primitiva clave:
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item Toma \texttt{p->lock}.
+    \item Libera el lock que protege la condición.
+    \item Setea \texttt{p->chan = bp} (el ``canal'' sobre el que duerme).
+    \item Setea \textbf{\texttt{p->state = SLEEPING}}.
+    \item Llama \texttt{sched()} $\rightarrow$ \texttt{swtch}.
+\end{enumerate}
+
+A partir de aquí $P$ está \texttt{SLEEPING} en una \emph{wait queue}.
+Es justamente esto lo que distingue al \texttt{read} con I/O del simple
+agotamiento de quantum: como la operación puede tardar mucho, el kernel
+\textbf{no} deja al proceso \texttt{RUNNABLE}; lo bloquea y le cede la
+CPU a quien la pueda aprovechar.
+
+\subsection*{Paso 4. El scheduler corre otros procesos}
+
+\texttt{scheduler()} elige un \texttt{RUNNABLE} y le da CPU.
+Mientras tanto, el disco procesa la lectura \emph{en paralelo} a la CPU.
+
+\subsection*{Paso 5. El disco termina y manda IRQ}
+
+\texttt{devintr()} reconoce la IRQ del disco y llama a
+\texttt{virtio\_disk\_intr()}, que marca el buffer como
+\texttt{B\_VALID} y ejecuta \texttt{wakeup(bp)}: para todo proceso con
+\texttt{state == SLEEPING \&\& chan == bp}, le cambia el estado a
+\textbf{\texttt{RUNNABLE}}.
+
+\subsection*{Paso 6. El scheduler vuelve a $P$}
+
+\texttt{swtch(\&cpu->scheduler, \&p->context)} reanuda $P$ dentro de
+\texttt{sleep()}. \texttt{sleep} retoma el lock, marca
+\texttt{p->state = RUNNING} y retorna al \texttt{while} de
+\texttt{bread()}. Como ahora \texttt{B\_VALID} está seteado, el
+\texttt{while} termina, \texttt{bread} retorna el buffer y \texttt{readi}
+copia los bytes al \texttt{buf} de usuario con \texttt{copyout()}.
+
+\subsection*{Paso 7. Retorno a modo usuario}
+
+El valor de retorno (bytes leídos) se escribe en
+\texttt{p->trapframe->a0} y se retorna por la ruta
+\texttt{usertrap}~$\rightarrow$~\texttt{usertrapret}~$\rightarrow$~\texttt{userret}~$\rightarrow$~\texttt{sret}.
+
+\subsection*{Estados por los que pasó $P$}
+
+\begin{center}
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+Etapa & Estado de $P$ \\
+\midrule
+Antes del \texttt{read}                          & \texttt{RUNNING} \\
+Dentro de \texttt{sys\_read}/\texttt{bread}, esperando I/O & \textbf{\texttt{SLEEPING}} \\
+Después del \texttt{wakeup(bp)}                  & \textbf{\texttt{RUNNABLE}} \\
+Cuando el scheduler lo vuelve a elegir            & \texttt{RUNNING} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{Conexión con la teoría}
+
+La traza expone el complemento exacto del Ejercicio~8 y reproduce el
+esquema teórico de las primitivas \texttt{suspend}/\texttt{wakeup}
+(Notas 5--6, \emph{Implementación de tareas en el kernel}):
+
+\begin{lstlisting}[style=cstyle]
+// suspend current task in wait queue and yield the cpu
+void suspend(struct wait_queue *wq) {
+    current->state = WAITING;
+    enqueue(wq, current);
+    yield();
+}
+
+// wakeup a process waiting in wait queue
+void wakeup(struct wait_queue *wq) {
+    struct task *task = dequeue(wq);
+    if (task) task->state = RUNNABLE;
+}
+\end{lstlisting}
+
+La diferencia clave con el ejercicio anterior: el proceso no es
+desalojado por \emph{quantum}; se bloquea voluntariamente porque no
+puede progresar hasta que llegue el dato. Por eso la transición es a
+\texttt{SLEEPING} y no a \texttt{RUNNABLE}. La cooperación
+kernel + dispositivo + scheduler es lo que permite la concurrencia
+entre I/O y CPU.
+
+% =====================================================================
+\section{Ejercicio 10 --- Demostración semi-formal de Peterson}
+% =====================================================================
+
+Se pide mostrar de manera semi-formal que la solución de Peterson
+(con dos procesos) garantiza \emph{exclusión mutua} y \emph{progreso}.
+
+\subsection*{El algoritmo}
+
+\begin{lstlisting}[style=cstyle]
+// Variables compartidas, inicializadas en falso / 0
+bool flag[2] = { false, false };
+int  turn   = 0;          // o 1, da igual
+
+// Codigo que ejecuta el proceso i (j = 1 - i es el otro)
+void p_i(void) {
+    while (true) {
+        flag[i] = true;            // (1) anuncio interes
+        turn    = j;               // (2) cedo el turno al otro
+        while (flag[j] && turn == j)   // (3) busy wait
+            ;
+        // ----- seccion critica -----
+        flag[i] = false;           // (4) salgo de la SC
+        // ----- seccion no critica -----
+    }
+}
+\end{lstlisting}
+
+\paragraph{Hipótesis del modelo.}
+\begin{itemize}[leftmargin=*,nosep]
+    \item Las lecturas y escrituras a \texttt{flag[i]} y a \texttt{turn}
+        son atómicas.
+    \item Solo $P_i$ escribe en \texttt{flag[i]}; \texttt{turn} la
+        escriben ambos.
+    \item No se asume orden estricto de ejecución entre $P_0$ y $P_1$:
+        el scheduler puede intercalar arbitrariamente.
+\end{itemize}
+
+\subsection*{Parte A. Exclusión mutua}
+
+\textbf{Afirmación.} En ningún estado alcanzable del sistema, ambos
+procesos pueden estar simultáneamente dentro de la sección crítica.
+
+\textbf{Demostración por contradicción.} Supongamos que en algún
+instante $t$, $P_0$ y $P_1$ están ambos en la SC. Justo antes de
+entrar:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item $P_0$ salió de su \texttt{while} (3), por lo que la guarda
+        falló:
+        \[
+        \neg(\text{flag}[1] = \text{true} \land \text{turn} = 1)
+        \;\Rightarrow\;
+        \text{flag}[1] = \text{false} \;\lor\; \text{turn} = 0 \quad (\star)
+        \]
+    \item Simétricamente para $P_1$:
+        \[
+        \text{flag}[0] = \text{false} \;\lor\; \text{turn} = 1
+        \quad (\star\star)
+        \]
+\end{itemize}
+
+Como ambos están \emph{dentro} de la SC, ambos ya ejecutaron su paso
+(1):
+\[
+\text{flag}[0] = \text{true} \quad \text{y} \quad \text{flag}[1] = \text{true}.
+\]
+(Ninguno limpia su flag hasta el paso (4), que está después de la SC.)
+
+Reemplazando en $(\star)$ y $(\star\star)$:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item De $(\star)$: como \texttt{flag[1] = true}, debe ser
+        \texttt{turn = 0}.
+    \item De $(\star\star)$: como \texttt{flag[0] = true}, debe ser
+        \texttt{turn = 1}.
+\end{itemize}
+
+Por lo tanto \texttt{turn = 0} y \texttt{turn = 1} simultáneamente.
+Contradicción. $\blacksquare$
+
+\paragraph{¿Por qué el orden (1) $\rightarrow$ (2) es esencial?} Si se
+invirtieran (primero \texttt{turn = j}, después \texttt{flag[i] = true}),
+la prueba se rompe: un proceso podría leer la flag del otro antes de
+que el otro haya anunciado interés, y ambos podrían colarse
+simultáneamente.
+
+\subsection*{Parte B. Progreso}
+
+\textbf{Afirmación.} Si la SC está libre y al menos un proceso quiere
+entrar, alguno entrará en tiempo finito. El único proceso que puede
+impedirle el ingreso a otro es uno que también quiere entrar.
+
+\paragraph{Caso 1: $P_0$ quiere entrar y $P_1$ está en la sección no
+crítica.} $P_1$ no está en (1)--(3): por lo tanto $\text{flag}[1] =
+\text{false}$. La guarda del \texttt{while} de $P_0$ evalúa
+$\text{flag}[1] \land \text{turn} = 1 \;\Rightarrow\;
+\text{false}$. $P_0$ entra. $P_1$ no influye.
+
+\paragraph{Caso 2: ambos procesos quieren entrar.} Ambos ejecutaron (1),
+ambos \texttt{flag} quedaron en \texttt{true}. Sea cual sea el valor
+final de \texttt{turn} antes de que alguno entre al \texttt{while}:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Si \texttt{turn = 1}: la guarda de $P_0$ es verdadera (gira),
+        la de $P_1$ es falsa. \textbf{$P_1$ entra.}
+    \item Si \texttt{turn = 0}: simétricamente, \textbf{$P_0$ entra.}
+\end{itemize}
+
+En cualquier caso hay un ganador. Como \texttt{turn} ya no se vuelve a
+tocar mientras quien tiene el turno esté esperando o dentro de la SC,
+el ganador no es derrotado por nuevas escrituras.
+
+\paragraph{Caso 3: el proceso que estaba en la SC ya terminó.} Al salir
+ejecutó (4) (\texttt{flag[i] = false}); la guarda del otro ve
+\texttt{flag[i] = false}, falla, y entra. Ningún proceso queda atrapado
+por uno que ya terminó la SC. $\blacksquare$
+
+\subsection*{Espera acotada (bonus)}
+
+Para dos procesos la cota es trivial: a lo sumo el otro proceso entra
+\emph{una sola vez} entre que yo expreso interés y entro yo. Cuando
+$P_j$ sale de la SC y vuelve a competir, ejecuta nuevamente (2) con
+\texttt{turn = i}; a partir de ahí mi \texttt{while} falla y entro yo.
+
+\subsection*{Hipótesis críticas y limites}
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item \textbf{Atomicidad} de las lecturas/escrituras a \texttt{flag[]}
+        y \texttt{turn}.
+    \item \textbf{Modelo de memoria sequencially consistent.} Si la
+        máquina puede reordenar las escrituras (1) y (2) ---lo que pasa
+        en x86/ARM/RISC-V con buffers de escritura--- el algoritmo es
+        semi-formalmente correcto pero prácticamente roto. Una
+        implementación real de Peterson requiere \emph{barreras de
+        memoria} (\texttt{MFENCE} en x86, \texttt{fence rw,rw} en
+        RISC-V) entre los pasos (1) y (2).
+\end{enumerate}
+
+Por eso, en la práctica moderna, los kernels usan \emph{spinlocks}
+construidos sobre instrucciones atómicas del hardware (TAS, CAS, FAA)
+en lugar de Peterson. Peterson queda como demostración de existencia y
+pieza pedagógica fundamental.
+
+% =====================================================================
+\section{Ejercicio 11 --- Productor-consumidor con semáforos POSIX}
+% =====================================================================
+
+Se pide implementar el problema del productor-consumidor con la API de
+semáforos POSIX en dos variantes:
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item Usando POSIX threads.
+    \item Usando procesos y \emph{named semaphores}, con buffer compartido
+        (archivo o shared memory POSIX).
+\end{enumerate}
+
+\subsection*{Arquitectura común}
+
+Solución clásica de Dijkstra con buffer acotado y tres semáforos:
+
+\begin{center}
+\small
+\begin{tabular}{@{}llllp{4.5cm}@{}}
+\toprule
+Semáforo & Significado & Init & Lo decrementa & Lo incrementa \\
+\midrule
+\texttt{empty} & slots libres   & \texttt{BUF\_SIZE} & Productor antes de escribir & Consumidor tras leer \\
+\texttt{full}  & slots ocupados & 0                  & Consumidor antes de leer    & Productor tras escribir \\
+\texttt{mtx}   & mutex sobre el buffer & 1          & Quien va a tocar el buffer  & Quien lo libera \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{lstlisting}[style=textstyle]
+Productor                          Consumidor
+---------                          ----------
+sem_wait(empty)                    sem_wait(full)
+sem_wait(mtx)                      sem_wait(mtx)
+  buffer[in] = item                  item = buffer[out]
+  in = (in+1) % BUF_SIZE             out = (out+1) % BUF_SIZE
+sem_post(mtx)                      sem_post(mtx)
+sem_post(full)                     sem_post(empty)
+\end{lstlisting}
+
+\paragraph{Justificación del orden de los \texttt{wait}.}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{sem\_wait(empty)} antes que \texttt{sem\_wait(mtx)}.
+        Si fuera al revés, el productor podría tomar el mutex teniendo
+        el buffer lleno y dejar al consumidor sin chance de avanzar:
+        \emph{deadlock}.
+    \item El mutex se mantiene \textbf{sólo} para la actualización del
+        buffer y de los índices. El \emph{trabajo de produzir/consumir}
+        queda fuera para no serializar todo el pipeline.
+    \item \texttt{empty} y \texttt{full} actúan como variables de
+        condición: bloquean al productor cuando el buffer está lleno y
+        al consumidor cuando está vacío.
+\end{itemize}
+
+\subsection*{11.1 Versión con POSIX threads}
+
+Como los hilos comparten memoria, alcanza con declarar el buffer y los
+semáforos como variables globales del proceso. Los semáforos son
+\emph{sin nombre} (\texttt{sem\_t} con \texttt{sem\_init}).
+
+\begin{lstlisting}[style=cstyle]
+#include <pthread.h>
+#include <semaphore.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+#define BUF_SIZE 8
+#define N_ITEMS  32
+
+static int buffer[BUF_SIZE];
+static int in_idx  = 0;
+static int out_idx = 0;
+
+static sem_t empty, full, mtx;
+
+static void *producer(void *arg) {
+    (void)arg;
+    for (int i = 0; i < N_ITEMS; i++) {
+        int item = i * i;
+
+        sem_wait(&empty);
+        sem_wait(&mtx);
+        buffer[in_idx] = item;
+        in_idx = (in_idx + 1) % BUF_SIZE;
+        printf("[P] produjo %d (in=%d)\n", item, in_idx);
+        sem_post(&mtx);
+        sem_post(&full);
+
+        usleep(10 * 1000);
+    }
+    return NULL;
+}
+
+static void *consumer(void *arg) {
+    (void)arg;
+    for (int i = 0; i < N_ITEMS; i++) {
+        sem_wait(&full);
+        sem_wait(&mtx);
+        int item = buffer[out_idx];
+        out_idx = (out_idx + 1) % BUF_SIZE;
+        printf("    [C] consumio %d (out=%d)\n", item, out_idx);
+        sem_post(&mtx);
+        sem_post(&empty);
+
+        usleep(25 * 1000);
+    }
+    return NULL;
+}
+
+int main(void) {
+    sem_init(&empty, 0, BUF_SIZE);
+    sem_init(&full,  0, 0);
+    sem_init(&mtx,   0, 1);
+
+    pthread_t tp, tc;
+    pthread_create(&tp, NULL, producer, NULL);
+    pthread_create(&tc, NULL, consumer, NULL);
+    pthread_join(tp, NULL);
+    pthread_join(tc, NULL);
+
+    sem_destroy(&empty); sem_destroy(&full); sem_destroy(&mtx);
+    return 0;
+}
+\end{lstlisting}
+
+\begin{lstlisting}
+cc -O2 -Wall -Wextra -pthread -o prod_cons_threads prod_cons_threads.c
+./prod_cons_threads
+\end{lstlisting}
+
+\begin{lstlisting}[style=textstyle]
+[P] produjo 0 (in=1)
+[P] produjo 1 (in=2)
+    [C] consumio 0 (out=1)
+[P] produjo 4 (in=3)
+    [C] consumio 1 (out=2)
+[P] produjo 9 (in=4)
+...
+\end{lstlisting}
+
+El productor adelanta al consumidor hasta que se llena el buffer
+(\texttt{empty} se vuelve 0); ahí se bloquea en
+\texttt{sem\_wait(empty)} hasta que el consumidor libere un slot.
+
+\paragraph{Nota.} En macOS/Darwin \texttt{sem\_init()} está deprecado y
+devuelve \texttt{ENOSYS} en runtime; este programa está pensado para
+GNU/Linux. Para macOS, ver la versión 11.2 con \emph{named semaphores}.
+
+\subsection*{11.2 Versión con procesos y \emph{named semaphores}}
+
+Los procesos no comparten memoria por defecto, así que hace falta:
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item Una región de \textbf{shared memory POSIX} (\texttt{shm\_open}
+        + \texttt{ftruncate} + \texttt{mmap}) para el buffer y los
+        índices.
+    \item \textbf{Semáforos con nombre} (\texttt{sem\_open}) que vivan
+        en el namespace global del kernel.
+\end{enumerate}
+
+\begin{lstlisting}[style=cstyle]
+#include <fcntl.h>
+#include <semaphore.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
+#define BUF_SIZE 8
+#define N_ITEMS  32
+
+#define NAME_EMPTY "/so_pc_empty"
+#define NAME_FULL  "/so_pc_full"
+#define NAME_MTX   "/so_pc_mtx"
+#define NAME_SHM   "/so_pc_shm"
+
+typedef struct {
+    int  buffer[BUF_SIZE];
+    int  in_idx;
+    int  out_idx;
+} shared_t;
+
+static void die(const char *m) { perror(m); exit(1); }
+
+int main(void) {
+    sem_unlink(NAME_EMPTY);
+    sem_unlink(NAME_FULL);
+    sem_unlink(NAME_MTX);
+    shm_unlink(NAME_SHM);
+
+    int fd = shm_open(NAME_SHM, O_CREAT | O_RDWR, 0600);
+    if (fd < 0) die("shm_open");
+    if (ftruncate(fd, sizeof(shared_t)) != 0) die("ftruncate");
+
+    shared_t *sh = mmap(NULL, sizeof(shared_t),
+                       PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    if (sh == MAP_FAILED) die("mmap");
+    memset(sh, 0, sizeof(*sh));
+
+    sem_t *empty = sem_open(NAME_EMPTY, O_CREAT | O_EXCL, 0600, BUF_SIZE);
+    sem_t *full  = sem_open(NAME_FULL,  O_CREAT | O_EXCL, 0600, 0);
+    sem_t *mtx   = sem_open(NAME_MTX,   O_CREAT | O_EXCL, 0600, 1);
+    if (empty==SEM_FAILED || full==SEM_FAILED || mtx==SEM_FAILED)
+        die("sem_open");
+
+    pid_t pid = fork();
+    if (pid < 0) die("fork");
+
+    if (pid == 0) {
+        for (int i = 0; i < N_ITEMS; i++) {
+            sem_wait(full);
+            sem_wait(mtx);
+            int item = sh->buffer[sh->out_idx];
+            sh->out_idx = (sh->out_idx + 1) % BUF_SIZE;
+            printf("    [C pid=%d] consumio %d (out=%d)\n",
+                   (int)getpid(), item, sh->out_idx);
+            sem_post(mtx);
+            sem_post(empty);
+            usleep(25 * 1000);
+        }
+        exit(0);
+    }
+
+    for (int i = 0; i < N_ITEMS; i++) {
+        int item = i * i;
+        sem_wait(empty);
+        sem_wait(mtx);
+        sh->buffer[sh->in_idx] = item;
+        sh->in_idx = (sh->in_idx + 1) % BUF_SIZE;
+        printf("[P pid=%d] produjo %d (in=%d)\n",
+               (int)getpid(), item, sh->in_idx);
+        sem_post(mtx);
+        sem_post(full);
+        usleep(10 * 1000);
+    }
+
+    waitpid(pid, NULL, 0);
+
+    sem_close(empty); sem_close(full); sem_close(mtx);
+    sem_unlink(NAME_EMPTY);
+    sem_unlink(NAME_FULL);
+    sem_unlink(NAME_MTX);
+    munmap(sh, sizeof(*sh));
+    close(fd);
+    shm_unlink(NAME_SHM);
+    return 0;
+}
+\end{lstlisting}
+
+Compilación:
+
+\begin{lstlisting}
+# Linux: hace falta -lrt para shm_open
+cc -O2 -Wall -Wextra -o prod_cons_processes prod_cons_processes.c -lrt
+# macOS: shm_open/sem_open viven en libc, no se necesita -lrt
+cc -O2 -Wall -Wextra -o prod_cons_processes prod_cons_processes.c
+\end{lstlisting}
+
+\begin{lstlisting}[style=textstyle]
+[P pid=12345] produjo 0 (in=1)
+    [C pid=12346] consumio 0 (out=1)
+[P pid=12345] produjo 1 (in=2)
+[P pid=12345] produjo 4 (in=3)
+    [C pid=12346] consumio 1 (out=2)
+...
+\end{lstlisting}
+
+\texttt{pid} distinto en cada línea: confirma que productor y consumidor
+son \emph{procesos separados} que sin embargo comparten el mismo
+\emph{buffer} y los mismos semáforos.
+
+\paragraph{Por qué \texttt{O\_EXCL} y \texttt{sem\_unlink}.}
+\texttt{sem\_open} con \texttt{O\_CREAT | O\_EXCL} falla si el semáforo
+ya existe; eso obliga a una creación limpia y avisa si una corrida
+anterior dejó basura en el sistema.
+
+\paragraph{Por qué shared memory y no archivo.} Es más rápido (no toca
+el filesystem); \texttt{mmap MAP\_SHARED} sobre el \texttt{fd} de
+\texttt{shm\_open} pone una sola estructura en RAM accesible a ambos
+procesos sin sincronización adicional más allá del mutex POSIX. En
+sistemas modernos las regiones aparecen en \texttt{/dev/shm/<nombre>} y
+son fáciles de inspeccionar durante el desarrollo.
+
+\subsection*{Por qué la solución no tiene los problemas clásicos}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Sin lost wakeup}: los semáforos contadores recuerdan
+        los \texttt{post()} aunque no haya nadie esperando. Si el
+        consumidor llega antes que el productor,
+        \texttt{sem\_wait(full)} lo deja dormido; cuando el productor
+        hace \texttt{sem\_post(full)}, el consumidor se despierta.
+    \item \textbf{Sin deadlock}: ambos toman primero los contadores y
+        después el mutex; el mutex se libera en cada iteración. No hay
+        ciclos.
+    \item \textbf{Sin starvation}: \texttt{sem\_wait} en POSIX es FIFO
+        en la mayoría de las implementaciones (no es estrictamente
+        requerido por el estándar pero es lo habitual en glibc/Linux).
+    \item \textbf{Sin race condition} sobre \texttt{in\_idx}/
+        \texttt{out\_idx}: ambos viven dentro de la región crítica.
+\end{itemize}
+
+\subsection*{Conexión con la teoría}
+
+El algoritmo es exactamente el del Listado~8 de la teoría
+(\emph{Concurrencia e IPC}, \emph{Semáforos}). El ejercicio cubre los
+\emph{dos modelos} de concurrencia descritos en clase:
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item \textbf{Memoria compartida intra-proceso} (versión con
+        threads): los hilos comparten todas las variables globales
+        naturalmente.
+    \item \textbf{Shared memory POSIX entre procesos} (versión con
+        procesos): la región se crea explícitamente con
+        \texttt{shm\_open} + \texttt{mmap}; los semáforos requieren ser
+        \emph{named} para ser visibles entre namespaces de procesos
+        distintos. Esto corresponde al mecanismo IPC \emph{Shared
+        memory} de la Tabla~1 de las Notas (\emph{IPC en UNIX}).
+\end{enumerate}
+
+La elección de tres semáforos sigue el patrón clásico: dos contadores
+para sincronización por condición (replazan al \texttt{wait}/\texttt{signal}
+de las variables de condición) más un mutex binario para exclusión
+mutua sobre el buffer.
+
+% =====================================================================
+\section{Conclusiones}
+% =====================================================================
+
+El práctico recorre, de manera práctica y progresiva, los tres pilares
+del modelo de tareas del SO: la \emph{representación} del proceso
+(estados, atributos, descriptores expuestos por \texttt{ps} y
+\texttt{/proc}), su \emph{planificación} (interrupciones del timer,
+context switches, prioridades con \texttt{nice}/\texttt{renice}) y su
+\emph{coordinación} ante recursos compartidos (race conditions,
+\texttt{flock}, mutexes POSIX, monitores Java, semáforos). Los dos
+ejercicios teóricos sobre operaciones del kernel (8 y 9) muestran que
+la diferencia esencial entre desalojo por \emph{quantum} y bloqueo por
+I/O es el estado al que se transita: \texttt{RUNNABLE} en un caso,
+\texttt{SLEEPING} en el otro. Esa misma distinción ---tiempo compartido
+voluntario vs. espera por evento--- es la que justifica toda la
+arquitectura de las \emph{wait queues}, los semáforos y las variables
+de condición que se materializan en el productor-consumidor del
+Ejercicio~11. Peterson, finalmente, hace el cierre teórico: la
+exclusión mutua puede resolverse por software, pero las hipótesis de
+atomicidad y consistencia secuencial que requiere muestran por qué los
+sistemas reales recurren a instrucciones atómicas del hardware. Todo
+el práctico converge en una sola idea: la concurrencia es \emph{no
+determinismo controlado}, y el objetivo del SO es ofrecer abstracciones
+suficientes para que ese no determinismo no altere los objetivos de
+cómputo.
+
+\end{document}

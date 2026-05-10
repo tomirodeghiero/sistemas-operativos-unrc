@@ -184,3 +184,23 @@ Como el incremento ahora es atomico respecto de los otros hilos, el resultado es
   ```
 
   Es mas eficiente porque usa instrucciones atomicas del hardware (`LOCK XADD` en x86, `LR/SC` en RISC-V) en vez de bloquear, pero conceptualmente el practico pide mostrar el uso de `synchronized`.
+
+## Conexion con la teoria
+
+Lo que Java llama "metodo o bloque sincronizado" es exactamente el **monitor** descrito por la teoria (Notas 5-6, capitulo *Monitores*):
+
+> "Un monitor es una construccion sintactica de un lenguaje de programacion que encapsula datos y las operaciones sobre ellos al estilo orientado a objetos. Los procesos o threads solo pueden manipular y acceder a los datos solo por medio de las operaciones del monitor. Es posible ver un monitor como un objeto, clase o modulo que es thread safe."
+
+El equivalente entre los conceptos teoricos y las primitivas Java es directo:
+
+| Concepto teorico                         | Primitiva Java                                          |
+|------------------------------------------|---------------------------------------------------------|
+| Monitor (mutex implicito + condicion)    | Cualquier objeto con metodos/bloques `synchronized`     |
+| `acquire(lock)` / `release(lock)`        | Entrar/salir del bloque `synchronized (obj)`            |
+| Variable de condicion: `wait(&cond, &lock)` | `obj.wait()` (libera el monitor y duerme atomicamente) |
+| `signal(&cond)` (despertar uno)          | `obj.notify()`                                          |
+| `signal_all(&cond)` (despertar todos)    | `obj.notifyAll()`                                       |
+
+Por eso el ejercicio resulta natural en Java: el lenguaje provee directamente las primitivas de mas alto nivel del catalogo de mecanismos de sincronizacion vistos en clase. La razon historica es que Hansen y Hoare (1974) propusieron justamente los monitores como una abstraccion *modular* superior a los locks y semaforos --en los que es facil olvidarse de un `release` o equivocarse el orden--, y Java los adopto al disenar el modelo de concurrencia desde el principio.
+
+Una sutileza importante: la regla de esperar siempre **dentro de un `while`** (no de un `if`) corresponde al estilo *Mesa-monitor* de Java. En el monitor original (Hoare-monitor), `signal()` cedia el monitor inmediatamente al despertado y la condicion se garantizaba al volver. En Mesa-monitors, despues del `wait()` no hay garantia de que la condicion siga siendo cierta cuando el thread reanuda (otro thread pudo haber entrado primero y consumido el recurso), por eso es obligatorio re-evaluarla. Esto tambien protege contra los *spurious wakeups*, despertares falsos que el modelo POSIX explicitamente permite.

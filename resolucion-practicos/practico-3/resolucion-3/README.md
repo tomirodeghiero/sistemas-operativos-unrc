@@ -93,3 +93,23 @@ Quien cumple ese rol depende del sistema:
 | FreeBSD                  | `init`                |
 
 En cualquier caso, el rol conceptual es el mismo: ser el ancestro comun de todo el espacio de usuario.
+
+## Conexion con la teoria
+
+La teoria (Notas 5-6, seccion *El primer proceso de un sistema*, Figura 6) describe la secuencia de bootstrapping en sistemas tipo UNIX:
+
+```text
+initcode  (pid=1, hardcoded en el kernel)
+   | exec("init")
+init      (pid=1)
+   | fork(); child: exec("tty")
+tty       (pid=2)
+   | exec("login")
+login     (pid=3)
+   | exec("sh")
+shell     (pid=4)
+```
+
+El kernel construye manualmente `initcode` en una pagina especial al terminar el boot. Ese codigo invoca `exec("init")`, lo que reemplaza la imagen del proceso PID 1 con el binario del *init* del sistema (segun la tabla de arriba). A partir de ese momento, **toda otra tarea de espacio de usuario surge por `fork()` desde algun descendiente de PID 1**. Por eso `pstree` produce un arbol y nunca un bosque: hay una unica raiz por construccion.
+
+Esto justifica por que init es el responsable de adoptar a los procesos *huerfanos* (cuyo padre murio sin hacer `wait()`): si los hijos quedaran sin padre, sus descriptores podrian permanecer indefinidamente como zombies sin que nadie los recolectara. Reasignandolos a init, el sistema garantiza que tarde o temprano alguien hara `wait()` y la tabla de procesos se mantenga limpia.

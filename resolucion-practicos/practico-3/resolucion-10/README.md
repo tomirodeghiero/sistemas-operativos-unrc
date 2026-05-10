@@ -114,3 +114,16 @@ Estos dos supuestos son justamente el motivo por el que en sistemas reales las e
 
 - **Exclusion mutua**: si los dos estuvieran en la SC, `turn` deberia valer `0` y `1` a la vez. Imposible.
 - **Progreso**: cuando los dos compiten, gana el que NO escribio `turn` ultimo; cuando solo compite uno, entra de inmediato porque la flag del otro esta en `false`.
+
+## Conexion con la teoria
+
+La importancia historica del algoritmo de Peterson (Notas 5-6, *Solucion de Peterson*) es que demuestra que el problema de la exclusion mutua puede resolverse **enteramente por software**, sin recurrir a instrucciones atomicas del hardware. Solo necesita lecturas y escrituras a posiciones de memoria compartida. Esto fue importante en su momento porque las CPUs primitivas no ofrecian instrucciones como TAS o CAS.
+
+En la practica moderna, sin embargo, Peterson **no se usa** por dos razones (que la teoria menciona y este README detalla en la seccion de hipotesis):
+
+1. **No funciona en multiprocesadores con caches sin coherencia explicita.** Cada CPU mantiene una copia local de las variables compartidas y los cambios pueden no propagarse de inmediato a las demas. El proceso 1, mirando su cache, puede ver `flag[0] = false` aunque el proceso 0 ya lo haya seteado a `true`.
+2. **Falla con modelos de memoria relajados** (los habituales en x86, ARM, RISC-V): la CPU/compilador puede reordenar las dos escrituras de `lock(i)`. Si `turn = j` se escribe antes que `flag[i] = true`, el otro proceso puede colarse pensando que nadie compite.
+
+Por eso los kernels reales usan *spinlocks* construidos sobre instrucciones atomicas del hardware (TAS, CAS, FAA en la teoria), o las primitivas de mas alto nivel que vienen sobre ellas: mutexes, semaforos, monitores. Peterson queda como una demostracion de existencia y un ejemplo pedagogico para introducir el problema, no como una solucion productiva.
+
+La estructura de la prueba (asumir lo contrario y derivar contradiccion sobre `turn`) es ademas el patron tipico para razonar sobre *invariantes* de algoritmos concurrentes: identificar una condicion que el sistema preserva y mostrar que ningun interleaving puede violarla. La misma tecnica se usa en pruebas mas complejas, como las del algoritmo de Lamport (panaderia) y las de algoritmos lock-free modernos.

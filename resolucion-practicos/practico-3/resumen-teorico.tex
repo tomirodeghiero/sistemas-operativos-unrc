@@ -1,0 +1,1482 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- Encoding ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands]{babel}
+\usepackage{lmodern}
+
+% --- Layout ---
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{parskip}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em plus 0.2em minus 0.1em}
+
+% --- Tables and graphics ---
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{positioning,shapes.geometric,arrows.meta,fit,backgrounds}
+\usepackage{caption}
+\usepackage{amsmath,amssymb}
+
+% --- Code listings ---
+\usepackage{listings}
+\definecolor{codegray}{rgb}{0.96,0.96,0.96}
+\definecolor{codeborder}{rgb}{0.85,0.85,0.85}
+\definecolor{codecomment}{rgb}{0.30,0.55,0.30}
+\definecolor{codekeyword}{rgb}{0.10,0.30,0.70}
+\definecolor{codestring}{rgb}{0.65,0.15,0.10}
+
+\lstdefinestyle{cstyle}{
+    language=C,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    numbersep=8pt,
+    aboveskip=1em,
+    belowskip=1em,
+}
+
+\lstdefinestyle{shellstyle}{
+    language=bash,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstdefinestyle{textstyle}{
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstset{style=shellstyle}
+
+% --- Definition / Idea / Important boxes ---
+\usepackage[most]{tcolorbox}
+\newtcolorbox{definicion}[1][]{
+    colback=blue!5!white,
+    colframe=blue!50!black,
+    fonttitle=\bfseries,
+    title=Definición,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{idea}[1][]{
+    colback=orange!5!white,
+    colframe=orange!60!black,
+    fonttitle=\bfseries,
+    title=Idea intuitiva,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{importante}[1][]{
+    colback=red!5!white,
+    colframe=red!50!black,
+    fonttitle=\bfseries,
+    title=Importante,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+
+% --- Hyperlinks ---
+\usepackage[colorlinks=true,
+            linkcolor=blue!60!black,
+            urlcolor=blue!50!black,
+            citecolor=blue!60!black]{hyperref}
+
+% --- Title ---
+\title{
+    \vspace{-2.5em}
+    \textbf{Resumen teórico --- Sistemas Operativos} \\[0.3em]
+    \large Notas del curso 5 y 6: \emph{Procesos, threads, concurrencia e IPC}
+}
+\author{
+    Tomás Rodeghiero \\
+    \small Sistemas Operativos --- Universidad Nacional de Río Cuarto
+}
+\date{2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent
+Este documento es un resumen teórico de los capítulos 5
+(\emph{Procesos y threads}) y 6 (\emph{Concurrencia e IPC}) de las
+\emph{Notas del curso} de Sistemas Operativos (Marcelo Arroyo, UNRC).
+Se cubren las nociones de proceso y de thread, los estados por los que
+puede pasar una tarea, las llamadas al sistema asociadas a su gestión,
+los modos de ejecución del procesador, el mecanismo de interrupciones
+y traps, los cambios de contexto, la concurrencia y sus problemas
+clásicos (condiciones de carrera, secciones críticas), las primitivas
+de sincronización (locks, spinlocks, sleep locks, semáforos, monitores,
+variables de condición), los problemas asociados al uso de locks
+(\emph{deadlock}, \emph{livelock}), los modelos de comunicación por
+mensajes y los mecanismos IPC ofrecidos por UNIX. El objetivo es servir
+como material de estudio para preparar el Práctico~3 y el primer
+parcial: cada concepto se introduce con intuición, se formaliza cuando
+hace falta y se conecta con los demás para que el lector pueda razonar
+sobre el modelo completo del SO.
+\end{abstract}
+
+\tableofcontents
+\bigskip
+
+% =====================================================================
+\section{Introducción}
+% =====================================================================
+
+Cuando escribimos un programa pensamos en una secuencia única de
+instrucciones que se ejecuta de principio a fin. La realidad de un
+sistema operativo moderno es muy distinta: en una computadora hay
+\emph{decenas} de programas corriendo a la vez --- el navegador, el
+editor de texto, el reloj de la barra de tareas, los servicios del
+sistema, el kernel mismo --- y la CPU es un recurso limitado. Una de
+las funciones más importantes del SO es darle a cada programa la
+\emph{ilusión} de tener una computadora dedicada, mientras se ocupa
+internamente de repartir la CPU entre todos.
+
+Para hacer esto posible el SO necesita una serie de abstracciones:
+
+\begin{itemize}[leftmargin=*]
+    \item un \textbf{proceso} representa cada programa en ejecución;
+    \item un \textbf{thread} es la unidad más chica que el scheduler
+        del SO puede planificar;
+    \item un \textbf{estado} describe en qué momento de su ciclo de
+        vida está cada tarea;
+    \item un \textbf{cambio de contexto} es la operación con la que el
+        SO le saca la CPU a una tarea y se la da a otra;
+    \item los mecanismos de \textbf{sincronización} y los de
+        \textbf{IPC} permiten que las tareas cooperen sin pisarse.
+\end{itemize}
+
+\begin{idea}
+La intuición es: el SO simula varias computadoras virtuales sobre una
+única física. Para que funcione, tiene que poder \emph{guardar el
+trabajo en curso} de una tarea, cambiar a otra, y luego retomar la
+primera exactamente donde la dejó.
+\end{idea}
+
+% =====================================================================
+\section{Procesos y threads}
+% =====================================================================
+
+\subsection{Definiciones básicas}
+
+\begin{definicion}
+Un \textbf{proceso} es una instancia de un programa en ejecución. Un
+\textbf{programa} es un archivo ejecutable que reside en algún
+dispositivo de almacenamiento. Un proceso tiene al menos un thread.
+\end{definicion}
+
+\begin{definicion}
+Un \textbf{thread} (o hilo) es la mínima secuencia de instrucciones
+que el SO puede planificar para ejecutarse en una CPU.
+\end{definicion}
+
+Un programa \emph{en disco} es estático: no consume CPU ni memoria del
+sistema. Solo cuando es \emph{cargado} en memoria y se le asigna un
+thread de ejecución se convierte en un \emph{proceso}. Esa distinción
+es fundamental: del mismo programa pueden existir muchos procesos
+ejecutando simultáneamente, cada uno con su propio estado.
+
+Un proceso ejecuta el código en \emph{modo usuario} (el modo de menor
+privilegio de la CPU) y solo puede acceder a su \emph{propio espacio
+de memoria}. Esta protección la implementa el SO con la ayuda de la
+MMU del hardware: si una instrucción intenta tocar una dirección fuera
+del espacio del proceso, la CPU dispara una excepción.
+
+\subsection{Tareas: la abstracción común}
+
+Es conveniente abstraer las diferencias técnicas entre procesos y
+threads y llamar a ambos \textbf{tareas} (\emph{tasks}). Tanto un
+proceso como un thread son tareas que el scheduler conoce, planifica
+y representa con un descriptor.
+
+Un \emph{proceso multithreaded} crea varios threads dentro de él
+mismo. Cada thread tiene su propia pila, pero todos comparten el
+espacio de memoria del proceso (el código, los datos globales, el
+heap y los descriptores de archivos abiertos).
+
+\begin{center}
+\begin{tikzpicture}[node distance=0pt, every node/.style={draw, minimum width=4.5cm, minimum height=0.5cm, font=\ttfamily\small}]
+    \node[fill=blue!8!white] (code)  {code (instructions)};
+    \node[fill=blue!8!white,below=of code]  (data)  {global data};
+    \node[fill=gray!10,below=of data] (free) {... free space ...};
+    \node[fill=green!10,below=of free] (st1) {stack thread 1};
+    \node[below=of st1] (dots) {...};
+    \node[fill=green!10,below=of dots] (stm) {stack main thread};
+\end{tikzpicture}
+\\
+\small\emph{Figura 1: Imagen en memoria de un proceso multithreaded.}
+\end{center}
+
+\subsection{Atributos de un proceso}
+
+El SO mantiene, por cada proceso, un descriptor (a veces llamado
+\emph{Process Control Block}, PCB) con al menos:
+
+\begin{itemize}[leftmargin=*]
+    \item un identificador único (\texttt{pid});
+    \item su estado actual;
+    \item si está dormido, la razón o recurso por el cual lo está;
+    \item su \emph{mapa de memoria} accesible en modo usuario:
+    \begin{itemize}
+        \item segmento de código (\emph{text});
+        \item datos globales inicializados (\emph{data}) y sin
+            inicializar (\emph{bss});
+        \item heap (memoria dinámica, manejada con \texttt{sbrk} o
+            \texttt{malloc});
+        \item stacks de cada thread.
+    \end{itemize}
+    \item al menos un thread de ejecución, representado por su
+        \emph{stack en modo usuario} y su \emph{stack en modo kernel};
+    \item el conjunto de recursos adquiridos (archivos abiertos,
+        pipes, sockets, semáforos, áreas de memoria compartida,
+        manejadores de señales, timers);
+    \item el comando o programa del cual es instancia.
+\end{itemize}
+
+El \emph{stack en modo kernel} merece atención especial: en él se
+guarda el \emph{trapframe} (los valores de los registros del proceso
+al momento de una interrupción), se usa para las invocaciones a
+funciones del kernel mientras se ejecuta en el contexto del proceso
+y, finalmente, se guarda el \emph{contexto} (registros caller-saved)
+del thread cuando ocurre un cambio de contexto.
+
+\subsection{Layout virtual de memoria}
+
+\begin{center}
+\begin{tikzpicture}[every node/.style={draw, minimum width=3.5cm, minimum height=0.55cm, font=\ttfamily\small}]
+    \node[fill=blue!8!white] (text) {text (code)};
+    \node[fill=blue!8!white,below=0pt of text] (sd)   {static data};
+    \node[fill=gray!10, below=0pt of sd, minimum height=1.4cm] (free) {free space};
+    \node[fill=green!10,below=0pt of free, minimum height=0.8cm] (stk) {stack};
+    \node[draw=none,right=0.4cm of sd]   (brk) {\small program break (brk)};
+    \node[draw=none,right=0.4cm of stk]  (args) {\small main arguments};
+    \node[draw=none, left=0.4cm of text] (start) {\small start};
+    \node[draw=none, left=0.4cm of stk]  (end)   {\small end};
+\end{tikzpicture}
+\\
+\small\emph{Figura 2: Layout virtual de la memoria de un proceso.}
+\end{center}
+
+El \emph{program break} (\texttt{brk}) marca el final del segmento de
+datos. La syscall \texttt{sbrk(n)} permite extender o reducir el área
+de datos asignando o liberando memoria al proceso (lo que usa
+\texttt{malloc()} internamente). Las direcciones \texttt{start} y
+\texttt{end} delimitan el espacio virtual del proceso; en muchos
+sistemas \texttt{start = 0}.
+
+\subsection{Registros del thread y el calling convention}
+
+El estado de un thread en un punto cualquiera de su ejecución está
+representado por los valores de los registros de la CPU. Tres son
+particularmente importantes:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Program counter} (\texttt{pc}): dirección de la
+        próxima instrucción a ejecutar.
+    \item \textbf{Stack pointer} (\texttt{sp}): tope de la pila.
+    \item \textbf{Frame (base) pointer} (\texttt{fp}): dirección base
+        del registro de activación de la función actual.
+\end{itemize}
+
+La pila contiene \emph{registros de activación} (\emph{activation
+records} o \emph{stack frames}) para controlar la secuencia de
+invocación a funciones y sus retornos. Cada registro de activación
+contiene la dirección de retorno, el frame pointer salvado, los
+argumentos y las variables locales de la función. Esta organización
+es la que permite que las llamadas recursivas funcionen correctamente
+y que las variables locales se creen y destruyan automáticamente.
+
+El \textbf{calling convention} de la ABI de la plataforma especifica
+cómo se pasan los argumentos (en registros, en pila, o en una
+combinación) y cómo se devuelve el valor de retorno. En RISC-V, por
+ejemplo:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{x1}/\texttt{ra}: dirección de retorno;
+    \item \texttt{x2}/\texttt{sp}: stack pointer;
+    \item \texttt{x8}/\texttt{fp}: frame pointer;
+    \item \texttt{x10}--\texttt{x17}/\texttt{a0}--\texttt{a7}:
+        argumentos (los excedentes se apilan);
+    \item \texttt{a0}/\texttt{a1}: valor de retorno;
+    \item \texttt{s0}--\texttt{s11}: \emph{saved registers} que la
+        función invocada debe preservar.
+\end{itemize}
+
+\subsection{Llamadas al sistema para gestión de procesos}
+
+Las syscalls clásicas de POSIX para administrar procesos son:
+
+\begin{center}
+\small
+\begin{tabular}{@{}lp{8.5cm}@{}}
+\toprule
+Syscall & Qué hace \\
+\midrule
+\texttt{fork()} & Crea un proceso hijo, copia exacta del padre. El hijo hereda los descriptores de archivos abiertos. \\
+\texttt{exec(path, args)} & Reemplaza la imagen del proceso (código y datos) por la del binario \texttt{path}. Si tiene éxito, no retorna. \\
+\texttt{exit(exitstatus)} & Termina el proceso actual con el código \texttt{exitstatus}. \\
+\texttt{wait(\&status)} & El padre se bloquea hasta que termine alguno de sus hijos. Retorna el estado de salida en \texttt{status}. \\
+\texttt{getpid()} & Retorna el identificador del proceso. \\
+\texttt{kill(pid)} & Envía una señal al proceso con identificador \texttt{pid}. \\
+\texttt{sleep(n)} & Bloquea al proceso por \texttt{n} segundos. \\
+\texttt{sbrk(n)} & Asigna \texttt{n} bytes adicionales al proceso. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{idea}
+\texttt{fork()} y \texttt{exec()} suelen ir juntos: el shell hace
+\texttt{fork()} para crear un hijo, y el hijo hace \texttt{exec()}
+del programa que el usuario quiere ejecutar. Mientras tanto, el
+padre se queda en \texttt{wait()} esperando a que el hijo termine.
+Esta es la base del modelo de procesos de UNIX.
+\end{idea}
+
+\subsection{Estados de un proceso}
+
+A lo largo de su vida, una tarea pasa por varios estados. Las Notas
+identifican los siguientes:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{NEW}: recién creada, todavía no ingresó al
+        scheduler.
+    \item \textbf{RUNNING}: actualmente ejecutando, tiene asignada
+        una CPU.
+    \item \textbf{RUNNABLE} (o \textbf{READY}): lista para ejecutar,
+        esperando que el kernel le asigne una CPU.
+    \item \textbf{SLEEPING} (o \textbf{WAITING}): bloqueada hasta la
+        ocurrencia de un evento que la despertará (por ejemplo, la
+        finalización de una operación de I/O).
+    \item \textbf{ZOMBIE}: terminó (\texttt{exit()}) pero el padre
+        todavía no ejecutó \texttt{wait()} para recoger su estado de
+        salida.
+    \item \textbf{TERMINATED}: una vez que el padre hace
+        \texttt{wait()}, el descriptor se libera.
+\end{itemize}
+
+\begin{center}
+\begin{tikzpicture}[
+    node distance=2.0cm and 1.6cm,
+    every node/.style={draw, font=\ttfamily\small, minimum width=1.8cm, minimum height=0.55cm},
+    every edge/.style={draw,->,>=Stealth},
+    edgelbl/.style={font=\scriptsize\sffamily, fill=white, inner sep=1pt}
+]
+    \node (new)   {NEW};
+    \node (rdy)   [right=of new]   {RUNNABLE};
+    \node (run)   [right=of rdy]   {RUNNING};
+    \node (wait)  [below=of rdy]   {WAITING};
+    \node (zomb)  [above=1.2cm of run]   {ZOMBIE};
+    \node (term)  [above=of zomb]  {TERMINATED};
+
+    \draw[->,>=Stealth] (new) -- node[edgelbl]{fork()} (rdy);
+    \draw[->,>=Stealth] (rdy.north east) to[bend left=10] node[edgelbl]{scheduler()} (run.north west);
+    \draw[->,>=Stealth] (run.south west) to[bend left=10] node[edgelbl]{yield()} (rdy.south east);
+    \draw[->,>=Stealth] (run) -- node[edgelbl,sloped]{syscall()/suspend()} (wait);
+    \draw[->,>=Stealth] (wait) -- node[edgelbl,sloped]{event/wakeup()} (rdy);
+    \draw[->,>=Stealth] (run) -- node[edgelbl]{exit()} (zomb);
+    \draw[->,>=Stealth] (zomb) -- node[edgelbl]{wait() del padre} (term);
+\end{tikzpicture}
+\\
+\small\emph{Figura 3: Cambios de estado de un proceso.}
+\end{center}
+
+\paragraph{ZOMBIE y huérfanos.} Un proceso que terminó pero todavía
+existe en la tabla del kernel se llama \emph{zombie}. Esto sucede
+porque el SO debe preservar el código de salida hasta que el padre lo
+recoja con \texttt{wait()}. Si el padre termina antes que el hijo, el
+hijo queda \emph{huérfano} y es \emph{adoptado} por \texttt{init}
+(PID~1), que se encarga de recogerlo cuando termine.
+
+\subsection{Manejo de tareas en el kernel}
+
+El kernel organiza las tareas en estructuras de datos. Las tareas en
+estado \texttt{RUNNABLE} forman una cola (o varias colas, según el
+algoritmo de scheduling). Las tareas en \texttt{SLEEPING} se encolan
+en \emph{wait queues} asociadas al evento o recurso por el que
+esperan: cuando llega el evento, el kernel desencola y despierta a la
+tarea correcta.
+
+\begin{idea}
+Pensemos en una sala de espera del médico. La sala de listos
+(\texttt{RUNNABLE}) tiene a todos los pacientes que pueden ser
+atendidos. Las salas privadas (\texttt{wait queues}) tienen pacientes
+esperando un evento puntual: un análisis, una llamada, un resultado.
+Cuando el evento ocurre, el kernel los manda de vuelta a la sala de
+listos.
+\end{idea}
+
+¿Qué pasa si el scheduler no encuentra ningún proceso \texttt{RUNNABLE}?
+Hay dos alternativas:
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item Quedarse en un ciclo de busca activa.
+    \item Tener un proceso \emph{idle} creado al inicio que ejecuta
+        \texttt{while (true) yield();}. Al obtener la CPU la libera
+        inmediatamente, asegurando que siempre hay un \texttt{RUNNABLE}
+        que elegir.
+\end{enumerate}
+
+En cualquiera de los dos casos, este es el momento ideal para que el
+SO contabilice la \emph{idleness} y dispare ahorro de energía o
+trabajo diferido (procesar paquetes de red, por ejemplo) en
+\emph{kernel threads}.
+
+% =====================================================================
+\section{Modos de ejecución, traps e interrupciones}
+% =====================================================================
+
+\subsection{Modo usuario y modo supervisor}
+
+\begin{definicion}
+Un proceso de usuario se ejecuta con la \textbf{CPU en modo usuario}.
+En este modo la CPU no puede ejecutar ciertas instrucciones
+privilegiadas (como deshabilitar interrupciones) y solo puede acceder
+a su propio espacio de memoria. El kernel se ejecuta en \textbf{modo
+kernel} (o \emph{supervisor}), un modo de mayor privilegio sin
+restricciones.
+\end{definicion}
+
+Esta separación es la base de la protección: si un proceso pudiera
+deshabilitar interrupciones o tocar la memoria del kernel, podría
+hacer caer al sistema o monopolizar la CPU.
+
+\subsection{Interrupciones, excepciones y traps}
+
+Tres mecanismos llevan la CPU desde modo usuario a modo kernel:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Interrupciones}: las generan los dispositivos
+        (teclado, discos, red) para notificar eventos
+        (``terminé de leer'', ``llegó un paquete'').
+    \item \textbf{Excepciones}: las genera la CPU al intentar ejecutar
+        una instrucción inválida (división por cero, acceso a memoria
+        ilegal).
+    \item \textbf{Traps}: las dispara intencionalmente un programa de
+        usuario para invocar al kernel; es la base de las
+        \emph{llamadas al sistema}.
+\end{itemize}
+
+El SO instala, durante su inicialización, un \textbf{vector de
+interrupciones}: una tabla en memoria del kernel donde cada entrada
+apunta a una rutina (\emph{interrupt service routine} o ISR)
+encargada de manejar el evento correspondiente.
+
+\begin{center}
+\begin{tikzpicture}[every node/.style={font=\ttfamily\small}]
+    \node[draw, minimum width=2.4cm, minimum height=0.6cm,fill=yellow!10] (stvec) {stvec};
+    \node[draw=none, above=0.1cm of stvec] {special cpu register};
+
+    \matrix[draw, column sep=0pt, row sep=0pt, right=1.6cm of stvec, nodes={draw, minimum width=1.6cm, minimum height=0.6cm}] (vec) {
+        \node (e0) {0}; \\
+        \node (e1) {1}; \\
+        \node (e2) {...}; \\
+    };
+    \node[draw=none, above=0.1cm of vec.north] {interrupts vector};
+
+    \node[draw, right=2cm of e0,fill=blue!8!white] (isr0) {isr\_0: ... iret};
+    \node[draw, right=2cm of e1,fill=blue!8!white] (isr1) {isr\_1: ... iret};
+
+    \draw[->,>=Stealth] (stvec.east) -- (vec.west);
+    \draw[->,>=Stealth] (e0.east) -- (isr0.west);
+    \draw[->,>=Stealth] (e1.east) -- (isr1.west);
+\end{tikzpicture}
+\\
+\small\emph{Figura 4: Vector de interrupciones.}
+\end{center}
+
+\subsection{Pasos del hardware ante una interrupción}
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item Salva el \texttt{pc} actual en algún registro o en memoria.
+    \item Cambia el modo de ejecución a supervisor.
+    \item Salta a la rutina correspondiente según el número de
+        interrupción (índice del vector).
+    \item Al retornar (instrucción \texttt{iret}), restaura el modo
+        previo y el \texttt{pc} salvado.
+\end{enumerate}
+
+En arquitecturas como RISC-V, todas las interrupciones disparan una
+única ISR cuya dirección está en \texttt{stvec}; el código del
+manejador identifica el motivo leyendo \texttt{scause} y despacha al
+caso correspondiente.
+
+\begin{importante}
+El kernel toma el control en cada interrupción, excepción o trap.
+Esa es la única manera de que las funciones del kernel se invoquen
+mientras un proceso de usuario está corriendo.
+\end{importante}
+
+\subsection{Implementación de syscalls}
+
+Las syscalls se implementan en dos partes:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Lado usuario}: típicamente como funciones en la
+        biblioteca estándar. Cada función pone el \emph{número de
+        syscall} en un registro designado de la CPU (\texttt{a7} en
+        RISC-V) y ejecuta una instrucción de trap (\texttt{int} en
+        x86 o \texttt{ecall} en RISC-V).
+    \item \textbf{Lado kernel}: el manejador de trap (ISR) reconoce
+        que se trata de una syscall, lee el número y los argumentos
+        del trapframe, y llama a la función correspondiente del
+        kernel. El valor de retorno se escribe en el trapframe para
+        que, al volver a usuario, esté en el registro adecuado.
+\end{itemize}
+
+Por convención POSIX, los valores negativos retornados por una
+syscall (típicamente \texttt{-1}) son códigos de error.
+
+% =====================================================================
+\section{Cambios de contexto}
+% =====================================================================
+
+\subsection{El problema}
+
+Si una sola CPU debe ejecutar muchas tareas, el SO necesita poder
+\emph{intercambiar} cuál de ellas tiene la CPU en cada momento. Para
+hacerlo correctamente, debe ser capaz de pausar a una tarea de modo
+que, más adelante, pueda retomarla \emph{exactamente} donde la dejó.
+
+\begin{definicion}
+El \textbf{saved context} de una tarea es la estructura que guarda el
+estado de la CPU desde que la tarea abandonó el procesador, para
+poder continuar su ejecución más adelante. Típicamente contiene el
+\texttt{pc}, el \texttt{sp} y posiblemente otros registros (los
+\emph{callee-saved}).
+\end{definicion}
+
+El descriptor de cada tarea contiene su \texttt{tid}, su estado, sus
+recursos y su \emph{saved context}.
+
+\subsection{Quantum y preemption}
+
+\begin{definicion}
+El \textbf{quantum} (o \emph{time slice}) es el período de tiempo
+máximo de uso continuo de la CPU asignado a una tarea. Cuando una
+tarea agota su quantum, el kernel le \emph{quita} la CPU
+(\emph{preemption}) y se la asigna a otra \texttt{RUNNABLE}.
+\end{definicion}
+
+\begin{idea}
+El quantum hace que las tareas usen la CPU \emph{a ráfagas}, dando la
+ilusión de que cada una tuviera su propia CPU. Si el quantum es muy
+corto, hay demasiados context switches y el sistema gasta mucho
+tiempo cambiando de tarea (overhead). Si es muy largo, las tareas
+interactivas se sienten lentas. El equilibrio es un parámetro de
+diseño del scheduler.
+\end{idea}
+
+\subsection{Operaciones \texttt{yield()} y \texttt{scheduler()}}
+
+El kernel define dos funciones para implementar este mecanismo:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{yield()}: el thread corriente \emph{abandona} la CPU.
+        Marca su estado como \texttt{RUNNABLE} y dispara un context
+        switch al \emph{scheduler}.
+    \item \texttt{scheduler()}: selecciona el próximo thread a darle
+        la CPU.
+\end{itemize}
+
+Esquema simplificado:
+
+\begin{lstlisting}[style=cstyle]
+struct task* current; // current task descriptor
+
+void yield() {
+    current->state = RUNNABLE;
+    switch_context(&current->ctx, &scheduler_ctx);
+}
+
+void scheduler() {
+    while (1) {
+        current = NULL;
+        struct task* task = select_runnable_task();  // scheduling algorithm
+        if (task) {
+            context_switch(&scheduler->ctx, &(task->ctx));
+        }
+    }
+}
+\end{lstlisting}
+
+\subsection{El timer y el preemtive multitasking}
+
+Un thread que no invoca \texttt{yield()} monopolizaría la CPU.
+Para evitarlo, el kernel programa el \emph{timer} (reloj) para que
+genere interrupciones periódicas. En cada tick, la ISR del timer
+puede decidir invocar \texttt{yield()} si el quantum se agotó.
+
+\begin{definicion}
+\textbf{Preemptive multitasking} (o \emph{tiempo compartido}): forma
+de planificación en la que el kernel puede recuperar la CPU de una
+tarea sin la cooperación de ésta, gracias a las interrupciones del
+timer.
+\end{definicion}
+
+\subsection{Pasos de un context switch}
+
+Cuando el SO decide quitar la CPU a una tarea y asignársela a otra:
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item Salvar los registros de la CPU correspondientes en el
+        contexto del descriptor de la tarea actual.
+    \item Cambiar al stack de la nueva tarea.
+    \item Restaurar los registros de la nueva tarea desde su contexto.
+\end{enumerate}
+
+Implementación típica de \texttt{context\_switch} (escrita en
+assembly):
+
+\begin{lstlisting}[style=cstyle]
+context_switch(struct context *current, struct context *new) {
+    save_ctx(current);   // copia pc y sp del HW al contexto current
+    restore_ctx(new);    // copia pc y sp del contexto new al HW
+}
+\end{lstlisting}
+
+\subsection{Esquema mínimo de un kernel}
+
+Las Notas dan un esquema simplificado de cómo se ven las funciones de
+manejo de tareas en el kernel. El \emph{trap handler} central despacha
+según el motivo:
+
+\begin{lstlisting}[style=cstyle]
+trap(trap_number) {
+    push_cpu_registers();
+    switch (trap_number) {
+        case TIMER:
+            ticks++;
+            set_next_timer_interrupt();
+            if (current_task_used_quantum())
+                yield();   // preempt CPU
+            break;
+        case SYSCALL:
+            syscall();
+            break;
+        case DISK_IRQ:
+            wakeup(&disk_wait_queue);
+            break;
+        // ...
+    }
+    restore_cpu_registers();
+    return_from_trap();
+}
+\end{lstlisting}
+
+Y las primitivas \texttt{suspend}/\texttt{wakeup} para bloqueo y
+desbloqueo:
+
+\begin{lstlisting}[style=cstyle]
+suspend(struct wait_queue *wq) {
+    current->state = WAITING;
+    enqueue(wq, current);
+    yield();
+}
+
+wakeup(struct wait_queue *wq) {
+    struct task *task = dequeue(wq);
+    if (task) task->state = RUNNABLE;
+}
+\end{lstlisting}
+
+% =====================================================================
+\section{Procesos zombie y el primer proceso del sistema}
+% =====================================================================
+
+\subsection{El par \texttt{exit}/\texttt{wait}}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{exit(exitcode)}: finaliza el proceso corriente con
+        código de salida \texttt{exitcode}.
+    \item \texttt{wait(\&exitcode)}: el proceso corriente se bloquea
+        hasta que finalice un hijo. El código de salida se copia en
+        el parámetro \texttt{exitcode}.
+\end{itemize}
+
+Esto ofrece un mecanismo básico de sincronización y comunicación
+entre procesos: el padre puede saber cómo terminó el hijo. Por
+convención el código de salida $0$ significa terminación normal;
+cualquier valor distinto, anormal.
+
+\subsection{El primer proceso del sistema}
+
+En sistemas tipo UNIX, el primer proceso lanzado es \texttt{init}
+(PID~1). Construido manualmente por el kernel al final del boot, su
+imagen inicial es \texttt{initcode}, que invoca \texttt{exec("init")}.
+A partir de ahí, init dispara los procesos del sistema:
+
+\begin{lstlisting}[style=textstyle]
+initcode  pid=1   // hardcoded en el kernel
+   | exec("init")
+init      pid=1
+   | fork(); child: exec("tty")
+tty       pid=2
+   | exec("login")
+login     pid=3
+   | exec("sh")
+shell     pid=4
+\end{lstlisting}
+
+Esto hace que el sistema mantenga un \emph{árbol de procesos} con la
+relación padre/hijo, donde init es la raíz. Cuando un padre muere
+antes que sus hijos, los hijos son adoptados por init, que se
+encargará del \texttt{wait()} correspondiente.
+
+% =====================================================================
+\section{Concurrencia}
+% =====================================================================
+
+\subsection{Definiciones y por qué importa}
+
+\begin{definicion}
+\textbf{Concurrencia}: mecanismos en un sistema que posibilitan la
+ejecución de múltiples hilos de ejecución por medio de ejecución
+simultánea (\emph{paralelismo}) o tiempo compartido (\emph{time
+sharing}) con cambios de contexto. Estos mecanismos pueden generar
+diferentes secuencias de operaciones de manera no determinística.
+\end{definicion}
+
+Aún con un único hilo de ejecución secuencial, el mecanismo de
+interrupciones o señales genera diferentes secuencias de ejecución
+(\emph{intercalados} o \emph{interleavings}). Por ejemplo:
+
+\begin{lstlisting}[style=cstyle]
+int v = 1;
+
+// disparado por una senal
+signal_handler() {
+    v += 1;          // (1)
+}
+
+// thread principal
+v *= 2;              // (2)
+print(v);            // (3)
+\end{lstlisting}
+
+Hay tres interleavings posibles según cuándo llegue la señal:
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item Sin señal: $[(2),(3)]$ imprime \texttt{2}.
+    \item Señal entre (2) y (3): $[(2),(1),(3)]$ imprime \texttt{3}.
+    \item Señal antes de (2): $[(1),(2),(3)]$ imprime \texttt{4}.
+\end{enumerate}
+
+Tres salidas distintas para el mismo programa: ese es exactamente el
+problema de la concurrencia.
+
+\subsection{Paralelismo vs.\ tiempo compartido}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Paralelismo}: dos o más hilos se ejecutan
+        \emph{realmente} a la vez en CPUs distintas. Es el caso de
+        los sistemas multicore o multiprocesador.
+    \item \textbf{Tiempo compartido}: una única CPU se va alternando
+        entre varios hilos vía cambios de contexto. Solo uno corre
+        en cada instante, pero al usuario le parece que todos
+        progresan.
+\end{itemize}
+
+En ambos casos hay concurrencia: hilos concurrentes son aquellos cuya
+relación de orden no está garantizada por el programa.
+
+\subsection{Recursos compartidos, regiones críticas y race conditions}
+
+Dos o más tareas \emph{cooperativas} usan algún recurso compartido:
+una variable, un archivo, un dispositivo. En procesos con múltiples
+threads, lo más común son las variables compartidas (\emph{shared
+memory}). En procesos separados, hay que pasar mensajes o usar
+shared memory explícita.
+
+\begin{definicion}
+La \textbf{región crítica} es la porción de código que accede a un
+recurso compartido.
+\end{definicion}
+
+\begin{definicion}
+Una \textbf{condición de carrera} (\emph{race condition}) surge cuando
+el comportamiento del sistema depende de la secuencia (\emph{timing}
+o \emph{interleaving}) de la ocurrencia de eventos externos que
+pueden generar flujos de ejecución no deseados.
+\end{definicion}
+
+\begin{importante}
+La concurrencia genera trazas de ejecución que no están bajo el
+control del programador, sino del scheduler (\emph{no determinismo}).
+En un sistema correcto, este no determinismo no debería alterar los
+objetivos de cómputo del programa. La existencia de una condición de
+carrera \emph{hace observable} ese no determinismo.
+\end{importante}
+
+Para impedir trazas no deseadas hace falta usar \textbf{mecanismos de
+sincronización}.
+
+% =====================================================================
+\section{Locks y exclusión mutua}
+% =====================================================================
+
+\subsection{Definición}
+
+\begin{definicion}
+Un \textbf{lock} (o \emph{mutex}) se asocia a un recurso para
+sincronizar su acceso de manera exclusiva. Provee \textbf{exclusión
+mutua}: cuando un thread adquirió el lock, los demás que lo
+requieran deberán esperar hasta que el primero lo libere.
+\end{definicion}
+
+Un lock típicamente expone dos operaciones: \texttt{acquire(lock)} y
+\texttt{release(lock)}. El patrón estándar es:
+
+\begin{lstlisting}[style=cstyle]
+lock l = create_lock("recurso r");
+// ...
+acquire(&l);       // espera a que el recurso este libre
+use_resource(r);   // region critica
+release(&l);       // libera
+\end{lstlisting}
+
+\paragraph{Costos.} El uso de locks tiene consecuencias adversas:
+las operaciones se \emph{secuencializan} y producen
+\emph{contención} en los hilos que compiten por el recurso. Hay que
+minimizar la duración de la región crítica para reducir la pérdida
+de paralelismo.
+
+\subsection{Spinlocks: el primer intento}
+
+Un \emph{spinlock} hace que cada thread espere usando la CPU en un
+ciclo (\emph{espera ocupada}). Una primera implementación:
+
+\begin{lstlisting}[style=cstyle]
+void acquire(int *lk) {
+    while (*lk)
+        ;            // (1) busy wait
+    *lk = 1;        // (2)
+}
+
+void release(int *lk) {
+    *lk = 0;
+}
+\end{lstlisting}
+
+\paragraph{¿Por qué falla?} Supongamos que el thread~1 ejecuta
+\texttt{acquire()} y está en la línea~(1) con \texttt{*lk == 0}.
+Antes de la línea~(2) ocurre una interrupción de reloj y el scheduler
+pasa al thread~2. El thread~2 también invoca \texttt{acquire()}, ve
+\texttt{*lk == 0} y avanza a la línea~(2), entrando a la región
+crítica. Otra interrupción y el control vuelve al thread~1, que
+también ejecuta la línea~(2) y entra a la región crítica. \textbf{No
+se pudo garantizar exclusión mutua}: el problema es que el lock en
+sí mismo es un recurso compartido y las operaciones \texttt{acquire}
+y \texttt{release} deberían ser \emph{atómicas} (sin interrupciones
+en el medio).
+
+\subsection{Solución 1: deshabilitar interrupciones}
+
+En un monoprocesador podemos deshabilitar interrupciones en
+\texttt{acquire()}:
+
+\begin{lstlisting}[style=cstyle]
+void acquire(int *lk) {
+    cli();              // disable interrupts
+    while (*lk) ;
+    *lk = 1;
+}
+
+void release(int *lk) {
+    *lk = 0;
+    sti();              // enable interrupts
+}
+\end{lstlisting}
+
+Funciona en monoprocesadores. \emph{No funciona en multiprocesadores}:
+\texttt{cli()} solo deshabilita interrupciones en la CPU que la
+ejecuta, no en las otras.
+
+\subsection{Solución 2: instrucciones atómicas}
+
+Las CPUs modernas multicore con SMP proveen instrucciones atómicas
+indivisibles, implementadas mediante bloqueo del bus de memoria,
+bloqueo de la línea de caché o, en monoprocesadores, deshabilitando
+interrupciones. Las más comunes son:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Compare and swap (CAS)}:
+        \texttt{cas(addr, old, new)}: si la variable en \texttt{addr}
+        contiene \texttt{old}, la modifica con \texttt{new}.
+    \item \textbf{Test and set (TAS)}:
+        \texttt{old = tas(addr, new)}: asigna \texttt{new} y retorna
+        el valor anterior.
+    \item \textbf{Fetch and add (FAA)}:
+        \texttt{faa(addr, value)}: suma \texttt{value} atómicamente.
+\end{itemize}
+
+GCC provee \texttt{\_\_sync\_lock\_test\_and\_set(\&lock, value)}
+con implementación dependiente de la arquitectura. En RISC-V emite:
+
+\begin{lstlisting}[style=textstyle]
+li     a5, 1
+amoswap.w a5, a5, (lock_address)
+\end{lstlisting}
+
+\subsection{Spinlocks en multiprocesadores}
+
+Una implementación correcta de spinlock para SMP combina
+deshabilitar interrupciones, instrucción atómica y \emph{barreras
+de memoria}:
+
+\begin{lstlisting}[style=cstyle]
+void acquire(int *lk) {
+    cli();
+    while (__sync_lock_test_and_set(lk, 1) != 0)
+        ;
+    __sync_synchronize();   // memory barrier (fence)
+}
+
+void release(int *lk) {
+    __sync_lock_release(lk); // *lk = 0;
+    __sync_synchronize();
+    sti();
+}
+\end{lstlisting}
+
+\paragraph{Por qué la barrera.} En multiprocesadores con \emph{modelo
+de memoria relajado} (lo habitual en x86, ARM, RISC-V), una escritura
+hecha por una CPU puede no ser visible inmediatamente en otra (queda
+en su caché L1). La barrera fuerza a la CPU a propagar la escritura
+a memoria principal e invalidar las cachés ajenas, asegurando que el
+cambio del lock sea visible en todos los cores.
+
+\subsection{Sleep locks}
+
+Un spinlock solo es útil para esperas \emph{cortas}: si la región
+crítica tarda mucho, gastar CPU haciendo busy-wait es un desperdicio.
+Cuando la espera puede ser larga, conviene \emph{suspender} al
+thread y reactivarlo cuando la condición cambie. Esto es lo que hace
+un \textbf{sleep lock}, similar a una variable de condición:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{sleep(task* t, wait\_queue* q)}: pasa $t$ a estado
+        \texttt{SLEEPING} y lo encola en $q$.
+    \item \texttt{wakeup(wait\_queue* q)}: desencola una tarea y la
+        pasa a \texttt{RUNNABLE}.
+\end{itemize}
+
+La implementación interna requiere de spinlocks porque la cola es a
+su vez un recurso compartido y \texttt{sleep}/\texttt{wakeup} pueden
+ejecutarse concurrentemente.
+
+\subsection{Modularidad y problemas del uso de locks}
+
+\begin{importante}
+Los locks \textbf{no son modulares}. Un thread puede adquirir un
+lock en una función y liberarlo en otra; los efectos colaterales del
+uso de locks deben ser documentados explícitamente.
+\end{importante}
+
+El uso de locks es propenso a tres problemas clásicos:
+
+\paragraph{\emph{Self-lock} o \emph{double lock}.} Si un thread
+intenta adquirir un recurso que él mismo ya posee, queda bloqueado
+para siempre. Solución: \emph{locks recursivos}.
+
+\paragraph{\emph{Deadlock} (interbloqueo).} Dos hilos esperan
+mutuamente un recurso del otro:
+
+\begin{lstlisting}[style=cstyle]
+f() {                      g() {
+    acquire(&l1);              acquire(&l2);
+    // ...                     // ...
+    acquire(&l2);              acquire(&l1);   // (potencial deadlock)
+    release(&l2);              release(&l1);
+    release(&l1);              release(&l2);
+}                          }
+\end{lstlisting}
+
+Si el thread~A ejecutando \texttt{f()} adquiere \texttt{l1} y el
+thread~B ejecutando \texttt{g()} adquiere \texttt{l2}, ambos quedan
+esperando indefinidamente. Las cuatro condiciones para que exista
+posibilidad de deadlock son (\emph{condiciones de Coffman}):
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item \textbf{Exclusión mutua}: los recursos se adquieren de
+        forma exclusiva.
+    \item \textbf{Espera y retención}: un proceso retiene un recurso
+        mientras espera por otro.
+    \item \textbf{No quita} (\emph{preemption}): los recursos se
+        liberan solo voluntariamente.
+    \item \textbf{Espera circular}: existe una cadena
+        $P_0, P_1, \dots, P_{n-1}, P_i$ tal que cada uno espera por un
+        recurso adquirido por $P_{(i+1) \bmod n}$.
+\end{enumerate}
+
+La estrategia más habitual para prevenir deadlock es \emph{romper la
+condición 4} estableciendo un orden total para la adquisición de
+locks: si todos los módulos del sistema toman \texttt{l1} antes que
+\texttt{l2}, jamás se forma una cadena circular.
+
+\paragraph{\emph{Livelock}.} Dos o más hilos quedan en ciclos sin
+progresar en alguna computación útil. No están bloqueados (siguen
+ejecutando), pero ninguno avanza. Es típico de protocolos mal
+diseñados de \emph{retry}.
+
+% =====================================================================
+\section{Solución de Peterson}
+% =====================================================================
+
+Edsger Dijkstra y Gary Peterson estudiaron en los años 70 cómo
+resolver el problema de la región crítica usando \emph{solo} lectura
+y escritura sobre memoria compartida (sin instrucciones atómicas del
+hardware). El algoritmo de Peterson (1981) lo logra para dos threads:
+
+\begin{lstlisting}[style=cstyle]
+bool flag[2] = {false, false};
+int  turn;
+
+lock(i) {                      unlock(i) {
+    flag[i] = true;                flag[i] = 0;
+    int other = (i==0)? 1: 0;  }
+    turn = other;
+    while (flag[other] && turn == other)
+        ;
+}
+\end{lstlisting}
+
+La idea: \texttt{flag[i]} expresa la \emph{intención} del thread $i$
+de ingresar a la sección crítica; \texttt{turn} indica qué thread
+tendría la prioridad para ingresar en caso de empate. Anunciando el
+interés \emph{antes} de ceder el turno, el algoritmo garantiza
+exclusión mutua y progreso (la demostración semi-formal está en el
+Ejercicio~10 del Práctico~3).
+
+El algoritmo se generaliza a $N$ threads (\emph{algoritmo filter}),
+pero su valor en la práctica moderna es limitado:
+
+\begin{importante}
+La solución de Peterson \textbf{no funciona en sistemas
+multiprocesadores} sin barreras de memoria explícitas, debido a las
+cachés y los modelos de memoria relajados. Por eso los sistemas
+reales usan instrucciones atómicas del hardware (TAS, CAS, FAA) y
+construyen mutexes/spinlocks sobre ellas.
+\end{importante}
+
+% =====================================================================
+\section{Semáforos}
+% =====================================================================
+
+\subsection{Definición}
+
+\begin{definicion}
+Un \textbf{semáforo} (Dijkstra, 1963) representa una cantidad de
+recursos disponibles. Es una primitiva de sincronización más general
+que los locks. Su API tiene tres operaciones:
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{sem\_init(s, value)}: inicializa el valor del
+        semáforo $s$.
+    \item \texttt{sem\_wait(s)} (\emph{P}): si el valor de $s$ es
+        cero, suspende al invocante; si no, decrementa.
+    \item \texttt{sem\_signal(s)} (\emph{V}, también
+        \texttt{sem\_post}): incrementa el valor de $s$ y despierta a
+        algún thread bloqueado.
+\end{itemize}
+\end{definicion}
+
+Un semáforo $n$-ario (o \emph{counting semaphore}) permite que hasta
+$n$ threads accedan al recurso. Un semáforo binario (con $n = 1$) es
+equivalente a un \textbf{mutex}: garantiza exclusión mutua.
+
+Internamente un semáforo se implementa con un contador y un sleep
+lock: si el contador llega a cero, los \texttt{wait()}s subsiguientes
+ponen al thread en una wait queue; un \texttt{signal()} desencola a
+uno y lo pasa a \texttt{RUNNABLE}.
+
+\subsection{El productor-consumidor con semáforos}
+
+El problema clásico: uno o más productores generan valores y los
+ponen en un buffer acotado de capacidad $N$; uno o más consumidores
+extraen valores del buffer y los procesan. Productores y consumidores
+ejecutan concurrentemente.
+
+\begin{lstlisting}[style=cstyle]
+buffer buf[N];
+semaphore mutex = 1, full = N, empty = 0;
+
+void producer() {
+    while (true) {
+        value = gen_value();
+        sem_wait(&full);
+        add_to_buffer(value);
+        sem_signal(&empty);
+    }
+}
+
+void consumer() {
+    while (true) {
+        sem_wait(&empty);
+        value = get_from_buffer();
+        sem_signal(&full);
+        process(value);
+    }
+}
+
+void add_to_buffer(value) {
+    sem_wait(&mutex);
+    // agregar value al buffer
+    sem_signal(&mutex);
+}
+
+item_type get_from_buffer() {
+    sem_wait(&mutex);
+    // extraer item
+    sem_signal(&mutex);
+}
+\end{lstlisting}
+
+\begin{idea}
+Tres semáforos cumplen tres roles distintos:
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{full}/\texttt{empty}: \emph{condición} (cuántos
+        slots libres u ocupados hay).
+    \item \texttt{mutex}: \emph{exclusión mutua} sobre la
+        modificación del buffer y los índices.
+\end{itemize}
+Las regiones críticas son lo más cortas posible para no serializar
+todo el pipeline.
+\end{idea}
+
+% =====================================================================
+\section{Variables de condición y monitores}
+% =====================================================================
+
+\subsection{Variables de condición}
+
+\begin{definicion}
+Una \textbf{variable de condición} es una primitiva de sincronización
+que maneja una cola de tareas esperando una condición (estado
+lógico). Comúnmente se usa con un lock asociado al recurso. Su
+interfaz es:
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{wait(\&cond, \&lock)}: requiere que el invocante haya
+        adquirido el lock. \emph{Atómicamente} libera el lock, agrega
+        el thread a la cola y lo suspende.
+    \item \texttt{signal(\&cond)}: invocada por un thread que cambió
+        la condición. Despierta uno o todos los threads esperando.
+\end{itemize}
+\end{definicion}
+
+Productor-consumidor usando variables de condición:
+
+\begin{lstlisting}[style=cstyle]
+condition cond; mutex lock; buffer buf;
+
+producer() {                         consumer() {
+    acquire(&lock);                      acquire(&lock);
+    while (buffer_is_full())             while (buffer_is_empty())
+        wait(&cond, &lock);                  wait(&cond, &lock);
+    produce(&buf);                       consume(&buf);
+    signal(&cond);                       signal(&cond);
+    release(&lock);                      release(&lock);
+}                                    }
+\end{lstlisting}
+
+Las operaciones \texttt{wait()}/\texttt{notify()} de Java
+corresponden exactamente a este mecanismo.
+
+\subsection{Monitores}
+
+\begin{definicion}
+Un \textbf{monitor} (Hansen y Hoare, 1974) es una construcción
+sintáctica de un lenguaje de programación que encapsula datos y las
+operaciones sobre ellos al estilo orientado a objetos. Los hilos
+solo pueden manipular los datos por medio de las operaciones del
+monitor. Es \emph{thread safe}: los invariantes están protegidos
+ante concurrencia.
+\end{definicion}
+
+Implementación común: variables de condición + al menos un mutex que
+asegura la exclusión mutua entre operaciones concurrentes.
+
+\begin{lstlisting}[style=cstyle]
+monitor PC {
+    condition full, empty;
+    data buffer[N];
+    int count = 0;
+
+    void put(data item) {
+        if (count == N) wait(full);
+        insert(buffer, item);
+        if (++count == 1) signal(empty);
+    }
+
+    data get() {
+        if (count == 0) wait(empty);
+        data item = remove(buffer);
+        if (--count == N-1) signal(full);
+        return item;
+    }
+};
+
+void producer() {
+    while (true) { data item = gen_item(); PC.put(item); }
+}
+void consumer() {
+    while (true) { data item = PC.get(); process(item); }
+}
+\end{lstlisting}
+
+\begin{idea}
+Los monitores son la abstracción \emph{modular} de la sincronización:
+desde afuera, el productor y el consumidor solo ven \texttt{put()} y
+\texttt{get()}. Toda la complejidad (mutex, variables de condición,
+cuándo \texttt{wait}/\texttt{signal}) queda encapsulada y el código
+cliente no se puede equivocar olvidándose un \texttt{release}.
+\end{idea}
+
+Java soporta monitores con la palabra clave \texttt{synchronized}:
+una clase con métodos sincronizados es un monitor implícito. Cada
+objeto Java tiene asociado un mutex y una variable de condición
+disponibles vía \texttt{wait()}/\texttt{notify()}/\texttt{notifyAll()}.
+
+% =====================================================================
+\section{Mensajes y comunicación}
+% =====================================================================
+
+\subsection{Mensajes en lugar de memoria compartida}
+
+Los mecanismos vistos hasta acá se basan en \emph{shared memory}.
+Cuando los procesos no comparten memoria (corren en computadoras
+distintas o el SO no les permite memoria compartida), se necesita
+\emph{pasaje de mensajes}. El modelo se basa en dos primitivas:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{send(destination, message)}: envía un mensaje a un
+        proceso identificado.
+    \item \texttt{receive(source, \&message)}: recibe un mensaje del
+        emisor (puede ser \texttt{any}).
+\end{itemize}
+
+La comunicación puede ser:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Asincrónica}: hay un buffer de mensajes
+        (\emph{mailbox}). El emisor no se bloquea; el receptor solo
+        se bloquea si el mailbox está vacío.
+    \item \textbf{Sincrónica} (\emph{rendezvous}): no hay buffer.
+        Emisor y receptor deben coincidir en \texttt{send}/\texttt{receive}.
+\end{itemize}
+
+\subsection{Micro-kernels}
+
+En SOs con diseño \emph{micro-kernel} como MINIX, los subsistemas
+(gestor de procesos, memoria, sistemas de archivos) se implementan
+como \emph{servers} que reciben requerimientos por mensajes:
+
+\begin{lstlisting}[style=cstyle]
+int main(void) {
+    message m;
+    init_subsystem();
+    while (TRUE) {
+        receive(ANY, &m);
+        switch (m.type) {
+            case REQUEST_1:
+                // ...
+                send(other_subsystem, m2);
+                break;
+            // ...
+        }
+    }
+}
+\end{lstlisting}
+
+% =====================================================================
+\section{Futuros, promesas y concurrencia sin locks}
+% =====================================================================
+
+\subsection{Futuros y promesas}
+
+\begin{definicion}
+Un \textbf{futuro} (o \emph{promesa}) es una abstracción que
+representa un valor que será computado por algún otro componente de
+ejecución concurrente. Se usan para implementar \emph{data-flow
+variables}: variables que ante una lectura esperan a que se asigne su
+valor. La operación de lectura actúa como mecanismo de sincronización.
+\end{definicion}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{future f = async g(args)}: invocación asincrónica
+        de \texttt{g()} en un nuevo thread. El invocante continúa
+        ejecutando.
+    \item \texttt{value = f.get()}: obtiene el valor encapsulado en
+        $f$, posiblemente bloqueándose hasta que el thread que evalúa
+        \texttt{g()} finalice.
+\end{itemize}
+
+\subsection{Estructuras lock-free y wait-free}
+
+\begin{definicion}
+Una estructura de datos es \textbf{lock-free} si puede usarse
+concurrentemente sin operaciones de bloqueo. Es \textbf{wait-free} si
+cada thread que la usa puede completar sus operaciones en un número
+acotado de pasos.
+\end{definicion}
+
+Un spinlock califica como lock-free pero no como wait-free. Las
+estructuras lock-free generalmente requieren instrucciones atómicas
+y tienen ventajas de rendimiento (no hay contención por locks) y
+seguridad (si un thread finaliza con un lock adquirido, los demás no
+quedan bloqueados). Ejemplo de \texttt{push} lock-free a una lista
+enlazada usando CAS:
+
+\begin{lstlisting}[style=cstyle]
+push(list* head, T value) {
+    list_node *n = create_node(value);
+    n->next = head->first;
+    while (!cas(&(head->first), n->next, n))
+        ;
+}
+\end{lstlisting}
+
+% =====================================================================
+\section{IPC en UNIX}
+% =====================================================================
+
+Los sistemas tipo UNIX ofrecen una variedad de mecanismos para la
+comunicación y sincronización entre procesos:
+
+\begin{center}
+\small
+\begin{tabular}{@{}lp{8.5cm}@{}}
+\toprule
+Mecanismo & Llamadas al sistema \\
+\midrule
+File                & \texttt{open, read, write, close, ...} \\
+Pipes               & \texttt{pipe, read, write, close, ...} \\
+Named pipes         & \texttt{mkfifo, read, write, close, ...} \\
+Signals             & \texttt{kill, signal, alarm, ...} \\
+Message queues      & \texttt{msgget, msgrcv, msgctl, ...} \\
+Semaphores          & \texttt{semget, semctl, semop, sem\_open, sem\_wait, sem\_post, ...} \\
+Shared memory       & \texttt{shmget, shmat, shmctl, shm\_open, mmap, ...} \\
+Memory mapped files & \texttt{mmap, munmap, ...} \\
+Sockets             & \texttt{listen, connect, accept, send, recv, ...} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Todos estos mecanismos permiten la comunicación entre procesos
+locales, salvo los \emph{sockets}, que también permiten la
+comunicación entre procesos en computadoras distintas (red).
+
+% =====================================================================
+\section{Resumen final}
+% =====================================================================
+
+\begin{enumerate}[leftmargin=*]
+    \item Un \textbf{proceso} es una instancia de un programa en
+        ejecución, con espacio de memoria propio. Un \textbf{thread}
+        es la mínima unidad planificable: comparte memoria con otros
+        threads del mismo proceso, pero tiene pila propia.
+    \item El SO mantiene por cada tarea un \textbf{descriptor} (PCB)
+        con su PID, estado, mapa de memoria, recursos y \emph{saved
+        context}. Las tareas en \texttt{RUNNABLE} están en cola de
+        listos; las \texttt{SLEEPING}, en wait queues asociadas al
+        evento por el que esperan.
+    \item Las transiciones de estado se disparan por syscalls,
+        interrupciones (timer, dispositivos) y excepciones. El timer
+        es el mecanismo central del \textbf{preemptive multitasking}:
+        permite al kernel recuperar la CPU sin la cooperación del
+        proceso.
+    \item Un \textbf{cambio de contexto} guarda los registros del
+        thread saliente y restaura los del entrante. La operación
+        clave es \texttt{context\_switch(current, new)} y suele
+        escribirse en assembly.
+    \item La \textbf{concurrencia} es no determinismo controlado por
+        el scheduler. Cuando varias tareas comparten un recurso, los
+        \emph{interleavings} pueden producir
+        \textbf{condiciones de carrera}, que se evitan protegiendo
+        las regiones críticas con primitivas de sincronización.
+    \item Hay una jerarquía de primitivas:
+        \begin{itemize}[leftmargin=*,nosep]
+            \item \emph{Spinlocks}: para regiones críticas cortas.
+                Usan instrucciones atómicas y barreras de memoria en
+                multiprocesadores.
+            \item \emph{Sleep locks}: para regiones largas. Suspenden
+                al thread y lo despiertan con \texttt{wakeup}.
+            \item \emph{Semáforos}: generalización del lock; el
+                contador modela cantidad de recursos.
+            \item \emph{Variables de condición}: hilos esperan que
+                otra tarea cambie un estado lógico.
+            \item \emph{Monitores}: encapsulación modular de los
+                anteriores en una clase \emph{thread safe}.
+        \end{itemize}
+    \item El uso de locks introduce problemas: \emph{contención},
+        \emph{deadlock} (cuatro condiciones de Coffman),
+        \emph{livelock}, \emph{self-lock}. La estrategia más habitual
+        para prevenir deadlock es definir un orden total de
+        adquisición.
+    \item El algoritmo de \textbf{Peterson} demuestra que la
+        exclusión mutua entre dos threads puede resolverse solo con
+        lecturas y escrituras a memoria compartida, pero requiere
+        atomicidad y consistencia secuencial; en la práctica los
+        sistemas usan instrucciones atómicas del hardware.
+    \item El \textbf{productor-consumidor} con tres semáforos
+        (\texttt{full}, \texttt{empty}, \texttt{mutex}) es el
+        ejemplo prototípico de combinar sincronización por condición
+        y exclusión mutua.
+    \item Cuando los procesos no comparten memoria, se comunican por
+        \textbf{mensajes} (sincrónicos o asincrónicos). UNIX ofrece
+        un catálogo amplio de mecanismos IPC: pipes, FIFOs, signals,
+        message queues, semáforos, shared memory, sockets.
+\end{enumerate}
+
+\begin{importante}
+\textbf{La idea unificadora:} la concurrencia es no determinismo
+controlado, y el rol del SO es ofrecer abstracciones suficientes
+(estados, scheduler, locks, semáforos, monitores, mensajes) para que
+ese no determinismo no altere los objetivos de cómputo de los
+programas.
+\end{importante}
+
+\end{document}

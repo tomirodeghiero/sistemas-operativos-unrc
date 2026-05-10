@@ -225,3 +225,19 @@ Esto se contrasta con el experimento del **ejercicio 5**: alli dos *procesos* co
 > En sintesis: el experimento confirma directamente la afirmacion del modelo de threads visto en la teoria. Cada thread tiene **su propio stack**, pero **comparte texto, datos, heap, descriptores y todo el resto del address space del proceso**.
 
 Text, data, heap y variables globales (`counter`) son **compartidos** entre todos los hilos. El stack es **privado** a cada hilo.
+
+## Conexion con la teoria
+
+El ejercicio aterriza directamente la definicion de proceso multithreaded vista en la teoria (Notas 5-6, *Procesos y threads*, Figura 1):
+
+> "Un proceso multithreaded permite la creacion de multiples threads dentro del mismo espacio de memoria. Cada thread usa su propia pila aunque todos los threads comparten el espacio de memoria del proceso."
+
+Las observaciones del experimento de la seccion 6.4 son la confirmacion empirica de este modelo:
+
+- **Mismo PID en los dos threads** -> son tareas dentro del mismo *proceso* segun la representacion del kernel (en Linux comparten `tgid`).
+- **Misma direccion para `&counter`** -> la variable global vive en el segmento `.bss` del proceso, mapeado por una unica tabla de paginas. Como ambos threads usan la misma tabla, la traduccion virtual -> fisica es la misma para ambos. Esta es exactamente la razon de la *race condition*: no hay copias separadas, hay una unica palabra de memoria.
+- **`&tid` distintos** -> son variables locales en *stacks distintos*, asignados por `pthread_create()` (tipicamente con `mmap` privado). La diferencia de direcciones revela el tamano fijo del stack reservado por hilo.
+
+La solucion con `pthread_mutex_t` corresponde al patron **lock-based critical section** de la teoria (capitulo *Locks*). El mutex implementa un *sleep lock*: si un hilo intenta tomar el lock que ya esta ocupado, en lugar de hacer busy-waiting el kernel lo pone en estado `SLEEPING` en una *wait queue* asociada al lock; cuando el otro hilo libera el lock, dispara `wakeup` y un dormido pasa a `RUNNABLE`. Este mecanismo es la version "alto nivel" del esquema simplificado que muestra la teoria al describir las primitivas `sleep(t, q)` / `wakeup(q)`.
+
+A diferencia del spinlock (espera ocupada), el mutex es preferible en regiones criticas largas o donde la contencion es alta, porque libera la CPU mientras espera. La pregunta de cuando usar uno u otro --espera corta vs larga, monoprocesador vs multicore-- es exactamente la discusion de la teoria entre *spinlocks* y *sleep locks*.

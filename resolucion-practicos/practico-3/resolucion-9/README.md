@@ -171,3 +171,38 @@ Puntos clave que pide el ejercicio:
 3. El estado del proceso queda en **`SLEEPING`**, asociado al canal del buffer.
 4. Cuando el disco termina, su interrupcion corre `wakeup()`, que pasa al proceso a **`RUNNABLE`**.
 5. El scheduler lo retoma con `swtch()` y la rutina del kernel continua exactamente donde habia dormido (`sleep` retorna). De ahi se completa la copia al buffer de usuario y se vuelve a modo usuario por `usertrapret`/`userret`/`sret`.
+
+## Conexion con la teoria
+
+Este ejercicio expone el complemento exacto del anterior y reproduce el esquema teorico de las primitivas `suspend`/`wakeup` (Notas 5-6, *Manejo de tareas* e *Implementacion de tareas en el kernel*):
+
+```c
+// suspend current task in wait queue and yield the cpu
+void suspend(struct wait_queue *wq) {
+    current->state = WAITING;
+    enqueue(wq, current);
+    yield();
+}
+
+// wakeup a process waiting in wait queue
+void wakeup(struct wait_queue *wq) {
+    struct task *task = dequeue(wq);
+    if (task) task->state = RUNNABLE;
+}
+```
+
+La traza del syscall `read` con cache miss es la materializacion de este esquema:
+
+| Etapa                   | Funcion concreta (xv6)              | Equivalente teorico                     |
+|-------------------------|-------------------------------------|-----------------------------------------|
+| Pedir el bloque         | `bread()` -> `virtio_disk_rw()`     | Inicio de operacion de I/O              |
+| Bloquearse              | `sleep(bp, &lock)`                  | `suspend(&disk_wait_queue)`             |
+| Cambio de contexto      | `swtch(&p->context, &cpu->scheduler)`| `yield()` -> `scheduler()`             |
+| Termina el disco        | IRQ -> `virtio_disk_intr()`         | Disco interrumpe -> `DISK_IRQ` handler  |
+| Despertar al lector     | `wakeup(bp)`                        | `wakeup(&disk_wait_queue)`              |
+| El scheduler lo elige   | `scheduler()` + `swtch`             | `scheduler()`                           |
+| Reanuda                 | `sleep` retorna                     | `suspend` retorna -> sigue la syscall  |
+
+**La diferencia clave con el ejercicio 8** es que aca el proceso no es desalojado por *quantum*: se bloquea voluntariamente porque no puede progresar hasta que llegue el dato. Por eso la transicion es a `SLEEPING` y no a `RUNNABLE`. Este es el ejemplo prototipico del estado `WAITING/SLEEPING` en el diagrama de estados de la Figura 5: una tarea esperando un *evento de wakeup*. El evento, en este caso, es la finalizacion de la transferencia DMA del controlador VirtIO.
+
+Esta cooperacion *kernel + dispositivo + scheduler* es lo que permite el modelo de concurrencia entre I/O y CPU: mientras el disco busca el bloque (mecanica del controlador, milisegundos), la CPU puede estar ejecutando otros procesos. La sincronizacion entre el productor (disco) y el consumidor (proceso lector) se hace via la *wait queue* del buffer, que es una primitiva de sincronizacion de variable de condicion implementada por el kernel.

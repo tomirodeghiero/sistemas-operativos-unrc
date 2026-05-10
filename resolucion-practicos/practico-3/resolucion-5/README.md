@@ -137,3 +137,25 @@ Con el lock, las regiones criticas de los dos procesos quedan serializadas: si e
 Esto es justamente lo que hace que la race se pueda dar: como los offsets son independientes, ambos procesos pueden hacer `lseek(0)` y leer simultaneamente el mismo valor sin que el kernel los serialice. El recurso compartido entre las dos instancias **no es `fd`**, sino el **archivo en disco** (`counter.dat`), y la manera de coordinar el acceso a ese recurso compartido es el `flock` introducido en 5.4.
 
 > Caso distinto: si las dos instancias no fueran procesos separados sino threads del mismo proceso, ahi `fd` si seria una variable compartida (todos los threads ven la misma tabla de descriptores). Pero ese es el escenario del ejercicio 6, no este.
+
+## Conexion con la teoria
+
+El ejercicio ilustra de manera muy directa la definicion de **race condition** que aparece en la teoria (Notas 5-6, *Concurrencia e IPC*):
+
+> "Una condicion de carrera surge cuando el comportamiento del sistema depende de la secuencia (timing o interleaving) de la ocurrencia de eventos externos que pueden generar flujos de ejecucion no deseados. La porcion de codigo que accede a un recurso compartido se conoce como region critica."
+
+En este ejercicio:
+
+- el **recurso compartido** es el archivo `counter.dat` en disco (no `fd`, que es local a cada proceso);
+- la **region critica** es el bloque `lseek + read + atoi + sprintf + lseek + write`;
+- el **interleaving no deseado** es la traza tipica de *lost update*, donde dos procesos leen el mismo valor antes de que cualquiera escriba, y el ultimo `write` "pisa" al otro.
+
+`flock()` resuelve el problema implementando el patron clasico **lock + region critica + unlock** (Listado 1 del capitulo *Locks* de la teoria):
+
+```c
+acquire(&l);    // flock(fd, LOCK_EX)
+use_resource(r); // operacion sobre el archivo
+release(&l);    // flock(fd, LOCK_UN)
+```
+
+Esto provee **exclusion mutua** sobre la region critica, garantizando que en cada instante a lo sumo un proceso este modificando el archivo. Es importante que la region critica sea **lo mas corta posible** para minimizar la *contencion*: en el codigo final solo el read-modify-write esta protegido, no el bucle completo. Si se hubiera puesto el `flock` afuera del `for`, los dos procesos se serializarian totalmente y el segundo no obtendria CPU hasta que el primero terminara sus 1000 iteraciones, perdiendo todo el paralelismo.
