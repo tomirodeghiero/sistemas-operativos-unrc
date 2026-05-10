@@ -112,7 +112,7 @@ El experimento en si esta pensado para GNU/Linux y se hace mas comodo ahi.
 
 La teoria (Notas 5-6, *Cambios de contexto*) define el `quantum` o `time slice` como el periodo maximo de uso continuo de la CPU asignado a una tarea. Cuando el timer dispara una IRQ y el handler detecta que se agoto el quantum, llama a `yield()` y produce un *context switch* a otra tarea `RUNNABLE`. Cada uno de esos desalojos es un *cambio de contexto involuntario*, contabilizado en `nr_switches` del archivo `/proc/<PID>/sched`.
 
-El experimento muestra empiricamente la regla central del scheduler de Linux (CFS, *Completely Fair Scheduler*): el quantum asignado a cada tarea es proporcional a su peso, y el peso es una funcion decreciente del valor de `nice`. Concretamente, el peso aproximado es \(1024 \cdot 1{.}25^{-\text{nice}}\), de modo que cada incremento de 1 en el `nice` reduce el peso en un 20\%. Un proceso con `nice=15` tiene un peso aproximadamente 15 veces menor que uno con `nice=0`, y por lo tanto:
+El experimento muestra empiricamente la regla central del scheduler de Linux (CFS, *Completely Fair Scheduler*): el quantum asignado a cada tarea es proporcional a su peso, y el peso es una funcion decreciente del valor de `nice`. Concretamente, el peso aproximado es $1024 \cdot 1.25^{-\text{nice}}$, de modo que cada incremento de 1 en el `nice` reduce el peso en un 20\%. Un proceso con `nice=15` tiene un peso aproximadamente 15 veces menor que uno con `nice=0`, y por lo tanto:
 
 - recibe time slices mas pequenos -> es desalojado mas seguido -> `nr_switches` crece mas rapido por unidad de tiempo (paradojicamente, el "menos prioritario" hace MAS context switches);
 - pero la cantidad **total** de CPU que recibe es menor, no mayor.

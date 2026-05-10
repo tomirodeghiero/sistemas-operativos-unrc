@@ -52,9 +52,9 @@ Observacion clasica: P1 es la rafaga mas larga y llega primero, asi que arrastra
 
 El enunciado pide aplicar SJF **asumiendo que los tres procesos arriban en t = 0**. Es decir, descartamos las llegadas escalonadas (0, 0.5, 3) y suponemos que las tres rafagas estan disponibles desde el principio. El scheduler elige siempre la rafaga mas corta entre las que estan en READY:
 
-- En t = 0: READY = {P1(8), P2(3), P3(5)}. La mas corta es P2 (3). P2 toma la CPU.
-- En t = 3: READY = {P1(8), P3(5)}. La mas corta es P3 (5). P3 toma la CPU.
-- En t = 8: READY = {P1(8)}. Toma la CPU P1 (no hay otra opcion).
+- En t = 0: READY = \{P1(8), P2(3), P3(5)\}. La mas corta es P2 (3). P2 toma la CPU.
+- En t = 3: READY = \{P1(8), P3(5)\}. La mas corta es P3 (5). P3 toma la CPU.
+- En t = 8: READY = \{P1(8)\}. Toma la CPU P1 (no hay otra opcion).
 
 Como SJF no es preemptivo, una vez asignada la CPU el proceso corre hasta terminar su rafaga.
 
