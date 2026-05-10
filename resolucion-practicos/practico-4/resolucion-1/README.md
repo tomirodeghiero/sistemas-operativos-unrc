@@ -48,34 +48,42 @@ $$\overline{W}_{\text{FCFS}} = \frac{0 + 7.5 + 8}{3} = \frac{15.5}{3} \approx 5.
 
 Observacion clasica: P1 es la rafaga mas larga y llega primero, asi que arrastra el tiempo de espera de los demas (efecto *convoy*). Es exactamente la desventaja que la teoria le adjudica a FCFS ("comunmente produce tiempos promedio de espera grandes").
 
-## 2. SJF (no preemptivo)
+## 2. SJF (no preemptivo, todos arriban en t = 0)
 
-Como SJF es no preemptivo, en t = 0 solo esta P1 listo (P2 todavia no arribo) y se le otorga la CPU. P1 corre los 8 unidades sin ser interrumpido. Cuando libera la CPU en t = 8 ya estan en la cola READY P2 (rafaga 3) y P3 (rafaga 5); el scheduler elige el de menor rafaga, P2. Al terminar P2 en t = 11 queda solo P3, que ejecuta hasta t = 16.
+El enunciado pide aplicar SJF **asumiendo que los tres procesos arriban en t = 0**. Es decir, descartamos las llegadas escalonadas (0, 0.5, 3) y suponemos que las tres rafagas estan disponibles desde el principio. El scheduler elige siempre la rafaga mas corta entre las que estan en READY:
+
+- En t = 0: READY = {P1(8), P2(3), P3(5)}. La mas corta es P2 (3). P2 toma la CPU.
+- En t = 3: READY = {P1(8), P3(5)}. La mas corta es P3 (5). P3 toma la CPU.
+- En t = 8: READY = {P1(8)}. Toma la CPU P1 (no hay otra opcion).
+
+Como SJF no es preemptivo, una vez asignada la CPU el proceso corre hasta terminar su rafaga.
 
 Diagrama de Gantt:
 
 ```text
-| P1                   | P2       | P3            |
-0                      8          11              16
+| P2       | P3            | P1                   |
+0          3               8                      16
 ```
 
-| Proceso | Arribo | Inicio | Fin | Espera                     |
-|---------|--------|--------|-----|----------------------------|
-| P1      | 0.0    | 0      | 8   | 0.0                        |
-| P2      | 0.5    | 8      | 11  | 7.5                        |
-| P3      | 3.0    | 11     | 16  | 8.0                        |
+| Proceso | Arribo | Inicio | Fin | Espera (Inicio - Arribo) |
+|---------|--------|--------|-----|--------------------------|
+| P2      | 0      | 0      | 3   | 0                        |
+| P3      | 0      | 3      | 8   | 3                        |
+| P1      | 0      | 8      | 16  | 8                        |
 
 Tiempo de espera promedio:
 
-$$\overline{W}_{\text{SJF}} = \frac{0 + 7.5 + 8}{3} \approx 5.17.$$
+$$\overline{W}_{\text{SJF}} = \frac{0 + 3 + 8}{3} = \frac{11}{3} \approx 3.67.$$
 
 ## Comparacion
 
-En este caso particular el resultado de FCFS y SJF coincide. La razon es la siguiente:
+| Algoritmo | Orden       | Espera promedio |
+|-----------|-------------|-----------------|
+| FCFS      | P1 - P2 - P3 | 5.17            |
+| SJF (todos en t=0) | P2 - P3 - P1 | **3.67**       |
 
-- En t = 0 P1 esta solo en la cola, asi que cualquier algoritmo no preemptivo le tiene que dar la CPU (no hay con quien comparar la rafaga).
-- Una vez que P1 termina (t = 8), ya estan en READY P2 y P3. El orden por menor rafaga (3 < 5) coincide con el orden de arribo (P2 antes que P3). Por eso ambos algoritmos generan la misma secuencia.
+SJF da menor tiempo de espera promedio. La razon es la propiedad clasica del algoritmo: **dado un conjunto fijo de rafagas conocidas, ejecutar primero las mas cortas minimiza la espera promedio**. La intuicion es que cuando un proceso esta en CPU, todos los demas suman tiempo de espera; por eso conviene "sacarse de encima" rapido a los cortos, asi solo los pocos largos siguen acumulando espera al final. Esta propiedad de optimalidad, demostrable formalmente, es la motivacion historica del algoritmo cuando se conocen las rafagas (tipico de sistemas batch / *long-term schedulers*).
 
-En general SJF sera mejor o igual que FCFS si el primer proceso fuera mas corto que los siguientes; aqui no se observa diferencia porque la primera rafaga ya esta fijada por la llegada temprana de P1.
+FCFS, en cambio, padece el efecto **convoy**: como P1 (la rafaga mas larga) llega primero, arrastra la espera de P2 y P3 detras. La teoria del curso adjudica este comportamiento explicitamente a FCFS ("comunmente produce tiempos promedio de espera grandes").
 
-> **Observacion adicional (no pedida)**: si en cambio se considerara la variante preemptiva *Shortest Remaining Time First* (SRTF), el resultado cambia. En t = 0.5 llega P2 con rafaga 3, menor que el remanente de P1 (7.5), asi que P2 desaloja a P1; luego de terminar P2 y P3 (mas cortos que el remanente de P1), P1 termina ultimo. La espera promedio caeria a (8 + 0 + 0.5)/3 ≈ 2.83. Esto ilustra por que los textos suelen presentar SJF como ejemplo del beneficio de planificar por menor rafaga, pero recien con la version preemptiva se aprovecha la informacion en pleno.
+> **Observacion (no pedida en el enunciado)**: si se conservaran las llegadas originales (0.0, 0.5, 3.0) y se aplicara SJF *no preemptivo*, en t = 0 solo P1 esta presente, asi que SJF se reduce a FCFS y el resultado coincide con el de la parte 1. La variante preemptiva *Shortest Remaining Time First* (SRTF), que tampoco es la pedida, si introduce una mejora porque en t = 0.5 puede desalojar a P1 al detectar que la rafaga restante de P2 es menor.

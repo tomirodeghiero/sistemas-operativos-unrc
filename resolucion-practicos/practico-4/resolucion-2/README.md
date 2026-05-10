@@ -62,20 +62,27 @@ $$\overline{T}_{\text{RR}} = \frac{15 + 8.5 + 13}{3} = \frac{36.5}{3} \approx 12
 
 ## 2. Comparacion con FCFS y SJF
 
-Reusando los Gantt del ejercicio 1 (FCFS y SJF coinciden en orden P1 - P2 - P3, con fines en 8, 11 y 16):
+Para que la comparacion sea cuantitativa hay que tener cuidado con las **suposiciones** de cada algoritmo, porque el enunciado del ejercicio 1 las trata distinto:
 
-| Proceso | $T$ FCFS | $T$ SJF | $T$ RR |
-|---------|----------|---------|--------|
-| P1      | 8.0      | 8.0     | 15.0   |
-| P2      | 10.5     | 10.5    | 8.5    |
-| P3      | 13.0     | 13.0    | 13.0   |
-| **Promedio** | **10.50** | **10.50** | **12.17** |
+- **FCFS**: usa los tiempos de arribo originales (0.0, 0.5, 3.0). Orden P1 - P2 - P3, fines 8, 11, 16.
+- **SJF**: el enunciado de la parte 2 del ejercicio 1 pide asumir que todos arriban en t = 0. Orden P2 - P3 - P1, fines 3, 8, 16.
+- **RR**: en este ejercicio se mantienen los arribos originales (0.0, 0.5, 3.0).
 
-Lectura cuali:
+| Proceso | $T$ FCFS  | $T$ SJF  | $T$ RR  |
+|---------|-----------|----------|---------|
+| P1      | 8.0       | 16       | 15.0    |
+| P2      | 10.5      | 3        | 8.5     |
+| P3      | 13.0      | 8        | 13.0    |
+| **Promedio** | **10.50** | **9.00** | **12.17** |
 
-- **P1** sale claramente perjudicado en RR (de 8 a 15). Es el proceso mas largo: como su rafaga (8) es mas del cuadruple del quantum (2), termina ejecutando en cuatro porciones intercaladas con los otros, y no puede correr "de un tiron" como en FCFS/SJF.
-- **P2** se beneficia con RR (de 10.5 a 8.5). Es la rafaga mas corta y RR le permite empezar antes (a t = 2 en vez de t = 8). Consistente con la intuicion: RR favorece a procesos con rafagas chicas porque no quedan atras de uno largo.
-- **P3** queda igual (13). Su rafaga termina justo al final del schedule en los tres algoritmos.
-- En **promedio** RR da turnaround peor (12.17 vs 10.5). Esto coincide con la teoria: RR no esta pensado para minimizar turnaround promedio sino para acotar el *tiempo de respuesta* en sistemas time-sharing. El precio que se paga por el desalojo periodico es el costo del cambio de contexto y un mayor turnaround promedio cuando hay procesos largos.
+Lectura cualitativa:
+
+- **SJF** es el mejor de los tres en turnaround promedio (9.0). Coincide con la propiedad clasica: dado un conjunto fijo de rafagas, planificar primero las mas cortas minimiza la espera promedio (y, equivalentemente, el turnaround promedio).
+- **FCFS** queda intermedio (10.5). Sufre el *convoy effect* porque P1 (la rafaga mas larga) llega primero y arrastra la espera de los demas, pero como cada proceso ejecuta de un solo tiron no paga el costo de fragmentacion.
+- **RR** es el peor en promedio (12.17). El *quantum* chico (q = 2) hace que P1 termine ejecutando en cuatro porciones intercaladas con los otros; nadie corre "de un tiron". Pero a cambio, **P2 se beneficia notoriamente** (de 10.5 en FCFS a 8.5 en RR): la rafaga mas corta no queda atascada detras de la mas larga, lo que se traduce en mejor *tiempo de respuesta* para procesos cortos.
+- **P1** sale claramente perjudicado en RR (de 8 a 15) por la fragmentacion.
+- **P3** queda igual en FCFS y RR (13) porque su rafaga termina al final del schedule en ambos casos.
+
+Esto coincide con la teoria: **RR no esta pensado para minimizar turnaround promedio** sino para acotar el tiempo de respuesta en sistemas *time-sharing*. El precio que se paga por el desalojo periodico es el costo del cambio de contexto y un mayor turnaround promedio cuando hay procesos largos.
 
 > **Observacion**: si se incrementase el quantum (por ejemplo, $q$ tendiendo al maximo de la rafaga mas larga), RR converge a FCFS. En el extremo opuesto, $q$ muy chico hace que RR aproxime a *processor sharing* (todos progresan en paralelo), pero el overhead de cambios de contexto domina. Elegir un buen quantum es el compromiso clasico que la teoria menciona al introducir el algoritmo.

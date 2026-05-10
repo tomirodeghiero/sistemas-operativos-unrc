@@ -1,0 +1,889 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- Encoding ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands]{babel}
+\usepackage{lmodern}
+
+% --- Layout ---
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{parskip}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em plus 0.2em minus 0.1em}
+
+% --- Tables and graphics ---
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{positioning,shapes.geometric,arrows.meta,fit,backgrounds,calc}
+\usepackage{caption}
+\usepackage{amsmath,amssymb}
+
+% --- Code listings ---
+\usepackage{listings}
+\definecolor{codegray}{rgb}{0.96,0.96,0.96}
+\definecolor{codeborder}{rgb}{0.85,0.85,0.85}
+\definecolor{codecomment}{rgb}{0.30,0.55,0.30}
+\definecolor{codekeyword}{rgb}{0.10,0.30,0.70}
+\definecolor{codestring}{rgb}{0.65,0.15,0.10}
+
+\lstdefinestyle{cstyle}{
+    language=C,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+}
+
+\lstdefinestyle{shellstyle}{
+    language=bash,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstdefinestyle{textstyle}{
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstset{style=shellstyle}
+
+% --- Definition / Idea / Important boxes ---
+\usepackage[most]{tcolorbox}
+\newtcolorbox{definicion}[1][]{
+    colback=blue!5!white,
+    colframe=blue!50!black,
+    fonttitle=\bfseries,
+    title=Definición,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{idea}[1][]{
+    colback=orange!5!white,
+    colframe=orange!60!black,
+    fonttitle=\bfseries,
+    title=Idea intuitiva,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{importante}[1][]{
+    colback=red!5!white,
+    colframe=red!50!black,
+    fonttitle=\bfseries,
+    title=Importante,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+
+% --- Hyperlinks ---
+\usepackage[colorlinks=true,
+            linkcolor=blue!60!black,
+            urlcolor=blue!50!black,
+            citecolor=blue!60!black]{hyperref}
+
+% --- Gantt color palette ---
+\definecolor{gp1}{HTML}{4C72B0}
+\definecolor{gp2}{HTML}{DD8452}
+\definecolor{gp3}{HTML}{55A868}
+\definecolor{gp4}{HTML}{8172B2}
+
+% --- Title ---
+\title{
+    \vspace{-2.5em}
+    \textbf{Resumen teórico --- Sistemas Operativos} \\[0.3em]
+    \large Notas del curso 7: \emph{Planificación de uso de CPU}
+}
+\author{
+    Tomás Rodeghiero \\
+    \small Sistemas Operativos --- Universidad Nacional de Río Cuarto
+}
+\date{2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent
+Este documento es un resumen teórico del capítulo 7 de las
+\emph{Notas del curso} de Sistemas Operativos (Marcelo Arroyo, UNRC),
+dedicado a la planificación de uso de CPU. Se presentan las funciones
+del scheduler, los criterios clásicos de planificación y los algoritmos
+que los implementan: \emph{First-Come First-Served}, \emph{Shortest Job
+First} (con su variante preemptiva \emph{SRTF}), \emph{Round Robin},
+planificación por prioridades estáticas y dinámicas, \emph{Multilevel
+Queues} y su variante con feedback (MLF). Se discuten las propiedades
+de cada uno (preemption, fairness, starvation, contención), las
+métricas de evaluación (turnaround, espera, respuesta, throughput) y
+se incluye el caso de estudio del scheduler de Linux. La última parte
+trata la planificación en multiprocesadores: arquitecturas AMP y SMP,
+multi-core, hyperthreading y la tensión entre \emph{processor affinity}
+y \emph{load balancing}. El objetivo es servir como material de
+estudio para preparar el Práctico~4 y el segundo parcial.
+\end{abstract}
+
+\tableofcontents
+\bigskip
+
+% =====================================================================
+\section{Introducción}
+% =====================================================================
+
+Una computadora moderna corre decenas de procesos a la vez con un
+número limitado de CPUs. Para que todos avancen, alguien tiene que
+decidir, instante a instante, \emph{quién} usa la CPU. Esa decisión es
+trabajo del \textbf{scheduler} o \emph{planificador}. Las Notas del
+curso (capítulo 7) lo definen así:
+
+\begin{definicion}
+El \textbf{scheduler de CPU} de un sistema operativo es el encargado
+de determinar:
+\begin{itemize}[leftmargin=*,nosep]
+    \item \emph{cuándo} una tarea debe continuar con su ejecución
+        (asignarle una CPU),
+    \item \emph{dónde} (en qué procesador la ejecuta), y
+    \item \emph{por cuánto tiempo}.
+\end{itemize}
+\end{definicion}
+
+Estas tres preguntas no se contestan igual en todos los sistemas. En
+un \emph{batch system} de los años 70 importa terminar la mayor
+cantidad de \emph{jobs} por hora; en una computadora interactiva
+moderna importa que la respuesta del editor de texto sea instantánea.
+Por eso existen distintos algoritmos: cada uno optimiza un criterio
+distinto, y el rol del diseñador del SO es elegir el que mejor sirve a
+la carga de trabajo esperada.
+
+% =====================================================================
+\section{Tipos de schedulers}
+% =====================================================================
+
+Las Notas distinguen dos clases de planificadores que operan en
+escalas de tiempo distintas:
+
+\subsection{Long-term scheduler}
+
+Aparece en \emph{batch systems} y en clusters/HPC. Los usuarios
+\emph{submiten jobs} a una cola (\emph{jobs spool}), donde cada job
+declara los recursos que necesita (número de CPUs, memoria, tiempo
+estimado de ejecución). El long-term scheduler elige qué jobs se
+admiten al sistema y en qué orden, con el objetivo típico de
+\emph{minimizar el tiempo medio de espera}. El algoritmo
+\textbf{Shortest Job First} (SJF) es el ejemplo paradigmático: si los
+tiempos de ejecución se conocen, ejecutar primero los más cortos
+minimiza la espera promedio.
+
+\subsection{Short-term scheduler}
+
+Es el que usan los SO modernos \emph{time-sharing}. Decide en cada
+momento, entre los procesos en estado \texttt{READY}, cuál recibe la
+CPU a continuación. Trabaja en escalas de milisegundos o
+microsegundos. Es el scheduler que se estudia en este capítulo y el
+que aparece en todos los ejercicios del Práctico~4.
+
+\begin{idea}
+La diferencia clave: el long-term scheduler decide \emph{si} un job
+entra al sistema (a veces queda esperando horas en la cola); el
+short-term scheduler decide qué proceso \emph{ya admitido} corre en
+la CPU \emph{ahora}.
+\end{idea}
+
+% =====================================================================
+\section{Criterios de planificación}
+% =====================================================================
+
+¿Qué significa que un scheduler sea ``bueno''? Las Notas listan los
+criterios habituales:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Maximizar la utilización de la CPU.} Que la CPU esté
+        ocupada haciendo trabajo útil el mayor porcentaje de tiempo
+        posible. Lo ideal es 100\%; en la práctica, 40--90\% según la
+        carga.
+    \item \textbf{Justicia (\emph{fairness}).} Todas las tareas
+        deberían recibir tiempos parejos de uso de CPU.
+    \item \textbf{Throughput (rendimiento).} Número de procesos
+        completados por unidad de tiempo.
+    \item \textbf{Tiempo de retorno (\emph{turnaround}).} Tiempo total
+        que un proceso pasa en el sistema, desde que arribó hasta que
+        terminó. Suma los tiempos en estados \texttt{READY},
+        \texttt{RUNNING} y \texttt{WAITING}.
+    \item \textbf{Tiempo de espera.} Tiempo que el proceso pasó en
+        \texttt{READY} esperando por la CPU.
+    \item \textbf{Tiempo de respuesta.} Latencia desde que llega un
+        requerimiento hasta que el sistema empieza a procesarlo.
+        Crítico en sistemas interactivos.
+\end{itemize}
+
+Adicionalmente, un scheduler debe ser \textbf{eficiente} (mínima
+sobrecarga: tomar la decisión rápido, ya que se ejecuta muchas veces
+por segundo) y \textbf{general} (funcionar razonablemente en cualquier
+arquitectura para distintas cargas de trabajo).
+
+\begin{importante}
+Estos criterios \textbf{se contraponen entre sí}. Maximizar throughput
+puede afectar negativamente al tiempo de respuesta; favorecer fairness
+puede empeorar el throughput total. Por eso no existe ``el'' mejor
+algoritmo: cada uno hace bien una métrica a costa de otras.
+\end{importante}
+
+\subsection{Métricas en una corrida concreta}
+
+Las fórmulas que se usan en los ejercicios:
+
+\begin{align*}
+\text{Espera}_i      &= \text{Inicio}_i - \text{Arribo}_i \quad (\text{algoritmos no preemptivos sin I/O}) \\
+\text{Turnaround}_i  &= \text{Fin}_i - \text{Arribo}_i \\
+\text{Respuesta}_i   &= \text{PrimerInicio}_i - \text{Arribo}_i
+\end{align*}
+
+En la versión preemptiva con I/O,
+$\text{Espera}_i = \text{Turnaround}_i - \text{CPU}_i - \text{WAIT}_i$.
+
+Los promedios se calculan dividiendo por la cantidad de procesos:
+$\overline{W} = \frac{1}{N} \sum_i W_i$ y análogamente para
+$\overline{T}$ y $\overline{R}$.
+
+% =====================================================================
+\section{Preemption: apropiativo vs.\ no apropiativo}
+% =====================================================================
+
+Una propiedad transversal a todos los algoritmos es si pueden o no
+quitarle la CPU a un proceso en plena ejecución.
+
+\begin{definicion}
+Un algoritmo de planificación es \textbf{preemptivo} (apropiativo) si
+el scheduler puede desalojar a un proceso que está corriendo, antes
+de que termine su ráfaga de CPU. Es \textbf{no preemptivo} si, una
+vez que un proceso recibe la CPU, la conserva hasta terminar la
+ráfaga (o bloquearse voluntariamente en una syscall).
+\end{definicion}
+
+La preemption se implementa con la \emph{interrupción del timer}: el
+hardware genera ticks periódicos, el handler del kernel decide si el
+quantum se acabó y, si es así, invoca \texttt{yield()} para hacer un
+context switch. Esto se conoce como \emph{preemptive multitasking} y
+es la base de los sistemas time-sharing modernos.
+
+Una alternativa histórica es el \textbf{cooperative multitasking}: los
+procesos liberan la CPU \emph{voluntariamente} mediante una syscall.
+Si un proceso se ``cuelga'' o no coopera, monopoliza la CPU. Por eso
+los SO modernos usan preemption por timer.
+
+% =====================================================================
+\section{Algoritmos de planificación}
+% =====================================================================
+
+A partir de aquí se asume que el scheduler decide entre los procesos
+\texttt{READY} (también llamados \texttt{RUNNABLE}), es decir, los
+que ya están en condiciones de usar la CPU.
+
+% ---------------------------------------------------------------------
+\subsection{First-Come First-Served (FCFS)}
+% ---------------------------------------------------------------------
+
+\begin{definicion}
+\textbf{FCFS} (\emph{primero que llega, primero servido}, también
+llamado FIFO) es el algoritmo más simple. Se mantiene una cola FIFO
+de \texttt{READY}. Cuando un proceso pasa a \texttt{READY} se encola
+al final; el primero de la cola toma la CPU. Es \textbf{no
+preemptivo}: el proceso conserva la CPU hasta terminar su ráfaga.
+\end{definicion}
+
+\paragraph{Ejemplo.} Supongamos los procesos
+\begin{center}\small
+\begin{tabular}{@{}lcc@{}}\toprule
+Proceso & Arribo & Ráfaga \\\midrule
+P1 & 0 & 8 \\
+P2 & 0.5 & 3 \\
+P3 & 3 & 5 \\\bottomrule
+\end{tabular}
+\end{center}
+
+El orden de ejecución es P1, P2, P3 (orden de arribo). Diagrama de
+Gantt:
+
+\begin{center}
+\begin{tikzpicture}[xscale=0.5,yscale=0.7]
+    \draw[fill=gp1] (0,0) rectangle (8,1)  node[midway,white,font=\bfseries]{P1};
+    \draw[fill=gp2] (8,0) rectangle (11,1) node[midway,white,font=\bfseries]{P2};
+    \draw[fill=gp3] (11,0) rectangle (16,1) node[midway,white,font=\bfseries]{P3};
+    \foreach \x in {0,8,11,16} \draw (\x,0) -- (\x,-0.15) node[below,font=\small]{\x};
+\end{tikzpicture}
+\end{center}
+
+Esperas: $W_{P1} = 0$, $W_{P2} = 8 - 0.5 = 7.5$, $W_{P3} = 11 - 3 = 8$.
+Promedio $\overline{W} = 5.17$.
+
+\paragraph{Ventajas.}
+\begin{itemize}[leftmargin=*,nosep]
+    \item Simplísimo: la cola FIFO basta para implementarlo.
+    \item No requiere información sobre las ráfagas.
+    \item No tiene problemas de \emph{starvation} (todos avanzan en
+        el orden de llegada).
+\end{itemize}
+
+\paragraph{Desventajas.}
+\begin{itemize}[leftmargin=*,nosep]
+    \item Suele producir \textbf{tiempos de espera promedio grandes}.
+    \item Sufre el \textbf{convoy effect}: si llega primero un proceso
+        muy largo, arrastra la espera de todos los que llegan después.
+    \item Inutilizable en sistemas time-sharing, porque al ser no
+        preemptivo, un proceso CPU-bound puede acaparar la CPU
+        durante mucho tiempo.
+\end{itemize}
+
+% ---------------------------------------------------------------------
+\subsection{Shortest Job First (SJF) y Shortest Remaining Time First (SRTF)}
+% ---------------------------------------------------------------------
+
+\begin{definicion}
+\textbf{SJF}: el scheduler elige siempre el proceso con la
+\emph{ráfaga más corta} entre los \texttt{READY}. La versión clásica
+es \textbf{no preemptiva} (típica de batch systems). La versión
+preemptiva, llamada \textbf{SRTF} (Shortest Remaining Time First), sí
+desaloja al proceso en ejecución si llega uno con ráfaga restante
+menor.
+\end{definicion}
+
+SJF se usa en \emph{long-term schedulers} y en batch systems donde el
+usuario declara el tiempo estimado del job. Aplicado como
+\emph{short-term scheduler}, lo correcto es llamarlo \emph{shortest
+CPU-burst first}, porque lo que se considera no es la duración total
+del proceso sino la duración de su \emph{próxima ráfaga de CPU} (el
+intervalo entre dos bloqueos por I/O).
+
+\paragraph{Ráfaga.} Una \emph{ráfaga (burst)} de CPU es el tiempo que
+un proceso usa la CPU desde que es planificado hasta que la libera
+(por bloqueo en I/O o por terminar). El comportamiento típico de un
+proceso alterna ráfagas de CPU y períodos de WAIT:
+
+\begin{lstlisting}[style=textstyle]
+burst1   sleeping     burst2     sleeping  ...
+       syscall  wakeup      syscall
+time -->
+\end{lstlisting}
+
+\paragraph{Estimación de la próxima ráfaga.} Como SJF requiere conocer
+de antemano la duración, en un short-term scheduler hay que
+\emph{estimarla}. La técnica clásica es el \textbf{promedio
+exponencial}: si $t_n$ es la duración real de la última ráfaga y
+$\tau_n$ la última estimación, entonces
+\[
+\tau_{n+1} \;=\; \alpha \, t_n \;+\; (1 - \alpha) \, \tau_n,
+\quad 0 \le \alpha \le 1.
+\]
+$\alpha$ controla el peso relativo entre la \emph{historia reciente} y
+la \emph{historia pasada}. Casos extremos:
+\begin{itemize}[leftmargin=*,nosep]
+    \item $\alpha = 0$: $\tau_{n+1} = \tau_n$. La historia reciente
+        no se tiene en cuenta.
+    \item $\alpha = 1$: $\tau_{n+1} = t_n$. Solo importa la última
+        ráfaga.
+    \item $\alpha = 0.5$ es un balance común entre las dos.
+\end{itemize}
+
+\paragraph{Ejemplo.} Mismos procesos del FCFS pero asumiendo que
+\emph{todos arriban en $t = 0$} (caso clásico para mostrar la
+optimalidad de SJF). Orden por ráfaga: P2 (3), P3 (5), P1 (8).
+
+\begin{center}
+\begin{tikzpicture}[xscale=0.5,yscale=0.7]
+    \draw[fill=gp2] (0,0) rectangle (3,1) node[midway,white,font=\bfseries]{P2};
+    \draw[fill=gp3] (3,0) rectangle (8,1) node[midway,white,font=\bfseries]{P3};
+    \draw[fill=gp1] (8,0) rectangle (16,1) node[midway,white,font=\bfseries]{P1};
+    \foreach \x in {0,3,8,16} \draw (\x,0) -- (\x,-0.15) node[below,font=\small]{\x};
+\end{tikzpicture}
+\end{center}
+
+Promedio de espera: $(0 + 3 + 8)/3 \approx 3.67$. Bastante mejor que
+los 5.17 de FCFS sobre los mismos procesos.
+
+\paragraph{Ventajas.}
+\begin{itemize}[leftmargin=*,nosep]
+    \item Es \textbf{óptimo en tiempo de espera promedio} cuando se
+        conocen las ráfagas: ningún otro algoritmo logra menos espera
+        promedio sobre el mismo conjunto.
+    \item Reduce el \emph{convoy effect}: un proceso largo no
+        arrastra a los cortos.
+\end{itemize}
+
+\paragraph{Desventajas.}
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{No se conoce} la duración de la próxima ráfaga (hay
+        que estimarla).
+    \item Puede producir \textbf{starvation}: si llegan continuamente
+        procesos cortos, los largos pueden no ejecutarse nunca.
+    \item En la versión preemptiva (SRTF), cada llegada implica una
+        evaluación; la sobrecarga aumenta.
+\end{itemize}
+
+% ---------------------------------------------------------------------
+\subsection{Round Robin (RR)}
+% ---------------------------------------------------------------------
+
+\begin{definicion}
+\textbf{Round Robin} es la variante preemptiva de FCFS, pensada para
+sistemas time-sharing. Se mantiene una cola FIFO de \texttt{READY}; al
+otorgarle la CPU a un proceso se le asigna un \emph{quantum} (también
+llamado \emph{time slice}). Si el proceso consume todo el quantum sin
+liberar la CPU, el timer lo desaloja, vuelve a \texttt{READY} y se
+encola al final. Si la libera antes (por I/O o por terminar), el
+quantum no le alcanza pero igual cede la CPU al siguiente.
+\end{definicion}
+
+\paragraph{Quantum.} Es el parámetro central de RR. Hay un compromiso
+clásico:
+\begin{itemize}[leftmargin=*,nosep]
+    \item Quantum \textbf{muy grande}: RR converge a FCFS.
+    \item Quantum \textbf{muy chico}: el sistema gasta mucho tiempo en
+        cambios de contexto en lugar de hacer trabajo útil. En el
+        límite, aproxima un \emph{processor sharing} ideal pero con
+        overhead inaceptable.
+\end{itemize}
+La elección habitual está entre 10 y 100 ms, y depende del costo del
+context switch en la arquitectura.
+
+\paragraph{Ejemplo.} Mismos procesos que antes, con $q = 2$:
+
+\begin{center}
+\begin{tikzpicture}[xscale=0.42,yscale=0.7]
+    \draw[fill=gp1] (0,0)  rectangle (2,1)  node[midway,white,font=\bfseries\small]{P1};
+    \draw[fill=gp2] (2,0)  rectangle (4,1)  node[midway,white,font=\bfseries\small]{P2};
+    \draw[fill=gp1] (4,0)  rectangle (6,1)  node[midway,white,font=\bfseries\small]{P1};
+    \draw[fill=gp3] (6,0)  rectangle (8,1)  node[midway,white,font=\bfseries\small]{P3};
+    \draw[fill=gp2] (8,0)  rectangle (9,1)  node[midway,white,font=\bfseries\small]{P2};
+    \draw[fill=gp1] (9,0)  rectangle (11,1) node[midway,white,font=\bfseries\small]{P1};
+    \draw[fill=gp3] (11,0) rectangle (13,1) node[midway,white,font=\bfseries\small]{P3};
+    \draw[fill=gp1] (13,0) rectangle (15,1) node[midway,white,font=\bfseries\small]{P1};
+    \draw[fill=gp3] (15,0) rectangle (16,1) node[midway,white,font=\bfseries\small]{P3};
+    \foreach \x in {0,2,4,6,8,9,11,13,15,16}
+        \draw (\x,0) -- (\x,-0.15) node[below,font=\scriptsize]{\x};
+\end{tikzpicture}
+\end{center}
+
+P2 (la ráfaga más corta) termina antes que en FCFS, pero P1 (la más
+larga) termina mucho más tarde porque ejecuta en cuatro porciones
+intercaladas.
+
+\paragraph{Ventajas.}
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Acota el tiempo de respuesta}: ningún proceso tiene
+        que esperar más que $(N-1) \cdot q$ unidades antes de
+        ejecutar, donde $N$ es la cantidad de procesos en
+        \texttt{READY}.
+    \item \textbf{Justo}: todos los procesos progresan
+        regularmente.
+    \item Sin starvation.
+\end{itemize}
+
+\paragraph{Desventajas.}
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Mayor turnaround promedio} que FCFS o SJF cuando hay
+        procesos largos, porque la ejecución se fragmenta.
+    \item Costo de los \emph{context switches}: cada quantum agotado
+        produce uno.
+\end{itemize}
+
+% ---------------------------------------------------------------------
+\subsection{Planificación por prioridades}
+% ---------------------------------------------------------------------
+
+\begin{definicion}
+A cada proceso se le asocia un \textbf{número de prioridad}; el
+scheduler elige siempre el de mayor prioridad. La relación de orden
+puede ser arbitraria: en algunos sistemas un menor valor implica
+mayor prioridad (Linux real-time, 0--99); en otros, lo contrario
+(Linux normal vía \texttt{nice}, $-20$ a $+19$).
+\end{definicion}
+
+\paragraph{Estática vs.\ dinámica.}
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Estática}: la prioridad se asigna en tiempo de
+        creación y no cambia. Es lo que usa el Práctico~4 Ejercicio~4.
+    \item \textbf{Dinámica}: el sistema recalcula la prioridad
+        periódicamente según el comportamiento del proceso. Es la
+        base del scheduler 4.3BSD y, conceptualmente, de MLF.
+\end{itemize}
+
+\paragraph{Preemptiva vs.\ no preemptiva.} El algoritmo puede
+implementarse en cualquiera de las dos formas: preemptivo si llegar
+una tarea de mayor prioridad desaloja a la actual; no preemptivo si
+la decisión solo se toma cuando la actual termina o se bloquea.
+
+\paragraph{Ejemplo de prioridad dinámica (4.3BSD).} La fórmula
+clásica es
+\[
+\text{priority} = \frac{\text{recent\_cpu\_usage}()}{2} + 60,
+\]
+donde mayor valor numérico implica menor prioridad efectiva. Cada
+segundo se recalcula. Un proceso CPU-bound acumula
+\texttt{recent\_cpu} y su prioridad numérica sube (es decir, baja en
+términos efectivos). Un proceso I/O-bound, que se bloquea seguido,
+mantiene \texttt{recent\_cpu} chico y conserva alta prioridad.
+Resultado: el sistema favorece a los interactivos sin negarles
+servicio a los CPU-bound, porque la penalización solo refleja la
+historia reciente.
+
+\paragraph{Starvation y aging.} El gran problema de las prioridades
+es la \textbf{starvation}: un proceso de baja prioridad podría no
+ejecutarse nunca si llegan continuamente otros más prioritarios. Es,
+por construcción, un algoritmo \emph{no justo}.
+
+\begin{importante}
+\textbf{Aging (envejecimiento)}: incrementar gradualmente la
+prioridad de los procesos que llevan mucho tiempo esperando. Tarde o
+temprano todos llegan al frente de la cola, evitando starvation. Es
+la solución estándar al problema y aparece explícitamente en la
+teoría.
+\end{importante}
+
+% ---------------------------------------------------------------------
+\subsection{Multilevel Queues (MLQ)}
+% ---------------------------------------------------------------------
+
+\begin{definicion}
+En \textbf{Multilevel Queues} los procesos se clasifican en grupos.
+A cada grupo se le asigna una prioridad: es entonces un algoritmo
+basado en prioridades. El scheduler selecciona siempre el primer
+proceso del grupo de mayor prioridad. Cada nivel puede usar un
+algoritmo distinto internamente (típicamente RR).
+\end{definicion}
+
+Ejemplo común: dos grupos, ``interactivos'' (alta prioridad) y
+``background / CPU-bound'' (baja prioridad). Los interactivos se
+priorizan para minimizar el tiempo de respuesta.
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small, draw, minimum width=1.6cm, minimum height=0.55cm},
+    edge/.style={->,>=Stealth}
+]
+    \node (l1) at (0,2.4) {level1};
+    \node[draw=none,right=0.2cm of l1.east] {$\to$ //};
+    \node (l2) at (0,1.6) {level2};
+    \node (p5) [right=0.5cm of l2,fill=blue!10] {p5};
+    \node (p2) [right=0.3cm of p5,fill=blue!10] {p2};
+    \node[draw=none,right=0.2cm of p2.east] {$\to$ //};
+    \node (l3) at (0,0.8) {level3};
+    \node (p3) [right=0.5cm of l3,fill=blue!10] {p3};
+    \node[draw=none,right=0.2cm of p3.east] {$\to$ //};
+    \node (lN) at (0,0)   {levelN};
+    \node (p1) [right=0.5cm of lN,fill=blue!10] {p1};
+    \node[draw=none,right=0.2cm of p1.east] {$\to$ //};
+    \node[draw=none,left=0.4cm of l1.west] (hp) {\scriptsize higher priority};
+    \node[draw=none,left=0.4cm of lN.west] (lp) {\scriptsize lower priority};
+\end{tikzpicture}
+\end{center}
+
+% ---------------------------------------------------------------------
+\subsection{Multilevel Feedback (MLF)}
+% ---------------------------------------------------------------------
+
+\begin{definicion}
+\textbf{MLF} es la variante \emph{dinámica} de MLQ: los procesos se
+\textbf{mueven entre niveles} según su comportamiento.
+\begin{itemize}[leftmargin=*,nosep]
+    \item Si un proceso \textbf{consume todo el quantum}, se considera
+        CPU-bound y se \emph{baja} un nivel.
+    \item Si un proceso \textbf{no consume todo el quantum} (cede
+        voluntariamente, típicamente por bloqueo en I/O), se considera
+        interactivo y se \emph{sube} de nivel (o se mantiene si ya
+        está en el nivel más alto).
+\end{itemize}
+Cada nivel suele tener su propio quantum, típicamente menor en los
+niveles altos (más respuesta) y mayor en los bajos (menos overhead
+para los CPU-bound).
+\end{definicion}
+
+\begin{idea}
+La intuición: ``los premios y los castigos son automáticos''. El
+scheduler aprende solo qué procesos son interactivos (los premia con
+prioridad alta) y cuáles CPU-bound (los relega a niveles bajos
+donde compiten entre ellos), sin que un humano tenga que clasificarlos
+a mano. Es lo más parecido a un scheduler ``adaptativo'' clásico.
+\end{idea}
+
+MLF típicamente cumple el objetivo de \emph{minimizar el tiempo de
+respuesta de los procesos interactivos sin negarle progreso a los
+CPU-bound}. La penalización a los CPU-bound es ``compartirse el nivel
+inferior'', no quedarse afuera.
+
+% =====================================================================
+\section{Caso de estudio: el scheduler de Linux}
+% =====================================================================
+
+Las Notas dedican una sección al scheduler de Linux como ejemplo
+concreto.
+
+\subsection{Representación de procesos y threads}
+
+Cada proceso o thread se representa con la estructura
+\texttt{task\_struct}. Un proceso multi-threaded se modela con varias
+instancias: una por el thread principal, una por cada thread hijo;
+todas comparten el mismo \texttt{pid}.
+
+\subsection{Rango de prioridades}
+
+Linux usa un scheduler basado en prioridades en el rango \textbf{0 a
+139}, dividido en dos grandes clases:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Real-time (0--99).} Para procesos del sistema y
+        kernel threads que requieren garantías de tiempo. Políticas
+        \texttt{SCHED\_FIFO} (no preemptiva entre procesos del mismo
+        nivel) o \texttt{SCHED\_RR} (RR con quantum fijo).
+    \item \textbf{Normal (100--139).} Para procesos de usuario.
+        Políticas \texttt{SCHED\_NORMAL} (RR con quantum variable),
+        \texttt{SCHED\_BATCH} (procesos no interactivos) y
+        \texttt{SCHED\_IDLE} (los de menor prioridad).
+\end{itemize}
+
+\paragraph{Tareas de tiempo real.} Una tarea \emph{real-time} requiere
+que el sistema le asigne recursos en tiempos acotados (con
+vencimientos). Ejemplo clásico: una aplicación que graba un DVD
+necesita mantener el buffer de datos siempre lleno, porque el láser
+no puede parar de grabar. Si el SO se atrasa, la grabación falla.
+
+\subsection{El valor \texttt{nice}}
+
+Para procesos normales, la prioridad se determina a partir del valor
+\textbf{nice}, en el rango $-20$ (más prioritario) a $+19$ (menos
+prioritario):
+\[
+\text{priority} = \text{nice} + 20.
+\]
+La syscall \texttt{nice(value)} permite ajustarlo. Conceptualmente:
+\begin{itemize}[leftmargin=*,nosep]
+    \item Cualquier usuario puede \emph{subir} su nice (bajar su
+        prioridad): cederle prioridad a otros.
+    \item Solo \texttt{root} puede \emph{bajar} su nice (subir su
+        prioridad), porque permitir que un usuario suba la suya
+        rompería la equidad y abriría la puerta a denegación de
+        servicio.
+\end{itemize}
+El valor de \texttt{nice} también determina el quantum asignado al
+proceso. Los procesos normales arrancan con prioridad 0.
+
+\subsection{Algoritmos a lo largo del tiempo}
+
+Internamente Linux fue cambiando su scheduler a lo largo de los años:
+\textbf{O(1) scheduler} en los 2000, \textbf{CFS} (\emph{Completely
+Fair Scheduler}) entre 2007 y 2024, y desde 2024 el algoritmo
+\textbf{EEVDF} (\emph{Earliest Eligible Virtual Deadline First}). El
+scheduling es \textbf{preemptivo}: si arriba una tarea con más alta
+prioridad que la corriente, ésta es desalojada y la nueva toma la
+CPU.
+
+Las versiones recientes permiten integrar \emph{schedulers a medida}
+mediante la \emph{scheduling class} \texttt{sched\_ext}, que admite
+implementar políticas como código eBPF cargado en el kernel.
+
+% =====================================================================
+\section{Multiprocesadores}
+% =====================================================================
+
+Hasta acá se asumió implícitamente que hay \emph{una} CPU. En
+arquitecturas modernas hay varias: el scheduler tiene que decidir no
+solo \emph{qué} ejecutar, sino \emph{en qué procesador}.
+
+\subsection{AMP vs.\ SMP}
+
+\begin{definicion}
+\textbf{AMP (Asymmetric Multiprocessing)}: una CPU \emph{master}
+ejecuta el código del kernel y sus servicios; las demás
+(\emph{workers}) ejecutan procesos de usuario. El scheduler corre en
+el master, lo que simplifica los problemas de paralelismo.
+\end{definicion}
+
+\begin{definicion}
+\textbf{SMP (Symmetric Multiprocessing)}: todas las CPUs ejecutan
+tanto código de usuario como del kernel. Es el modelo de las
+arquitecturas modernas.
+\end{definicion}
+
+En SMP hay que poner especial cuidado en problemas de \textbf{concurrencia}:
+varias CPUs pueden estar ejecutando código del kernel en paralelo,
+así que las estructuras compartidas requieren spinlocks, instrucciones
+atómicas, barreras de memoria, etc.
+
+\subsection{Load balancing}
+
+\begin{definicion}
+\textbf{Load balancing}: emparejar la carga de trabajo entre todas
+las CPUs. Si una está sobrecargada y otra ociosa, el scheduler
+\emph{migra} procesos para nivelar.
+\end{definicion}
+
+Esto requiere que el sistema pueda contabilizar la carga de cada CPU
+y mover procesos a las menos cargadas. En cada context switch un
+proceso puede continuar en otra CPU. En Linux hay un \emph{kernel
+thread} dedicado, llamado \texttt{migration}, que ejecuta
+\texttt{load\_balance} para hacer este trabajo.
+
+\subsection{Processor affinity}
+
+La migración tiene un costo: \textbf{la caché de la CPU anterior
+queda invalidada} (o, mejor dicho, deja de servir) y la caché de la
+nueva tiene que volver a llenarse. Mientras se ``calienta'' la nueva
+caché, el proceso ejecuta más lento porque acumula \emph{cache miss}.
+
+\begin{definicion}
+\textbf{Processor affinity}: política del scheduler que trata de
+minimizar la migración de procesos entre CPUs, para preservar la
+inversión en caché.
+\end{definicion}
+
+Linux ofrece dos niveles:
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Soft affinity} (default): el scheduler trata de no
+        migrar pero puede hacerlo si compensa.
+    \item \textbf{Hard affinity}: la syscall
+        \texttt{sched\_setaffinity} fija el proceso a un subconjunto
+        específico de CPUs y el balanceador no puede sacarlo de ahí.
+\end{itemize}
+
+\begin{importante}
+\textbf{Affinity y load balancing se contraponen}. Affinity pide no
+migrar; load balancing pide migrar para nivelar la carga. La
+solución es un compromiso: \emph{migrar solo cuando el desbalance
+proyectado supera al costo esperado de la migración}. Esto se
+implementa con per-CPU runqueues, balanceadores periódicos y
+umbrales de desbalance.
+\end{importante}
+
+\subsection{Multi-core e hyperthreading}
+
+\paragraph{Multi-core.} Una arquitectura multi-core replica varias
+CPUs (\emph{cores}) en un mismo chip. Cada core puede usar múltiples
+\emph{pipelines} para ejecutar varios threads en paralelo y
+minimizar los \emph{memory stalls} (esperas por datos no cacheados).
+
+\paragraph{Hyperthreading.} Es la capacidad de un core de ejecutar
+más de un thread en paralelo, asignándoles pipelines distintos. Una
+CPU de dos cores con dos pipelines cada uno se ve como un
+multiprocesador de \emph{4 CPUs lógicas}.
+
+\paragraph{Hart (RISC-V).} En la arquitectura RISC-V, un \emph{hart}
+es la abstracción de un \emph{hardware thread} o \emph{logical
+processor}: una unidad lógica de procesamiento con su propio conjunto
+de registros. Una implementación puede materializar varios harts en
+un mismo core mediante múltiples pipelines.
+
+% =====================================================================
+\section{Comparación rápida de algoritmos}
+% =====================================================================
+
+\begin{center}
+\small
+\begin{tabular}{@{}lccp{3.5cm}p{3.8cm}@{}}
+\toprule
+Algoritmo & Preemption & Convención & Ventaja principal & Desventaja principal \\
+\midrule
+FCFS    & No  & Cola FIFO      & Simple, sin starvation & Convoy effect, no time-sharing \\
+SJF     & No  & Menor ráfaga   & Mínimo tiempo de espera promedio (óptimo) & Requiere conocer ráfagas; starvation \\
+SRTF    & Sí  & Menor remanente & Igual que SJF, reactivo a llegadas & Más context switches; starvation \\
+RR      & Sí  & Cola FIFO + quantum & Acota tiempo de respuesta, fair & Mayor turnaround si hay procesos largos \\
+Prioridades & Cualq. & Mayor prioridad & Refleja política del sistema & Starvation; necesita aging \\
+MLQ     & Sí  & Múltiples colas + prio. fija & Separa clases de tareas & Clasificación estática \\
+MLF     & Sí  & Colas con prio.\ dinámica & Premia interactivos, castiga CPU-bound & Complejo de afinar \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% =====================================================================
+\section{Resumen final}
+% =====================================================================
+
+\begin{enumerate}[leftmargin=*]
+    \item El \textbf{scheduler de CPU} decide cuándo, dónde y por
+        cuánto tiempo cada tarea ejecuta. Hay schedulers de
+        \emph{long-term} (admisión) y \emph{short-term} (selección
+        instantánea).
+    \item Los \textbf{criterios} clásicos --- utilización, fairness,
+        throughput, turnaround, espera, respuesta --- \emph{se
+        contraponen}. No existe el algoritmo perfecto; se elige según
+        la carga de trabajo.
+    \item La \textbf{preemption} es la propiedad que permite al kernel
+        recuperar la CPU sin la cooperación del proceso, gracias a las
+        interrupciones del timer. Es la base de los sistemas
+        time-sharing.
+    \item \textbf{FCFS} es simple pero sufre el \emph{convoy effect}.
+        \textbf{SJF} (no preemptivo) y \textbf{SRTF} (preemptivo)
+        minimizan la espera promedio si se conocen las ráfagas, pero
+        admiten starvation. La duración se estima con \emph{promedio
+        exponencial} $\tau_{n+1} = \alpha t_n + (1-\alpha)\tau_n$.
+    \item \textbf{Round Robin} acota el tiempo de respuesta usando
+        un \emph{quantum}; es la elección natural para time-sharing.
+        El quantum es un compromiso: muy grande $\to$ FCFS; muy chico
+        $\to$ overhead de context switches.
+    \item \textbf{Prioridades} reflejan la importancia que el sistema
+        asigna a cada proceso. Pueden ser \emph{estáticas} o
+        \emph{dinámicas}; pueden ser \emph{preemptivas} o no. Padecen
+        starvation, mitigada con \emph{aging}.
+    \item \textbf{MLF} combina prioridades dinámicas con RR por nivel:
+        promueve a los interactivos, releva a los CPU-bound, y es lo
+        más cercano a un scheduler ``adaptativo'' clásico.
+    \item En \textbf{Linux} la prioridad va de 0 a 139, con clases
+        real-time (0--99) y normal (100--139). El valor \texttt{nice}
+        ($-20$ a $+19$) controla la prioridad y el quantum de los
+        procesos de usuario. Históricamente: O(1) $\to$ CFS $\to$
+        EEVDF (2024).
+    \item En \textbf{multiprocesadores SMP} el scheduler debe lograr
+        \emph{load balancing} (nivelar carga) y \emph{processor
+        affinity} (preservar caché). Estos dos objetivos se
+        contraponen y se resuelven con un compromiso: migrar solo si
+        el desbalance supera el costo esperado de la migración.
+\end{enumerate}
+
+\begin{importante}
+\textbf{La idea unificadora:} no hay un mejor algoritmo de
+planificación. Cada criterio que se quiere maximizar (throughput,
+respuesta, fairness, afinidad de caché) se contrapone con otros, y
+el rol del diseñador del SO --- y del scheduler concreto que se
+elija --- es navegar esos compromisos para una carga de trabajo
+particular. La planificación es, en última instancia, un ejercicio
+permanente de equilibrio entre objetivos contrapuestos.
+\end{importante}
+
+\end{document}

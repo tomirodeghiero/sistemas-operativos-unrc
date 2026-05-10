@@ -1,0 +1,852 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- Encoding ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands]{babel}
+\usepackage{lmodern}
+
+% --- Layout ---
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{parskip}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em plus 0.2em minus 0.1em}
+
+% --- Tables and graphics ---
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,shapes,fit,backgrounds,calc}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{amsmath,amssymb}
+
+% --- Code listings ---
+\usepackage{listings}
+\definecolor{codegray}{rgb}{0.96,0.96,0.96}
+\definecolor{codeborder}{rgb}{0.85,0.85,0.85}
+\definecolor{codecomment}{rgb}{0.30,0.55,0.30}
+\definecolor{codekeyword}{rgb}{0.10,0.30,0.70}
+\definecolor{codestring}{rgb}{0.65,0.15,0.10}
+
+\lstdefinestyle{shellstyle}{
+    language=bash,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstdefinestyle{textstyle}{
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstset{style=shellstyle}
+
+% --- Hyperlinks ---
+\usepackage[colorlinks=true,
+            linkcolor=blue!60!black,
+            urlcolor=blue!50!black,
+            citecolor=blue!60!black]{hyperref}
+
+% --- Gantt color palette ---
+\definecolor{gp1}{HTML}{4C72B0}
+\definecolor{gp2}{HTML}{DD8452}
+\definecolor{gp3}{HTML}{55A868}
+\definecolor{gp4}{HTML}{8172B2}
+
+% --- Title block ---
+\title{
+    \vspace{-2.5em}
+    \textbf{Práctico 4} \\[0.3em]
+    \large Planificación de uso de CPU
+}
+\author{
+    Tomás Rodeghiero \\
+    \small Sistemas Operativos --- Universidad Nacional de Río Cuarto
+}
+\date{2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent
+Este documento presenta la resolución integral del Práctico 4 de la
+materia Sistemas Operativos (UNRC, 2026), centrado en la
+\emph{planificación de uso de CPU}. Se estudian seis ejercicios que
+recorren los algoritmos clásicos: \emph{First-Come First-Served}
+(FCFS), \emph{Shortest Job First} (SJF), \emph{Round Robin} (RR),
+planificación por \emph{prioridades} estáticas y dinámicas y
+\emph{Multilevel Feedback Queues} (MLF), más una discusión sobre
+\emph{processor affinity} vs.\ \emph{load balancing} en sistemas SMP.
+Cada ejercicio se justifica con la teoría del capítulo
+\emph{Planificación de uso de CPU} de las Notas del curso (Marcelo
+Arroyo) y se acompaña con tablas de procesos, diagramas de Gantt y
+cálculos paso a paso de los tiempos de espera, turnaround y respuesta.
+\end{abstract}
+
+\tableofcontents
+\bigskip
+
+% =====================================================================
+\section{Introducción}
+% =====================================================================
+
+El \emph{scheduler} de CPU es el subsistema del SO que decide
+\emph{cuándo}, \emph{dónde} y \emph{por cuánto tiempo} cada tarea va
+a ejecutar. La política que adopta depende del tipo de sistema y de
+la carga de trabajo: en sistemas \emph{batch} se busca minimizar el
+tiempo medio de espera; en \emph{time-sharing}, acotar el tiempo de
+respuesta; en \emph{multiprocesadores SMP}, equilibrar la carga sin
+romper la afinidad de caché. El capítulo de las Notas resume los
+criterios habituales:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Maximizar la utilización de la CPU.
+    \item \textbf{Justicia (\emph{fairness})}: tiempos parejos para
+        cada tarea.
+    \item \textbf{Throughput}: procesos completados por unidad de
+        tiempo.
+    \item \textbf{Tiempo de retorno (\emph{turnaround})}: tiempo total
+        que un proceso pasa en el sistema, desde que arribó hasta que
+        terminó.
+    \item \textbf{Tiempo de espera}: tiempo en estado \texttt{READY}
+        sin ejecutar (CPU asignada a otro).
+    \item \textbf{Tiempo de respuesta}: latencia desde que llega un
+        requerimiento hasta que el sistema empieza a procesarlo.
+\end{itemize}
+
+Varios de estos criterios se contraponen entre sí: maximizar
+\emph{throughput} puede deteriorar el tiempo de respuesta;
+balancear la carga puede afectar la afinidad de caché. Por eso no
+existe ``el'' mejor algoritmo, sino el más adecuado para cada
+escenario.
+
+Las fórmulas que se usan a lo largo del práctico son las estándar:
+
+\begin{align*}
+\text{Espera}_i      &= \text{Inicio}_i - \text{Arribo}_i
+                       \quad (\text{para algoritmos no preemptivos sin I/O}) \\
+\text{Turnaround}_i  &= \text{Fin}_i - \text{Arribo}_i \\
+\text{Respuesta}_i   &= \text{PrimerInicio}_i - \text{Arribo}_i
+\end{align*}
+
+En la versión preemptiva con interrupciones por timer, el tiempo de
+espera se calcula como
+$\text{Espera}_i = \text{Turnaround}_i - \text{CPU}_i - \text{WAIT}_i$.
+
+% =====================================================================
+\section{Ejercicio 1 --- FCFS y SJF: tiempo de espera promedio}
+% =====================================================================
+
+\begin{center}
+\small
+\begin{tabular}{@{}lcc@{}}
+\toprule
+Proceso & Tiempo de creación (arribo) & Ráfaga de CPU (\(\mu\)s) \\
+\midrule
+P1 & 0.0 & 8 \\
+P2 & 0.5 & 3 \\
+P3 & 3.0 & 5 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Se pide el tiempo de espera promedio bajo (1) FCFS con los tiempos de
+arribo dados y (2) SJF \emph{asumiendo que los tres arriban en
+$t = 0$}.
+
+\subsection{1.a FCFS (FIFO) con los arribos dados}
+
+FCFS es el algoritmo más simple: cola FIFO, no preemptivo. Se otorga
+la CPU al primero de la cola y no se la quita hasta que termine. El
+orden de arribo es P1, P2, P3.
+
+\begin{center}
+\begin{tikzpicture}[xscale=0.5,yscale=0.7]
+    \draw[fill=gp1] (0,0) rectangle (8,1)  node[midway,white,font=\bfseries]{P1};
+    \draw[fill=gp2] (8,0) rectangle (11,1) node[midway,white,font=\bfseries]{P2};
+    \draw[fill=gp3] (11,0) rectangle (16,1) node[midway,white,font=\bfseries]{P3};
+    \foreach \x in {0,8,11,16}
+        \draw (\x,0) -- (\x,-0.15) node[below,font=\small]{\x};
+\end{tikzpicture}
+\\\small\emph{Diagrama de Gantt --- FCFS}
+\end{center}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Proceso & Arribo & Inicio & Fin & Espera \\
+\midrule
+P1 & 0.0 & 0 & 8 & 0.0 \\
+P2 & 0.5 & 8 & 11 & 7.5 \\
+P3 & 3.0 & 11 & 16 & 8.0 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\[
+\overline{W}_{\text{FCFS}}
+= \frac{0 + 7.5 + 8}{3} = \frac{15.5}{3} \approx 5.17.
+\]
+
+\textbf{Observación.} P1 es la ráfaga más larga y llega primero, así
+que arrastra la espera de los demás (\emph{convoy effect}). Es
+exactamente la desventaja que la teoría le adjudica a FCFS:
+``comúnmente produce tiempos promedio de espera grandes''.
+
+\subsection{1.b SJF (no preemptivo, todos en $t = 0$)}
+
+Bajo el supuesto del enunciado, los tres procesos están disponibles
+desde $t = 0$. SJF elige siempre la ráfaga más corta entre los
+\texttt{READY}: P2 (3) primero, P3 (5) después, P1 (8) al final.
+
+\begin{center}
+\begin{tikzpicture}[xscale=0.5,yscale=0.7]
+    \draw[fill=gp2] (0,0) rectangle (3,1) node[midway,white,font=\bfseries]{P2};
+    \draw[fill=gp3] (3,0) rectangle (8,1) node[midway,white,font=\bfseries]{P3};
+    \draw[fill=gp1] (8,0) rectangle (16,1) node[midway,white,font=\bfseries]{P1};
+    \foreach \x in {0,3,8,16}
+        \draw (\x,0) -- (\x,-0.15) node[below,font=\small]{\x};
+\end{tikzpicture}
+\\\small\emph{Diagrama de Gantt --- SJF}
+\end{center}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Proceso & Arribo & Inicio & Fin & Espera \\
+\midrule
+P2 & 0 & 0 & 3  & 0 \\
+P3 & 0 & 3 & 8  & 3 \\
+P1 & 0 & 8 & 16 & 8 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\[
+\overline{W}_{\text{SJF}}
+= \frac{0 + 3 + 8}{3} = \frac{11}{3} \approx 3.67.
+\]
+
+\subsection*{Comparación}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+Algoritmo & Orden & Espera promedio \\
+\midrule
+FCFS & P1 - P2 - P3 & 5.17 \\
+SJF (todos en $t=0$) & P2 - P3 - P1 & \textbf{3.67} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+SJF da menor tiempo de espera promedio. La razón es la propiedad
+clásica del algoritmo: \emph{dado un conjunto fijo de ráfagas
+conocidas, ejecutar primero las más cortas minimiza la espera
+promedio}. Esta propiedad de optimalidad es la motivación histórica
+de SJF en sistemas \emph{batch} con \emph{long-term schedulers},
+donde el usuario declara el tiempo estimado del job.
+
+% =====================================================================
+\section{Ejercicio 2 --- Round Robin y comparación con FCFS y SJF}
+% =====================================================================
+
+Para los procesos del Ejercicio~1 se aplica \textbf{Round Robin}
+preemptivo con quantum $q = 2$. Se mantiene una cola FIFO de
+\texttt{RUNNABLE}: cuando un proceso llega o vuelve por consumir su
+quantum se encola al final; el scheduler toma siempre el primero de
+la cola.
+
+\paragraph{Convención de empates.} Cuando un nuevo arribo y un
+desalojo ocurren al mismo instante, primero se encola el recién
+llegado y luego el desalojado. Es la convención habitual de los
+textos clásicos (Silberschatz, Tanenbaum).
+
+\subsection*{Traza paso a paso}
+
+Notación: la cola se escribe \texttt{[cabeza ... cola]} y entre
+paréntesis aparece la ráfaga remanente.
+
+\begin{center}
+\small
+\begin{tabular}{@{}llp{6cm}l@{}}
+\toprule
+Intervalo & CPU & Evento al final del intervalo & Cola READY \\
+\midrule
+$0$--$2$   & P1 & $t=0.5$: arriba P2; $t=2$: P1 fin de quantum (rem.\ 6) & [P2(3), P1(6)] \\
+$2$--$4$   & P2 & $t=3$: arriba P3; $t=4$: P2 fin de quantum (rem.\ 1)   & [P1(6), P3(5), P2(1)] \\
+$4$--$6$   & P1 & $t=6$: P1 fin de quantum (rem.\ 4)                    & [P3(5), P2(1), P1(4)] \\
+$6$--$8$   & P3 & $t=8$: P3 fin de quantum (rem.\ 3)                    & [P2(1), P1(4), P3(3)] \\
+$8$--$9$   & P2 & $t=9$: P2 termina (ráfaga era 1)                      & [P1(4), P3(3)] \\
+$9$--$11$  & P1 & $t=11$: P1 fin de quantum (rem.\ 2)                   & [P3(3), P1(2)] \\
+$11$--$13$ & P3 & $t=13$: P3 fin de quantum (rem.\ 1)                   & [P1(2), P3(1)] \\
+$13$--$15$ & P1 & $t=15$: P1 termina                                    & [P3(1)] \\
+$15$--$16$ & P3 & $t=16$: P3 termina                                    & [\,] \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Verificación}: la CPU está ocupada de 0 a 16 sin huecos y
+$8 + 3 + 5 = 16$. Cuadra.
+
+\subsection*{Diagrama de Gantt}
+
+\begin{center}
+\begin{tikzpicture}[xscale=0.45,yscale=0.7]
+    \draw[fill=gp1]  (0,0)  rectangle (2,1)  node[midway,white,font=\bfseries\small]{P1};
+    \draw[fill=gp2]  (2,0)  rectangle (4,1)  node[midway,white,font=\bfseries\small]{P2};
+    \draw[fill=gp1]  (4,0)  rectangle (6,1)  node[midway,white,font=\bfseries\small]{P1};
+    \draw[fill=gp3]  (6,0)  rectangle (8,1)  node[midway,white,font=\bfseries\small]{P3};
+    \draw[fill=gp2]  (8,0)  rectangle (9,1)  node[midway,white,font=\bfseries\small]{P2};
+    \draw[fill=gp1]  (9,0)  rectangle (11,1) node[midway,white,font=\bfseries\small]{P1};
+    \draw[fill=gp3]  (11,0) rectangle (13,1) node[midway,white,font=\bfseries\small]{P3};
+    \draw[fill=gp1]  (13,0) rectangle (15,1) node[midway,white,font=\bfseries\small]{P1};
+    \draw[fill=gp3]  (15,0) rectangle (16,1) node[midway,white,font=\bfseries\small]{P3};
+    \foreach \x in {0,2,4,6,8,9,11,13,15,16}
+        \draw (\x,0) -- (\x,-0.15) node[below,font=\scriptsize]{\x};
+\end{tikzpicture}
+\\\small\emph{Diagrama de Gantt --- Round Robin con $q = 2$}
+\end{center}
+
+\subsection{2.a Turnaround de cada proceso}
+
+$T_i = \text{Fin}_i - \text{Arribo}_i$:
+
+\begin{center}
+\small
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Proceso & Arribo & Fin & Turnaround \\
+\midrule
+P1 & 0.0 & 15 & 15.0 \\
+P2 & 0.5 & 9  & 8.5  \\
+P3 & 3.0 & 16 & 13.0 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\[
+\overline{T}_{\text{RR}} = \frac{15 + 8.5 + 13}{3} = \frac{36.5}{3} \approx 12.17.
+\]
+
+\subsection{2.b Comparación con FCFS y SJF}
+
+Los tres algoritmos no parten de las mismas hipótesis: FCFS y RR usan
+los arribos originales; SJF (parte b del Ejercicio~1) asume todos en
+$t = 0$. Aún así, la comparación es ilustrativa:
+
+\begin{center}
+\small
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Proceso & $T$ FCFS & $T$ SJF & $T$ RR \\
+\midrule
+P1 & 8.0  & 16  & 15.0 \\
+P2 & 10.5 & 3   & 8.5  \\
+P3 & 13.0 & 8   & 13.0 \\
+\midrule
+\textbf{Promedio} & \textbf{10.50} & \textbf{9.00} & \textbf{12.17} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Lectura:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{SJF} es el mejor en turnaround promedio (9.0): la
+        propiedad de optimalidad garantiza que ejecutar primero las
+        ráfagas más cortas minimiza la espera promedio.
+    \item \textbf{FCFS} queda intermedio (10.5). Sufre el
+        \emph{convoy effect} porque P1 llega primero y arrastra a los
+        demás, pero cada proceso ejecuta de un solo tirón.
+    \item \textbf{RR} es el peor en promedio (12.17): el quantum
+        chico fragmenta la ejecución de P1 en cuatro pedazos, pero a
+        cambio P2 mejora notablemente (10.5 $\to$ 8.5) porque no
+        queda atascada detrás de la ráfaga más larga.
+\end{itemize}
+
+Esto es justamente el compromiso clásico que la teoría señala: RR no
+está pensado para minimizar turnaround promedio sino para acotar el
+\emph{tiempo de respuesta} en sistemas \emph{time-sharing}. Con
+quantum tendiendo al infinito, RR converge a FCFS; con quantum muy
+chico, el overhead de cambios de contexto domina.
+
+% =====================================================================
+\section{Ejercicio 3 --- Prioridades dinámicas (estilo 4.3BSD)}
+% =====================================================================
+
+Un planificador recalcula cada segundo la prioridad de cada proceso
+con la fórmula
+\[
+\text{priority} = \frac{\text{recent\_cpu\_usage}()}{2} + 60
+\]
+donde \emph{a mayor valor, menor prioridad}. Tres procesos tienen
+usos recientes de CPU de 30, 15 y 10 respectivamente.
+
+\subsection*{Cálculo de prioridades}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lccl@{}}
+\toprule
+Proceso & recent\_cpu & priority $=$ recent\_cpu$/2$ $+$ 60 & Posición \\
+\midrule
+P1 & 30 & $30/2 + 60 = \mathbf{75}$    & menor prioridad \\
+P2 & 15 & $15/2 + 60 = \mathbf{67.5}$  & intermedia \\
+P3 & 10 & $10/2 + 60 = \mathbf{65}$    & mayor prioridad \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Orden de prioridad (de más alta a más baja): $P_3 \succ P_2 \succ P_1$.
+
+\subsection{3.a CPU-bound vs.\ I/O-bound}
+
+Un proceso \textbf{CPU-bound} ejecuta ráfagas largas: gasta su
+quantum sin bloquearse, así que su contador
+\texttt{recent\_cpu\_usage} crece rápido. Su \texttt{priority}
+numérica sube y, como mayor valor implica menor prioridad efectiva,
+\textbf{el algoritmo lo posterga}. P1 (uso 30, prioridad 75) es el
+ejemplo en la tabla.
+
+Un proceso \textbf{I/O-bound} se bloquea seguido en \texttt{read} o
+\texttt{write} y rara vez consume el quantum entero. Su contador
+queda chico, su \texttt{priority} se mantiene cerca del piso (60), y
+el algoritmo \textbf{lo favorece} cuando vuelve de I/O. P3 (uso 10,
+prioridad 65) lo ilustra.
+
+El término ``$+60$'' funciona como piso fijo (ningún proceso baja de
+60) y el ``$/2$'' amortigua el crecimiento, evitando que un pico
+breve de uso castigue desproporcionadamente al proceso. La fórmula
+provista es exactamente la receta del scheduler clásico de
+\textbf{4.3BSD UNIX}: \emph{multilevel feedback} con \emph{decay}
+exponencial del \texttt{recent\_cpu}.
+
+\subsection{3.b Objetivo del planificador}
+
+Dos objetivos complementarios:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Mejor responsiveness para procesos interactivos}:
+        editores, shells y servicios atendiendo \emph{requests} son
+        típicamente I/O-bound. Que el scheduler les dé prioridad alta
+        cuando vuelven de un bloqueo significa baja latencia entre el
+        evento y su procesamiento.
+    \item \textbf{Mejor uso de los dispositivos de I/O}: si los
+        procesos I/O-bound se planifican rápido mantienen los
+        dispositivos ocupados; los CPU-bound usan la CPU mientras los
+        otros están bloqueados, sin perjudicar el throughput global.
+\end{itemize}
+
+La penalización a los CPU-bound \textbf{no es permanente}: como
+\texttt{recent\_cpu\_usage} solo refleja la historia reciente, un
+proceso CPU-bound que deja de demandar CPU verá caer su prioridad
+numérica y volverá a ser elegible. Es exactamente el rol que la
+teoría le adjudica al \emph{aging}.
+
+En una línea: el planificador busca un \textbf{compromiso entre
+utilización de CPU, throughput y tiempo de respuesta}, que la teoría
+identifica como el objetivo central de los \emph{short-term
+schedulers} en sistemas \emph{time-sharing}.
+
+% =====================================================================
+\section{Ejercicio 4 --- Planificación por prioridades estáticas}
+% =====================================================================
+
+Para los procesos del Ejercicio~1 (todos arriban en $t = 0$), con
+prioridades:
+
+\begin{center}
+\small
+\begin{tabular}{@{}lcc@{}}
+\toprule
+Proceso & CPU & Prioridad \\
+\midrule
+P1 & 8 & 1 \\
+P2 & 3 & 3 \\
+P3 & 5 & 2 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Convención.} El enunciado no fija si menor número implica
+mayor o menor prioridad. Se adopta la convención más extendida en
+bibliografía clásica (Silberschatz, Tanenbaum) y la que usa Linux en
+el rango \emph{real-time}: \textbf{menor número $\to$ mayor
+prioridad}. Bajo esta convención el orden decreciente es
+$P_1 \succ P_3 \succ P_2$.
+
+\paragraph{Preemptivo vs.\ no preemptivo.} Como los tres llegan en
+$t = 0$ y nadie se incorpora después, no hay diferencia entre las dos
+versiones: una vez decidido el orden, ningún arribo posterior lo
+puede alterar.
+
+\subsection*{Diagrama de Gantt}
+
+\begin{center}
+\begin{tikzpicture}[xscale=0.5,yscale=0.7]
+    \draw[fill=gp1] (0,0)  rectangle (8,1)  node[midway,white,font=\bfseries]{P1};
+    \draw[fill=gp3] (8,0)  rectangle (13,1) node[midway,white,font=\bfseries]{P3};
+    \draw[fill=gp2] (13,0) rectangle (16,1) node[midway,white,font=\bfseries]{P2};
+    \foreach \x in {0,8,13,16}
+        \draw (\x,0) -- (\x,-0.15) node[below,font=\small]{\x};
+\end{tikzpicture}
+\\\small\emph{Diagrama de Gantt --- Prioridades estáticas (menor número $\to$ mayor prioridad)}
+\end{center}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Proceso & Inicio & Fin & Espera & Turnaround \\
+\midrule
+P1 & 0  & 8  & 0  & 8  \\
+P3 & 8  & 13 & 8  & 13 \\
+P2 & 13 & 16 & 13 & 16 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Promedios:
+$\overline{W} = (0 + 8 + 13)/3 = 7$;
+$\overline{T} = (8 + 13 + 16)/3 \approx 12{.}33$.
+
+\subsection*{Observaciones}
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item La secuencia depende \emph{exclusivamente} del número de
+        prioridad. Aquí P1 (mayor prioridad) coincide con la ráfaga
+        más larga, lo que perjudica el promedio respecto de SJF
+        (orden P2-P3-P1).
+    \item La planificación por prioridades \textbf{no garantiza
+        optimalidad} en tiempo de espera ni en turnaround promedio:
+        solo respeta la importancia relativa que el sistema asigna a
+        cada proceso. Es una decisión política, no temporal.
+    \item \textbf{Riesgo de starvation}: si llegasen continuamente
+        procesos con prioridad 1 o 2, P2 (prioridad 3) podría
+        postergarse indefinidamente. La solución estándar
+        ---mencionada explícitamente por la teoría--- es el
+        \emph{aging}: incrementar gradualmente la prioridad de
+        procesos que llevan mucho tiempo esperando.
+\end{enumerate}
+
+\subsection*{Si la convención fuera ``mayor número $\to$ mayor prioridad''}
+
+El orden sería $P_2 \succ P_3 \succ P_1$:
+
+\begin{center}
+\begin{tikzpicture}[xscale=0.5,yscale=0.7]
+    \draw[fill=gp2] (0,0) rectangle (3,1)   node[midway,white,font=\bfseries]{P2};
+    \draw[fill=gp3] (3,0) rectangle (8,1)   node[midway,white,font=\bfseries]{P3};
+    \draw[fill=gp1] (8,0) rectangle (16,1)  node[midway,white,font=\bfseries]{P1};
+    \foreach \x in {0,3,8,16}
+        \draw (\x,0) -- (\x,-0.15) node[below,font=\small]{\x};
+\end{tikzpicture}
+\\\small\emph{Diagrama de Gantt --- convención inversa}
+\end{center}
+
+Promedios: $\overline{W} \approx 3{.}67$,
+$\overline{T} = 9$. Coincide numéricamente con SJF en el
+Ejercicio~1, porque casualmente las ``prioridades altas'' coinciden
+con las ráfagas más cortas.
+
+% =====================================================================
+\section{Ejercicio 5 --- Multilevel Feedback de tres niveles}
+% =====================================================================
+
+Se pide describir paso a paso un scheduler MLF con tres niveles
+$L_0$, $L_1$, $L_2$ y \emph{quantums} 3, 2 y 1 ms respectivamente,
+sobre las tareas:
+
+\begin{center}
+\small
+\begin{tabular}{@{}lp{8cm}@{}}
+\toprule
+Tarea & Comportamiento (línea temporal) \\
+\midrule
+T1 & CPU $=$ 5 ms ; WAIT $=$ 5 ms ; CPU $=$ 1 ms \\
+T2 & CPU $=$ 12 ms \\
+T3 & CPU $=$ 1 ms ; WAIT $=$ 2 ms ; CPU $=$ 1 ms \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Las tres ingresan a $L_0$ en $t = 0$ en el orden T1, T2, T3.
+
+\subsection*{Reglas del MLF}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Niveles ordenados por prioridad: $L_0$ es el más
+        prioritario, $L_2$ el menos.
+    \item El scheduler ejecuta siempre al primero del nivel más alto
+        \emph{no vacío}.
+    \item Dentro de cada nivel se aplica RR con su propio quantum.
+    \item \textbf{Demote}: si un proceso \emph{consume todo el
+        quantum} se considera CPU-bound y baja un nivel. Si ya está
+        en $L_2$ se reencola en el mismo $L_2$.
+    \item \textbf{Sin demote}: si un proceso \emph{cede
+        voluntariamente} (bloqueo en I/O) o \emph{termina} antes del
+        quantum, se considera interactivo y se queda en su nivel.
+    \item \textbf{Preemption entre niveles}: si mientras un proceso
+        ejecuta llega/despierta otro de nivel superior, el primero es
+        desalojado y reencolado al final de su nivel actual.
+    \item Convención en empates: (a) si llegada y desalojo coinciden
+        en el tiempo, primero se encola la nueva; (b) si la ráfaga
+        termina justo al expirar el quantum, prevalece la lectura
+        ``I/O'' (no demote); (c) un proceso que despierta de WAIT
+        regresa al mismo nivel donde estaba antes del bloqueo.
+\end{itemize}
+
+\subsection*{Tabla temporal}
+
+Notación: \texttt{Ti:n} significa ``tarea $i$ con $n$ ms pendientes
+de CPU en su ráfaga actual''. \texttt{<>} es cola vacía.
+
+\begin{center}
+\scriptsize
+\begin{tabular}{@{}llllllllp{1.6cm}@{}}
+\toprule
+Time & CPU & T1 & T2 & T3 & $L_0$ & $L_1$ & $L_2$ \\
+\midrule
+0     & ---             & RDY  & RDY & RDY  & \texttt{<T1:5,T2:12,T3:1>} & \texttt{<>}        & \texttt{<>}      \\
+0--3  & T1              & RUN  & RDY & RDY  & \texttt{<T2:12,T3:1>}      & \texttt{<>}        & \texttt{<>}      \\
+3     & demote T1       & RDY  & RDY & RDY  & \texttt{<T2:12,T3:1>}      & \texttt{<T1:2>}    & \texttt{<>}      \\
+3--6  & T2              & RDY  & RUN & RDY  & \texttt{<T3:1>}            & \texttt{<T1:2>}    & \texttt{<>}      \\
+6     & demote T2       & RDY  & RDY & RDY  & \texttt{<T3:1>}            & \texttt{<T1:2,T2:9>} & \texttt{<>}    \\
+6--7  & T3              & RDY  & RDY & RUN  & \texttt{<>}                & \texttt{<T1:2,T2:9>} & \texttt{<>}    \\
+7     & T3 $\to$ WAIT   & RDY  & RDY & WAIT & \texttt{<>}                & \texttt{<T1:2,T2:9>} & \texttt{<>}    \\
+7--9  & T1              & RUN  & RDY & WAIT & \texttt{<>}                & \texttt{<T2:9>}    & \texttt{<>}      \\
+9     & T1 $\to$ WAIT; T3 wakeup & WAIT & RDY & RDY & \texttt{<T3:1>}    & \texttt{<T2:9>}    & \texttt{<>}      \\
+9--10 & T3              & WAIT & RDY & RUN  & \texttt{<>}                & \texttt{<T2:9>}    & \texttt{<>}      \\
+10    & T3 termina      & WAIT & RDY & TERM & \texttt{<>}                & \texttt{<T2:9>}    & \texttt{<>}      \\
+10--12 & T2             & WAIT & RUN & TERM & \texttt{<>}                & \texttt{<>}        & \texttt{<>}      \\
+12    & demote T2       & WAIT & RDY & TERM & \texttt{<>}                & \texttt{<>}        & \texttt{<T2:7>}  \\
+12--13 & T2             & WAIT & RUN & TERM & \texttt{<>}                & \texttt{<>}        & \texttt{<>}      \\
+13    & T2 reencola en $L_2$ & WAIT & RDY & TERM & \texttt{<>}           & \texttt{<>}        & \texttt{<T2:6>}  \\
+13--14 & T2             & WAIT & RUN & TERM & \texttt{<>}                & \texttt{<>}        & \texttt{<>}      \\
+14    & T1 wakeup $\to L_1$; T2 desalojado & RDY & RDY & TERM & \texttt{<>} & \texttt{<T1:1>} & \texttt{<T2:5>} \\
+14--15 & T1             & RUN  & RDY & TERM & \texttt{<>}                & \texttt{<>}        & \texttt{<T2:5>}  \\
+15    & T1 termina      & TERM & RDY & TERM & \texttt{<>}                & \texttt{<>}        & \texttt{<T2:5>}  \\
+15--20 & T2             & TERM & RUN & TERM & \texttt{<>}                & \texttt{<>}        & \texttt{<T2:4..0>} \\
+20    & T2 termina      & TERM & TERM & TERM & \texttt{<>}               & \texttt{<>}        & \texttt{<>}      \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Verificación}: la CPU está ocupada de 0 a 20 ms sin huecos.
+Las ráfagas suman $T_1 = 6$, $T_2 = 12$, $T_3 = 2$, total 20 ms.
+
+\subsection*{Justificación de los pasos clave}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{$t = 0$--$3$}: T1 toma CPU en $L_0$ (quantum 3).
+        Su ráfaga era 5; consume el quantum, le quedan 2. Demote
+        a $L_1$.
+    \item \textbf{$t = 3$--$6$}: T2 corre los 3 ms del quantum de
+        $L_0$. Le quedan 9. Demote a $L_1$.
+    \item \textbf{$t = 6$--$7$}: T3 obtiene CPU en $L_0$ y completa
+        su ráfaga de 1 ms (cede voluntariamente al pasar a WAIT por 2
+        ms). \textbf{No demote}: cuando despierte vuelve a $L_0$.
+    \item \textbf{$t = 7$--$9$}: con $L_0$ vacío, el scheduler baja a
+        $L_1$ y elige T1. T1 corre los 2 ms del quantum de $L_1$ y
+        \emph{justo} completa su primera ráfaga de 5 ms (3 en $L_0$
+        + 2 en $L_1$); pasa a WAIT por 5 ms. Por la convención
+        adoptada (ráfaga termina exactamente en el quantum $\to$
+        I/O), T1 no demote a $L_2$: cuando despierte volverá a $L_1$.
+        Simultáneamente, T3 despierta y vuelve a $L_0$.
+    \item \textbf{$t = 9$--$10$}: T3 obtiene CPU (preferencia de
+        $L_0$ sobre $L_1$), corre su última ráfaga de 1 ms y termina.
+    \item \textbf{$t = 10$--$13$}: T2 ejecuta en $L_1$ (2 ms), demote
+        a $L_2$, ejecuta otro ms en $L_2$. En cada quantum agotado
+        en $L_2$ se reencola en el mismo nivel.
+    \item \textbf{$t = 13$--$14$}: T2 sigue en $L_2$. Justo al
+        expirar este quantum, T1 despierta y entra a $L_1$.
+    \item \textbf{$t = 14$--$15$}: T1 obtiene CPU (preferencia de
+        $L_1$ sobre $L_2$), corre 1 ms y termina su última ráfaga.
+    \item \textbf{$t = 15$--$20$}: T2 queda sola y completa los 5 ms
+        restantes en $L_2$ (cinco quantums consecutivos de 1 ms).
+\end{itemize}
+
+\subsection*{Métricas resultantes}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+Tarea & Llegada & Fin & Turnaround & CPU usada & Espera \\
+\midrule
+T1 & 0 & 15 & 15 & 6  & 4 \\
+T2 & 0 & 20 & 20 & 12 & 8 \\
+T3 & 0 & 10 & 10 & 2  & 6 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Lectura.} T3 (interactivo, 2 ms de CPU) sale rápido del
+sistema; T1 (mixta, 6 ms de CPU) termina segunda. T2 (CPU-bound puro,
+12 ms) es \emph{la más castigada}: queda atrapada en $L_2$ y solo
+termina al final, después de que las otras se hayan ido. Sin embargo
+\textbf{no padece starvation} porque, una vez que el sistema queda
+libre, T2 obtiene la CPU sin contención. Es exactamente el
+comportamiento que la teoría atribuye al MLF: \emph{mejorar el tiempo
+de respuesta de los procesos interactivos castigando a los CPU-bound,
+sin negarles servicio}.
+
+% =====================================================================
+\section{Ejercicio 6 --- Processor affinity vs.\ load balancing en SMP}
+% =====================================================================
+
+En sistemas SMP el scheduler debe lograr \emph{processor affinity} y
+\emph{load balancing} simultáneamente. Se pide explicar por qué estas
+propiedades se contraponen.
+
+\subsection*{Definiciones}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Load balancing}: emparejar la carga de trabajo
+        entre todas las CPUs. En cada \emph{context switch} un
+        proceso puede \emph{migrar} de CPU.
+    \item \textbf{Processor affinity}: minimizar la migración de
+        procesos entre CPUs. Linux ofrece la syscall
+        \texttt{sched\_setaffinity} (\emph{hard affinity}) para
+        ligar un proceso a un subconjunto de CPUs.
+\end{itemize}
+
+La teoría explicita el motivo: la migración \emph{afecta al
+rendimiento porque la memoria caché de la CPU anterior queda
+invalidada y la caché de la nueva debe volver a llenarse}.
+
+\subsection*{Por qué se contraponen}
+
+Las dos propiedades empujan al scheduler en direcciones opuestas:
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item \textbf{Load balancing pide migrar.} Si una CPU está
+        sobrecargada (cola READY larga) y otra está libre, lo correcto
+        \emph{desde el balance} es mover algún proceso a la libre.
+        Sin migración, una CPU queda al 100\% mientras otra
+        desperdicia ciclos en idle.
+    \item \textbf{Processor affinity pide no migrar.} Cada migración
+        descarta el trabajo de \emph{calentamiento de caché} (L1 y L2
+        son privadas por core). El proceso paga miles de instrucciones
+        con \emph{cache miss} hasta repoblar la nueva caché. También
+        se pierde la huella en la TLB.
+\end{enumerate}
+
+El conflicto concreto:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Si el scheduler \textbf{prioriza affinity}, deja de migrar
+        incluso con desbalance: aparece subutilización (una CPU al
+        100\%, otra al 0\%). El sistema de $N$ CPUs rinde como uno
+        más chico.
+    \item Si el scheduler \textbf{prioriza load balancing}, migra
+        seguido para mantener parejas las CPUs. Pero cada migración
+        paga el costo de caché. Si las migraciones son frecuentes el
+        sistema gasta tiempo en repoblar caches en lugar de hacer
+        trabajo útil.
+\end{itemize}
+
+\subsection*{Compromiso práctico}
+
+La teoría lo nombra explícitamente: ``estos dos objetivos se
+contraponen, por lo que hay que lograr una solución de
+compromiso''. Las estrategias clásicas son:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Per-CPU runqueue} más un kernel thread dedicado al
+        balanceo (en Linux: el thread \texttt{migration} y la rutina
+        \texttt{load\_balance}). El scheduler local respeta la
+        affinity por defecto; el balanceador estima la carga y
+        migra solo si el desbalance excede un umbral.
+    \item \textbf{Soft affinity}: el scheduler trata de no migrar
+        pero puede hacerlo si compensa (default en Linux).
+    \item \textbf{Hard affinity}: con \texttt{sched\_setaffinity} el
+        proceso queda restringido a un conjunto fijo de CPUs.
+    \item \textbf{Push vs.\ pull migration}: una CPU sobrecargada
+        empuja trabajo, o una CPU ociosa lo tira. Coexisten.
+\end{itemize}
+
+El principio común: \textbf{migrar solo cuando el desbalance
+proyectado supera al costo esperado de la migración}. En el extremo
+NUMA, donde la migración entre nodos suma además el costo de
+accesos a memoria remota, la affinity gana peso. En arquitecturas
+\emph{multi-core} con caché L3 compartida entre cores del mismo
+\emph{socket}, migrar dentro del socket es mucho más barato que
+entre sockets, y los schedulers modernos (CFS de Linux) son
+conscientes de esta jerarquía.
+
+\paragraph{Resumen.} \emph{Affinity} protege la caché de cada
+proceso individual; \emph{load balancing} protege la utilización
+global del multiprocesador. Cada migración gana balance al costo de
+afinidad y viceversa, así que el scheduler decide cuánto vale cada
+migración antes de hacerla.
+
+% =====================================================================
+\section{Conclusiones}
+% =====================================================================
+
+El práctico recorre el menú clásico de algoritmos de planificación de
+CPU y deja en evidencia los compromisos centrales del diseño:
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item \textbf{FCFS} es simple y predecible pero sufre el
+        \emph{convoy effect} cuando una ráfaga larga llega primero
+        (Ej.~1).
+    \item \textbf{SJF} minimiza el tiempo de espera promedio cuando
+        se conocen las ráfagas (Ej.~1), pero es no preemptivo y
+        requiere conocer las duraciones (estimable con promedio
+        exponencial $\tau_{n+1} = \alpha t_n + (1 - \alpha)\tau_n$).
+    \item \textbf{Round Robin} acota el tiempo de respuesta a costa
+        de un mayor turnaround promedio cuando hay procesos largos
+        (Ej.~2). El quantum es el parámetro de compromiso.
+    \item \textbf{Prioridades} permiten al sistema imponer una
+        política, pero no garantizan optimalidad temporal y traen el
+        riesgo de \emph{starvation} (Ej.~3 y 4). El \emph{aging} es
+        la solución estándar.
+    \item \textbf{Multilevel Feedback} combina prioridades dinámicas
+        con RR por nivel; es la versión ``natural'' para sistemas
+        \emph{time-sharing} con cargas heterogéneas, y favorece a los
+        procesos interactivos sin negarle progreso a los CPU-bound
+        (Ej.~5).
+    \item En \textbf{SMP} el scheduler debe equilibrar affinity y
+        load balancing: dos objetivos legítimos pero opuestos, que
+        obligan a tomar decisiones costo-beneficio en cada migración
+        (Ej.~6).
+\end{enumerate}
+
+La idea unificadora es que la planificación es siempre un
+compromiso entre criterios que se contraponen: utilización,
+\emph{throughput}, tiempo de espera, tiempo de respuesta y
+\emph{fairness}. Ningún algoritmo gana en todas las métricas a la
+vez; cada uno tiene su nicho de aplicación. Los schedulers modernos
+(CFS, EEVDF en Linux desde 2024) son combinaciones sofisticadas de
+estos principios, sintonizados para cargas reales heterogéneas.
+
+\end{document}

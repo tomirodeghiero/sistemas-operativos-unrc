@@ -74,3 +74,17 @@ El orden seria $P_2 \succ P_3 \succ P_1$ y el Gantt:
 Promedios: espera $(0 + 3 + 8)/3 \approx 3.67$; turnaround $(3 + 8 + 16)/3 = 9$. Se obtienen los mismos numeros que SJF, porque en este caso particular las "prioridades altas" coinciden con las rafagas mas cortas.
 
 Como criterio de la teoria, ambas convenciones son legitimas; la respuesta principal del ejercicio es la primera (P1-P3-P2) y se aclara la alternativa para que quede explicita la dependencia del resultado respecto del criterio de orden.
+
+## Conexion con la teoria
+
+El ejercicio aterriza la seccion *Uso de prioridades* del capitulo de planificacion (Notas del curso 7):
+
+> "Es posible asignar prioridades a los procesos y elegir un con mayor prioridad. Generalmente se asignan numeros y su relacion de orden puede ser arbitrario (a menor valor corresponde mayor prioridad o viceversa). La asignacion de prioridades puede ser estatica (at process creation time) o dinamica (en run time). Este algoritmo puede ser preemtive o no."
+
+Tres puntos quedan en evidencia con esta resolucion:
+
+1. **El criterio de orden es una convencion del sistema, no un dato del problema.** Linux real-time usa "menor numero, mayor prioridad" (rango 0--99); Linux normal usa "mayor valor, mayor prioridad" via *nice* invertido. El ejercicio no fija la convencion y por eso la resolucion la elige y la justifica.
+2. **Estatico vs dinamico**: aqui las prioridades son fijas. El Ejercicio 3 ilustra el caso opuesto, donde la prioridad se recalcula en cada tick segun el uso reciente de CPU (algoritmo dinamico de la familia 4.3BSD).
+3. **El algoritmo no respeta la longitud de las rafagas**: con la convencion "menor numero, mas prioridad" termina ejecutando primero la rafaga mas larga (P1) y la mas corta (P2) ultimo, por una decision *politica* del sistema. Esa es la diferencia esencial con SJF, que decide por *tiempo* y no por *importancia*.
+
+La teoria adicionalmente advierte el problema clasico de los algoritmos por prioridades: la **starvation**. Si llegasen continuamente procesos con prioridad 1 o 2, P2 podria no obtener nunca la CPU. La solucion estandar mencionada por el capitulo es el **aging**: incrementar gradualmente la prioridad de los procesos relegados, para que tarde o temprano alcancen el frente de la cola.

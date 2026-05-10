@@ -5,7 +5,7 @@ Ejercicio 5: describir la secuencia de pasos y los estados de los procesos para 
 | Task | Comportamiento (linea temporal)                |
 |------|------------------------------------------------|
 | T1   | CPU = 5 ms ; WAIT = 5 ms ; CPU = 1 ms          |
-| T2   | CPU = 6 ms ; CPU = 3 ms ; CPU = 3 ms           |
+| T2   | CPU = 12 ms                                    |
 | T3   | CPU = 1 ms ; WAIT = 2 ms ; CPU = 1 ms          |
 
 Las tres ingresan a L0 en t = 0 en el orden T1, T2, T3.
@@ -23,7 +23,7 @@ De la teoria del curso (seccion *Multilevel queues* y subseccion *Multilevel fee
 
 Se asume **preemption entre niveles**: si mientras un proceso ejecuta en LN llega/despierta un proceso en un nivel mas alto, el de menor nivel es desalojado y reencolado al final de su nivel (sin cambiar de nivel, porque no consumio el quantum).
 
-Para T2 se asume que las tres celdas "CPU = 6, CPU = 3, CPU = 3" describen rafagas continuas de CPU **sin bloqueos intermedios** (no hay WAIT entre ellas en la tabla). Es decir, T2 es completamente CPU-bound y necesita un total de 12 ms de CPU sin ceder voluntariamente.
+T2 tiene una unica rafaga de CPU de 12 ms sin bloqueos: es **completamente CPU-bound**, no cede la CPU voluntariamente y solo libera el procesador cuando el scheduler la desaloja por agotar el quantum. Es justamente el tipo de proceso que el MLF intenta penalizar cediendole prioridad a los interactivos como T1 y T3.
 
 Notacion para la tabla temporal: `Ti:n` significa "tarea i, con n ms de CPU pendientes en su rafaga actual". `<>` denota cola vacia. Los tiempos estan en ms.
 
@@ -31,9 +31,9 @@ Notacion para la tabla temporal: `Ti:n` significa "tarea i, con n ms de CPU pend
 
 | Time  | CPU                            | T1   | T2  | T3   | L0                     | L1             | L2         |
 |-------|--------------------------------|------|-----|------|------------------------|----------------|------------|
-| 0     | -                              | RDY  | RDY | RDY  | `<T1:5, T2:6, T3:1>`   | `<>`           | `<>`       |
-| 0-3   | T1                             | RUN  | RDY | RDY  | `<T2:6, T3:1>`         | `<>`           | `<>`       |
-| 3     | demote T1                      | RDY  | RDY | RDY  | `<T2:6, T3:1>`         | `<T1:2>`       | `<>`       |
+| 0     | -                              | RDY  | RDY | RDY  | `<T1:5, T2:12, T3:1>`  | `<>`           | `<>`       |
+| 0-3   | T1                             | RUN  | RDY | RDY  | `<T2:12, T3:1>`        | `<>`           | `<>`       |
+| 3     | demote T1                      | RDY  | RDY | RDY  | `<T2:12, T3:1>`        | `<T1:2>`       | `<>`       |
 | 3-6   | T2                             | RDY  | RUN | RDY  | `<T3:1>`               | `<T1:2>`       | `<>`       |
 | 6     | demote T2                      | RDY  | RDY | RDY  | `<T3:1>`               | `<T1:2, T2:9>` | `<>`       |
 | 6-7   | T3                             | RDY  | RDY | RUN  | `<>`                   | `<T1:2, T2:9>` | `<>`       |
@@ -61,7 +61,7 @@ A continuacion se explica cada decision del scheduler que aparece en la tabla.
 
 **t = 0 - 3** (`L0`, quantum 3, T1 elegida). El scheduler arranca con L0 = `<T1, T2, T3>`. Toma el primero (T1). T1 ejecuta los 3 ms de quantum. Como su rafaga era de 5 ms, le queda 2 ms y **consumio todo el quantum**: se la *baja* a L1 con remanente 2.
 
-**t = 3 - 6** (T2). Ahora L0 = `<T2, T3>`. T2 corre 3 ms (quantum L0). Como su rafaga era de 6 ms (mas 3 + 3 = 12 ms totales), le quedan 9 ms. Consumio el quantum: se la *baja* a L1.
+**t = 3 - 6** (T2). Ahora L0 = `<T2, T3>`. T2 corre 3 ms (quantum L0). Como su rafaga total es de 12 ms, le quedan 9 ms. Consumio el quantum: se la *baja* a L1.
 
 **t = 6 - 7** (T3). En L0 queda solo T3 con rafaga 1 ms. Empieza el quantum de 3 ms en L0, pero a t = 7 (antes de consumir el quantum) **completa la rafaga y entra a WAIT** por 2 ms. Como cedio voluntariamente, **no se baja**: se queda asociada a L0. La cola L0 queda vacia.
 
@@ -115,3 +115,19 @@ T3 (el mas corto y con I/O) sale rapido del sistema; T2 (CPU-bound puro) es just
    - Despertar de un WAIT vuelve al proceso al **mismo nivel** donde estaba antes del bloqueo.
 2. **Aging**: la teoria menciona que MLF puede combinarse con aging para evitar starvation cuando un proceso quedo en el ultimo nivel y siguen llegando procesos a niveles mas altos. En este ejercicio no se aplica porque eventualmente todas las tareas terminan, pero es la objection clasica al esquema MLF puro.
 3. **Cantidad de cambios de contexto**: en esta corrida hay 9 transiciones donde la CPU pasa de un proceso a otro. En sistemas reales el costo del context switch es no despreciable; un quantum mas grande lo reduciria a costa de empeorar el tiempo de respuesta de las tareas cortas como T3.
+
+## Conexion con la teoria
+
+El MLF (*Multilevel Feedback*) es la generalizacion natural de varios algoritmos vistos antes en el capitulo:
+
+- Es un algoritmo basado en **prioridades** (los niveles son prioridades).
+- Dentro de cada nivel se usa **Round Robin**.
+- Las prioridades son **dinamicas**: el sistema observa el comportamiento del proceso y lo reclasifica (sube si parece interactivo, baja si es CPU-bound). Esta es la diferencia clave con el MLQ "fijo".
+
+El resultado del trace ilustra exactamente el objetivo que la teoria atribuye al MLF: "esta estrategia prioriza a los procesos orientados a entrada-salida y contribuye a minimizar los tiempos de respuesta". En numeros:
+
+- T3 (interactivo, total 2 ms de CPU) sale del sistema primero, en t = 10. Su turnaround (10) es alto comparado con su CPU usada (2) por culpa de los 2 ms de WAIT, no por penalizacion del scheduler.
+- T1 (mixta, total 6 ms de CPU) termina en t = 15.
+- T2 (CPU-bound puro, 12 ms) es la **mas castigada**: queda atrapada en L2 y solo termina en t = 20, despues de que las otras se hayan ido. Sin embargo, **no padece starvation**: una vez que el resto del sistema queda libre, T2 obtiene la CPU sin contencion.
+
+Esta es la propiedad que hace al MLF atractivo para sistemas time-sharing: combina la **responsiveness** de las colas de alta prioridad con la **garantia de progreso** de las colas inferiores. La teoria del curso lo presenta como el algoritmo "natural" cuando el sistema atiende cargas heterogeneas (algunas interactivas, otras batch) sin que el administrador tenga que clasificarlas a mano.
