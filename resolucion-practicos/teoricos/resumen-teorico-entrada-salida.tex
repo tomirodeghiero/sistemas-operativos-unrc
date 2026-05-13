@@ -1,0 +1,913 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- Encoding ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands]{babel}
+\usepackage{lmodern}
+
+% --- Layout ---
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{parskip}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em plus 0.2em minus 0.1em}
+
+% --- Tables and graphics ---
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{positioning,shapes.geometric,arrows.meta,fit,backgrounds,calc,decorations.pathreplacing}
+\usepackage{caption}
+\usepackage{amsmath,amssymb}
+
+% --- Code listings ---
+\usepackage{listings}
+\definecolor{codegray}{rgb}{0.96,0.96,0.96}
+\definecolor{codeborder}{rgb}{0.85,0.85,0.85}
+\definecolor{codecomment}{rgb}{0.30,0.55,0.30}
+\definecolor{codekeyword}{rgb}{0.10,0.30,0.70}
+\definecolor{codestring}{rgb}{0.65,0.15,0.10}
+
+\lstdefinestyle{cstyle}{
+    language=C,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+}
+
+\lstdefinestyle{shellstyle}{
+    language=bash,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstdefinestyle{textstyle}{
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstset{style=textstyle}
+
+% --- Definition / Idea / Important boxes ---
+\usepackage[most]{tcolorbox}
+\newtcolorbox{definicion}[1][]{
+    colback=blue!5!white,
+    colframe=blue!50!black,
+    fonttitle=\bfseries,
+    title=Definición,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{idea}[1][]{
+    colback=orange!5!white,
+    colframe=orange!60!black,
+    fonttitle=\bfseries,
+    title=Idea intuitiva,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{importante}[1][]{
+    colback=red!5!white,
+    colframe=red!50!black,
+    fonttitle=\bfseries,
+    title=Importante,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+
+% --- Hyperlinks ---
+\usepackage[colorlinks=true,
+            linkcolor=blue!60!black,
+            urlcolor=blue!50!black,
+            citecolor=blue!60!black]{hyperref}
+
+% --- Color palette ---
+\definecolor{io1}{HTML}{4C72B0}
+\definecolor{io2}{HTML}{DD8452}
+\definecolor{io3}{HTML}{55A868}
+\definecolor{io4}{HTML}{8172B2}
+\definecolor{ioctl}{HTML}{C44E52}
+
+% --- Title ---
+\title{
+    \vspace{-2.5em}
+    \textbf{Resumen teórico --- Sistemas Operativos} \\[0.3em]
+    \large Notas del curso: \emph{Entrada/Salida}
+}
+\author{
+    Tomás Rodeghiero \\
+    \small Sistemas Operativos --- Universidad Nacional de Río Cuarto
+}
+\date{2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent
+Este documento es un resumen teórico del capítulo \emph{Entrada/Salida}
+de las \emph{Notas del curso} de Sistemas Operativos (Marcelo Arroyo,
+UNRC). Se presentan la clasificación de los dispositivos, las formas de
+interconectarlos a la CPU (bus de E/S dedicado y \emph{memory-mapped
+I/O}), el modelo de control basado en puertos, la arquitectura de los
+\emph{device drivers}, el diseño del subsistema de E/S, las disciplinas
+de líneas, los buffers/caché de bloques, la planificación de
+requerimientos (incluido el algoritmo del elevador), la transferencia
+directa a memoria (DMA), la integración con el sistema de archivos
+(archivos especiales en \texttt{/dev}, \emph{major/minor numbers},
+\texttt{file\_operations}), los dispositivos virtuales (\texttt{random},
+\texttt{zero}, \texttt{null}, RAID), los \emph{kernel modules}
+cargables dinámicamente y los estándares más relevantes (IDE/ATA,
+UART, VirtIO). El objetivo es servir como material de estudio para
+preparar los prácticos asociados a E/S y el final de la materia.
+\end{abstract}
+
+\tableofcontents
+\bigskip
+
+% =====================================================================
+\section{Introducción y clasificación de dispositivos}
+% =====================================================================
+
+Un sistema de computación incluye generalmente \emph{muchos} dispositivos
+de entrada/salida (E/S), de distintos tipos. Hay dos formas naturales
+de clasificarlos.
+
+\subsection{Por dirección de transmisión de datos}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Entrada}: sólo se pueden leer datos del dispositivo
+        (por ejemplo, un teclado, un mouse o un sensor).
+    \item \textbf{Salida}: sólo se pueden escribir datos hacia el
+        dispositivo (por ejemplo, una impresora o un display).
+    \item \textbf{Entrada-Salida}: se pueden hacer ambas operaciones
+        (un disco, una interfaz de red).
+\end{itemize}
+
+\subsection{Por modo de transferencia}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Dispositivos de caracteres (bytes).} Transfieren de a
+        bytes. Ejemplos: teclado, mouse, dispositivos de
+        comunicaciones tipo UART.
+    \item \textbf{Dispositivos de bloques.} Transfieren de a
+        \emph{bloques} de tamaño fijo (por ejemplo, 512\,bytes). El
+        ejemplo paradigmático es el disco.
+\end{itemize}
+
+Hay dispositivos que no encajan limpiamente en esta clasificación: por
+ejemplo, las interfaces de red tipo Ethernet transmiten en forma
+serial bloques de tamaño \emph{variable} llamados \textbf{paquetes}
+(\emph{packets}), que tienen un tamaño mínimo y uno máximo.
+
+\paragraph{El timer.}
+Otro dispositivo que se maneja de forma especial es el \textbf{timer}:
+se programa para generar \emph{interrupciones periódicas} y así
+permitirle al kernel tomar el control con regularidad (es la base de
+la preemption del scheduler y del envejecimiento de bits en memoria
+virtual).
+
+% =====================================================================
+\section{Interconexión de dispositivos}
+% =====================================================================
+
+Una arquitectura puede conectar sus dispositivos a la CPU de dos
+maneras:
+
+\begin{enumerate}[leftmargin=*]
+    \item Mediante un \textbf{bus de E/S} dedicado y separado del bus
+        de memoria.
+    \item Conectándolos directamente al espacio de direcciones de
+        memoria: \textbf{memory-mapped I/O (MMIO)}.
+\end{enumerate}
+
+La interconexión al espacio de direcciones puede ser \emph{hard-wired},
+pero las arquitecturas modernas usan un \textbf{memory controller chip}
+programable que permite rutear los requerimientos de lectura/escritura
+a distintos chips (ROM, DRAM, dispositivos de I/O) según el valor del
+bus de direcciones.
+
+\subsection{Ejemplo: arquitectura x86 (híbrida)}
+
+La arquitectura x86 (Intel) es \textbf{híbrida}: la CPU contiene un
+\emph{bus de E/S} separado del bus de memoria. Algunos dispositivos se
+conectan al bus de E/S (con un espacio de direcciones de 16\,bits),
+mientras que otros se mapean en memoria.
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Para el bus de E/S, la CPU provee instrucciones especiales:
+        \texttt{in} y \texttt{out}.
+    \item En una PC basada en x86, el \emph{frame buffer} del
+        controlador de video (CGA, VGA, etc.) está \textbf{mapeado en
+        memoria}: al escribir datos en ese espacio reservado se produce
+        una salida en el display.
+\end{itemize}
+
+\subsection{Ejemplo: RISC-V}
+
+El board RISC-V usado en el taller no dispone de un \emph{video
+controller}, pero soporta la conexión de una terminal (\emph{tty}) por
+su puerto serie UART. La terminal transmite los códigos de las teclas
+pulsadas y muestra en pantalla los caracteres recibidos. La interfaz
+de programación del UART permite transmitir y recibir bytes mediante
+un protocolo serial muy simple.
+
+\begin{idea}
+Las arquitecturas modernas como RISC-V tienden a usar exclusivamente
+\textbf{MMIO}, aprovechando los enormes espacios de direcciones lógicas
+disponibles. Esto simplifica el diseño del hardware y elimina la
+necesidad de un bus adicional.
+\end{idea}
+
+\subsection{Ejemplo: modo texto VGA}
+
+El controlador VGA en la IBM PC expone el \emph{text buffer} de video
+en la dirección física \texttt{0xB800}, de tamaño dependiente del modo
+(típicamente 80 columnas $\times$ 25 filas). Cada carácter se
+representa con 16\,bits de la forma \emph{(ascii, attributes)}: el byte
+ASCII más un byte de atributos (color de fondo, color de frente y
+parpadeo). En DOS o en las primeras versiones de MS-Windows, las
+aplicaciones podían escribir directamente en este buffer, sin
+protección.
+
+\paragraph{Modo gráfico y fonts.}
+El hardware gráfico moderno soporta \textbf{modo gráfico} (matriz de
+píxeles). El modo texto usado en consolas se implementa
+\emph{dibujando} los caracteres gráficamente. La forma de cada carácter
+se describe en un \textbf{font}, que puede ser \emph{raw} (matriz de
+píxeles) o \emph{vectorial} (paths de trazado). La representación
+vectorial permite un mejor escalado.
+
+% =====================================================================
+\section{Buses de interconexión}
+% =====================================================================
+
+La mayoría de las arquitecturas soportan la conexión de \emph{buses de
+E/S}. Un bus es a su vez un dispositivo con su propio controlador
+programable. Permite conectar varios dispositivos y, además, otros
+buses secundarios.
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    box/.style={draw,minimum width=2.0cm,minimum height=0.7cm,align=center},
+    line/.style={thick}
+]
+\node[box] (cpu) at (0,2) {cpu};
+
+\node[box,fill=io1!15] (rom) at (3.5,3.6) {ROM};
+\node[box,fill=io2!15,below=0pt of rom] (ram) {RAM};
+\node[box,fill=io3!15,below=0pt of ram] (io) {I/O ports};
+
+\node[box,fill=io4!20] (mmio) at (8.0,2.2) {memory\\mapped\\devices};
+
+\draw[line] (cpu) -- node[above,font=\scriptsize]{mem bus} ($(rom.west)!0.5!(io.west)$);
+\draw[<->,line] (io.east) -- (mmio.west);
+
+% I/O bus and PCI
+\node[box] (dev) at (3.5,-1.0) {device};
+\node[box] (usbhub) at (6.5,-1.0) {USB hub};
+\node[box] (usbdev) at (9.5,-1.0) {usb device};
+
+\draw[line] (cpu.south) -- ++(0,-0.8) -| node[pos=0.25,above,font=\scriptsize]{I/O bus} (dev.north);
+\draw[line] (cpu.south) -- ++(0,-1.4) -| node[pos=0.30,above,font=\scriptsize]{PCI bus} (usbhub.north);
+\draw[line] (usbhub.east) -- (usbdev.west);
+\end{tikzpicture}
+\end{center}
+
+\subsection{Buses estándar: PCI y USB}
+
+Un bus estándar muy usado como bus principal es el \textbf{PCI}
+(\emph{Peripheral Component Interconnect}). Permite conectar:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item interfaces de red,
+    \item controladoras de disco,
+    \item co-procesadores gráficos,
+    \item dispositivos de audio,
+    \item y a su vez otros controladores como \textbf{USB}
+        (\emph{Universal Serial Bus}), que soporta un árbol de
+        \emph{USB hubs}, donde cada hub contiene puertos en los que se
+        conectan dispositivos físicos.
+\end{itemize}
+
+Los estándares de buses como PCI o USB describen tanto las
+características \emph{físicas} (conectores, niveles eléctricos) como la
+\emph{interfaz de control} (registros de control, estado y datos, y
+los detalles de programación).
+
+\subsection{Auto-detección y plug-and-play}
+
+Cada dispositivo compatible \textbf{se anuncia en el bus} al iniciarse
+(o al ser conectado), informando: tipo de dispositivo, fabricante,
+registros de E/S, líneas de interrupción a usar, etc. El controlador
+del bus registra esta información en una tabla que permite al SO
+\emph{auto-detectar} los dispositivos existentes.
+
+Algunos buses permiten conexión en caliente: notifican al kernel
+(generando una interrupción) cuando se conecta un nuevo dispositivo,
+permitiendo activar el \emph{device driver} correspondiente. Esto se
+conoce como \textbf{plug-and-play}.
+
+% =====================================================================
+\section{Control de dispositivos}
+% =====================================================================
+
+Un dispositivo expone un conjunto de \textbf{puertos} (o registros) de
+control, estado y datos. Estos puertos están contenidos en el
+\textbf{controlador del dispositivo} (\emph{device controller}).
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    reg/.style={draw,minimum width=2.4cm,minimum height=0.8cm,align=center}
+]
+\node[font=\bfseries\small] at (0,3.0) {BASE\_ADDR};
+\node[reg,fill=io1!15] (c) at (0,2.3) {control};
+\node[reg,fill=io2!15,below=0pt of c] (s) {status};
+\node[reg,fill=io3!15,below=0pt of s,minimum height=1.3cm] (d) {data};
+\end{tikzpicture}
+\end{center}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Registros de control.} Se usan para enviar comandos
+        al dispositivo.
+    \item \textbf{Registros de datos.} Contienen los datos a transferir
+        (lectura o escritura).
+    \item \textbf{Registros de estado.} Indican el estado del
+        dispositivo: si hay un dato disponible, si se produjo un error
+        o si el dispositivo está configurado para generar interrupciones.
+\end{itemize}
+
+Estos puertos aparecen en el espacio de direcciones del bus de E/S o
+en el de memoria, según la forma de interconexión. La documentación
+técnica del dispositivo (o del estándar si lo cumple) describe cómo
+debe el SO interactuar con él; las direcciones suelen ser
+\emph{dependientes de la plataforma}.
+
+% =====================================================================
+\section{Device drivers}
+% =====================================================================
+
+\begin{definicion}
+Un \textbf{device driver} es el módulo del kernel que controla un tipo
+o familia de dispositivos. El SO define la \emph{interfaz} (funciones)
+que el driver debe implementar; el kernel se comunica con el driver
+mediante esa API.
+\end{definicion}
+
+\paragraph{Diseño polimórfico.}
+Se sigue un diseño polimórfico al estilo \emph{orientado a objetos}:
+cada device driver expone una estructura de datos con \emph{punteros}
+a las funciones que implementan la API. El kernel invoca esos punteros
+sin conocer los detalles internos del driver.
+
+\subsection{Funciones que debe implementar un driver}
+
+Comúnmente un device driver implementa:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Detección} (\emph{discovery}) de los dispositivos que
+        puede controlar.
+    \item \textbf{Inicialización} de los dispositivos: configurar las
+        interrupciones que generará, informar al kernel las direcciones
+        de E/S que reservará, etc.
+    \item \textbf{Operaciones de lectura y escritura}: implementar el
+        control y programación de los requerimientos de transferencia
+        (\emph{I/O requests}).
+    \item \textbf{Manejo de interrupciones}: cuando un dispositivo
+        completa una operación, genera una interrupción y el driver
+        debe atenderla.
+\end{itemize}
+
+\subsection{Polling como alternativa}
+
+Una forma alternativa de detectar la finalización de una operación es
+\textbf{pooling} (o \emph{polling}): verificar periódicamente un bit
+de un registro de estado del dispositivo.
+
+\begin{importante}
+Las interrupciones son preferibles cuando el dispositivo es ``lento''
+(el CPU puede hacer otra cosa mientras espera). El polling es preferible
+cuando el dispositivo es ``rápido'' y se espera un dato inmediato; el
+costo de manejar la interrupción superaría al de simplemente leer el
+estado.
+\end{importante}
+
+% =====================================================================
+\section{Diseño del subsistema de E/S}
+% =====================================================================
+
+Dada la enorme variedad de dispositivos, el SO necesita un diseño que
+abstraiga a los device drivers de las capas superiores del kernel.
+
+Cada device driver se \textbf{registra} en el sistema y reserva los
+recursos que requiere: espacios de direcciones para los puertos del
+controlador, y la línea (o número) de interrupción que usará. El
+subsistema de E/S mantiene entonces:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Una \textbf{tabla de dispositivos}, cuya estructura por
+        entrada contiene las direcciones de puertos de I/O, las
+        líneas de IRQ y otros datos.
+    \item Una asociación entre cada dispositivo y su \emph{device
+        driver}, representado por una estructura de datos con punteros
+        a sus operaciones soportadas.
+\end{itemize}
+
+\subsection{Interfaz de un device driver}
+
+Para facilitar la interoperabilidad, cada driver implementa una interfaz
+definida en el SO (habitualmente por el filesystem). Es común que se
+defina una interfaz \emph{por cada tipo de dispositivo}. En los SO tipo
+UNIX hay tres clases:
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Dispositivos de caracteres.} La E/S es de a bytes.
+        Ejemplo: teclado, mouse, puerto serie.
+    \item \textbf{Dispositivos de bloques.} La lectura/escritura es por
+        bloques (discos, almacenamiento no volátil). El filesystem
+        ofrece una caché para la E/S de bloques.
+    \item \textbf{Dispositivos de comunicaciones} o \textbf{red}.
+        Ejemplo: interfaces Ethernet, Wifi, Bluetooth.
+\end{enumerate}
+
+% =====================================================================
+\section{Software independiente de dispositivos}
+% =====================================================================
+
+El subsistema de E/S provee además algunos servicios o políticas que
+\emph{no dependen} del dispositivo concreto: planificación de
+requerimientos, manejo de buffers, etc.
+
+\subsection{Disciplina de líneas (line discipline)}
+
+Un ejemplo importante es el servicio de \textbf{disciplina de líneas}
+entre los \emph{tty device drivers} y las llamadas al sistema como
+\texttt{read}/\texttt{write} sobre terminales de texto. Una disciplina
+típica realiza E/S de texto \emph{por líneas} (cadenas de caracteres).
+
+\paragraph{Entrada.}
+La disciplina de entrada (\emph{input}) tiene en cuenta caracteres de
+control:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{Enter}: indica fin de la línea.
+    \item \texttt{Ctrl-D}: indica fin de la entrada (EOF).
+    \item \texttt{BS} (\emph{backspace}): borra el carácter ingresado
+        previamente.
+\end{itemize}
+
+Su implementación se basa en la gestión de un \textbf{buffer de
+caracteres de entrada organizado como una cola circular}.
+
+\paragraph{Salida.}
+En la salida (\emph{output}) se interpretan caracteres de control como:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{CR} (\emph{carriage return}): retorno de carro.
+    \item \texttt{LF} (\emph{linefeed}): bajada de cursor (scroll) y
+        avance de línea.
+\end{itemize}
+
+\begin{idea}
+En xv6, el módulo \texttt{uart.c} implementa el driver y la disciplina
+de líneas sobre una terminal conectada al puerto serie UART.
+\end{idea}
+
+% =====================================================================
+\section{Buffers y caché}
+% =====================================================================
+
+Para minimizar los accesos al dispositivo (como un disco), cada vez que
+se lee un bloque se carga en bloques de memoria (típicamente páginas)
+que se manejan como una \textbf{caché}. Esa caché tiene un límite de
+bloques.
+
+\paragraph{Política de reemplazo.}
+Los bloques de la caché se \emph{reúsan}; comúnmente se usa un
+algoritmo \textbf{LRU} para elegir la víctima a liberar (estamos viendo
+la misma idea que en memoria virtual, ahora aplicada a bloques de
+disco).
+
+\paragraph{Sincronización a disco.}
+Las llamadas al sistema \verb|flush(fd)| o \verb|close(fd)| producen
+que se transfieran los bloques modificados (\emph{dirty}) del archivo
+desde la caché al disco.
+
+\begin{importante}
+La E/S de dispositivos de \emph{caracteres} comúnmente \textbf{no}
+utiliza buffers de caché: los datos se procesan a medida que llegan
+(por ejemplo, una pulsación de tecla).
+\end{importante}
+
+% =====================================================================
+\section{Planificación de E/S}
+% =====================================================================
+
+El SO debe gestionar los requerimientos de E/S generados por los
+procesos (y por el propio kernel). Algunos algoritmos son similares a
+los de planificación de procesos:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{FIFO}: los requerimientos se procesan en orden de
+        llegada.
+    \item \textbf{Prioridades}: se ordenan según una prioridad asignada.
+\end{itemize}
+
+\subsection{Discos: algoritmo del elevador}
+
+Para dispositivos de bloques electromecánicos (discos magnéticos), los
+requerimientos pueden ordenarse por la \textbf{cercanía a la posición
+actual del brazo} de lectura/escritura. Procesar los más cercanos
+reduce significativamente los tiempos de acceso. Pero esto puede
+hacer que requerimientos en cilindros lejanos esperen indefinidamente
+(\emph{starvation}). La solución es el \textbf{algoritmo del elevador}:
+
+\begin{definicion}
+El \textbf{algoritmo del elevador} mantiene una variable
+\texttt{direction} que representa la dirección actual del brazo. Los
+requerimientos se ordenan y procesan en \emph{esa} dirección. Al
+llegar al cilindro del extremo, se invierte \texttt{direction} y se
+procesan los restantes en orden de cercanía en la nueva dirección.
+\end{definicion}
+
+Es análogo al funcionamiento de un ascensor: atiende a todos los pisos
+en una dirección antes de cambiar de sentido.
+
+% =====================================================================
+\section{Transferencia directa a memoria (DMA)}
+% =====================================================================
+
+Hay dos formas de mover datos entre la RAM y los buffers internos de un
+dispositivo:
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Por software}: el driver hace una copia byte a byte
+        o palabra a palabra, del estilo de un \texttt{memcpy}
+        (\texttt{dst}, \texttt{src}, \texttt{count}). Esto puede
+        insumir muchos ciclos de CPU.
+    \item \textbf{Por DMA} (\emph{Direct Memory Access}): el dispositivo
+        realiza la transferencia de manera autónoma, en paralelo con la
+        ejecución de instrucciones de la CPU.
+\end{enumerate}
+
+\subsection{Cómo funciona el DMA}
+
+Para usar DMA, el device driver le indica al dispositivo:
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item La \textbf{dirección física} del buffer en memoria.
+    \item El \textbf{tamaño} de la transferencia.
+    \item La orden de iniciar.
+\end{enumerate}
+
+Mientras la transferencia se realiza, el dispositivo DMA compite con la
+CPU por el acceso al bus de memoria mediante una técnica de
+\textbf{robo de ciclos} (\emph{cycle stealing}): aprovecha los ciclos
+en los que la CPU no necesita la memoria.
+
+\paragraph{Notificación.}
+Cuando la transferencia finaliza, el dispositivo DMA \textbf{genera una
+interrupción} para avisarle al driver.
+
+\begin{idea}
+Actualmente, muchos dispositivos modernos ya incluyen un mecanismo DMA
+\emph{en el mismo chip}, por lo que el driver no necesita programar un
+controlador DMA externo.
+\end{idea}
+
+% =====================================================================
+\section{Integración con el sistema de archivos}
+% =====================================================================
+
+El sistema de E/S se integra con el sistema de archivos para brindar
+una abstracción central en los SO tipo UNIX:
+
+\begin{importante}
+Los dispositivos \textbf{son archivos especiales}, y los procesos
+acceden a ellos (a través de los drivers) mediante la API de
+operaciones sobre archivos: \texttt{open}, \texttt{read},
+\texttt{write}, \texttt{close}, \ldots
+\end{importante}
+
+\subsection{La estructura \texttt{file\_operations} en Linux}
+
+El filesystem define un \emph{conjunto de operaciones} que el driver de
+ese tipo debe implementar. En Linux, esta interfaz toma la forma de
+una \texttt{struct} con punteros a función:
+
+\begin{lstlisting}[style=cstyle]
+struct file_operations {
+    struct module *owner;
+    loff_t   (*llseek)  (struct file *, loff_t, int);
+    ssize_t  (*read)    (struct file *, char *, size_t, loff_t *);
+    ssize_t  (*write)   (struct file *, const char *, size_t, loff_t *);
+    int      (*readdir) (struct file *, void *, filldir_t);
+    unsigned (*poll)    (struct file *, struct poll_table_struct *);
+    int      (*ioctl)   (struct inode *, struct file *, unsigned, unsigned long);
+    int      (*mmap)    (struct file *, struct vm_area_struct *);
+    int      (*open)    (struct inode *, struct file *);
+    int      (*flush)   (struct file *);
+    int      (*release) (struct inode *, struct file *);
+    int      (*fsync)   (struct file *, struct dentry *, int);
+    int      (*fasync)  (int, struct file *, int);
+    int      (*lock)    (struct file *, int, struct file_lock *);
+    ssize_t  (*readv)   (struct file *, const struct iovec *, ...);
+    ssize_t  (*writev)  (struct file *, const struct iovec *, ...);
+};
+\end{lstlisting}
+
+Cada driver llena esta estructura con sus implementaciones específicas.
+
+\subsection{Archivos especiales en \texttt{/dev}}
+
+En los sistemas tipo UNIX, los archivos que representan dispositivos
+están creados bajo \texttt{/dev}. El \emph{tipo} de cada archivo
+indica la clase de dispositivo:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{c} si es de caracteres,
+    \item \texttt{b} si es de bloques.
+\end{itemize}
+
+Un proceso de usuario puede usar \texttt{open}, \texttt{read},
+\texttt{write}, \texttt{close} sobre estos archivos para interactuar
+directamente con el driver del kernel. Por ejemplo:
+
+\begin{lstlisting}[style=shellstyle]
+$ echo hello > /dev/tty
+hello
+\end{lstlisting}
+
+\subsection{Major y minor numbers}
+
+En los sistemas tipo UNIX, un archivo especial contiene sólo
+\emph{metadatos} (no almacena datos en disco). Los metadatos más
+importantes son:
+
+\begin{itemize}[leftmargin=*]
+    \item Tipo (\texttt{c} o \texttt{b}).
+    \item \textbf{Major number}: representa el \emph{tipo} de
+        dispositivo y le permite al kernel identificar al device
+        driver correspondiente.
+    \item \textbf{Minor number}: representa el \emph{número de
+        dispositivo} dentro de los de su tipo. Se pasa al driver en
+        cada operación (en un campo de la estructura \texttt{inode}),
+        para que éste sepa con qué dispositivo concreto interactuar.
+\end{itemize}
+
+\begin{idea}
+Esta separación permite que un \emph{único driver} maneje muchos
+dispositivos del mismo tipo: el major identifica al driver y el minor
+le dice ``cuál de mis dispositivos''.
+\end{idea}
+
+% =====================================================================
+\section{Dispositivos virtuales}
+% =====================================================================
+
+Es común que el SO implemente dispositivos en \emph{software} (no
+existen físicamente):
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{random}: generador de números aleatorios. Sólo
+        lectura.
+    \item \texttt{zero}: retorna ceros. Sólo lectura.
+    \item \texttt{null}: ignora todo lo que recibe. Sólo escritura.
+\end{itemize}
+
+Otros dispositivos virtuales agrupan varios dispositivos físicos y usan
+sus drivers correspondientes:
+
+\paragraph{Consola/terminal (tty).}
+Una \emph{consola} consiste en un teclado y un display. El driver de la
+\emph{tty} define el control y la asociación con esos dispositivos. Un
+driver de este tipo suele soportar \textbf{consolas o terminales
+virtuales}: el SO permite al usuario crear varias terminales como
+espacios de trabajo distintos.
+
+\paragraph{RAID.}
+Un \textbf{RAID} (\emph{Redundant Array of Inexpensive Disks}) es un
+conjunto de discos presentado al sistema como un único disco. Es un
+dispositivo de almacenamiento tolerante a fallas que permite accesos
+en paralelo:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Distribuye} los bloques de datos entre los discos:
+        un archivo cuyos bloques están dispersos puede leerse en
+        paralelo.
+    \item \textbf{Replica} los bloques: ante la falla de un disco,
+        existe una copia en otro y el sistema sigue funcionando.
+\end{itemize}
+
+Existe hardware específico para RAID, pero también puede implementarse
+por software usando discos estándar (por ejemplo, ATA). GNU/Linux
+soporta RAID por software.
+
+% =====================================================================
+\section{Device drivers cargables dinámicamente}
+% =====================================================================
+
+La mayoría de los SO modernos permiten cargar device drivers
+\textbf{dinámicamente}, es decir, sin necesidad de reiniciar ni
+recompilar el kernel. Esto significa que el driver se compila como un
+\textbf{kernel module}.
+
+\subsection{Diseño microkernel vs.\ monolítico}
+
+\begin{itemize}[leftmargin=*]
+    \item En un diseño \textbf{microkernel}, esto es natural: cada
+        driver es un componente (programa) independiente del resto del
+        kernel y se comunica con el kernel \emph{por mensajes}. Por
+        ejemplo, en MS-Windows los drivers toman la forma de
+        \emph{Dynamic Link Libraries} (DLLs).
+    \item En un diseño \textbf{monolítico}, es más complicado: el
+        módulo debe enlazarse dinámicamente con el código del kernel
+        para vivir en su \emph{mismo espacio de memoria}.
+\end{itemize}
+
+\subsection{Linux Kernel Modules (LKM)}
+
+En GNU/Linux los módulos son \textbf{shared objects} compilados y
+enlazados como una biblioteca compartida con extensión \texttt{.ko}
+(\emph{kernel object}). Se llaman \textbf{Linux Kernel Modules (LKM)}.
+
+\begin{itemize}[leftmargin=*]
+    \item El comando \texttt{insmod} mapea el archivo objeto (driver)
+        en memoria y ejecuta la llamada al sistema
+        \verb|init_module()|, que realiza el enlazado dinámico del
+        módulo en el espacio del kernel e invoca a su función
+        \texttt{init()}.
+    \item GNU/Linux provee los comandos de usuario \texttt{lsmod},
+        \texttt{insmod} y \texttt{rmmod} para listar, cargar y remover
+        módulos cargables dinámicamente.
+\end{itemize}
+
+% =====================================================================
+\section{Estándares de dispositivos}
+% =====================================================================
+
+Existen varios estándares para diferentes tipos de dispositivos. Estos
+estándares especifican detalles \emph{físicos} (niveles eléctricos,
+conectores) y \emph{lógicos} (registros de control/estado, detalles de
+configuración y operación).
+
+\begin{idea}
+Que los dispositivos adhieran a estándares simplifica drásticamente la
+escritura de los drivers: basta con basarse en la documentación del
+estándar, sin tener que adaptarse a cada fabricante.
+\end{idea}
+
+Algunos estándares relevantes:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{IDE} (\emph{Integrated Drive Electronics}): interfaz
+        estándar para dispositivos de almacenamiento masivo (discos).
+    \item \textbf{AT Attachment (ATA)}: evolución de IDE; define
+        dispositivos con transferencia en paralelo (\textbf{PATA}) y
+        en serie (\textbf{SATA}).
+    \item \textbf{UART} (\emph{Universal Asynchronous
+        Receiver-Transmitter}): dispositivos de comunicación serial.
+    \item \textbf{ISO/IEC JTC}: estándares para equipos de oficina
+        como impresoras y escáneres.
+    \item \textbf{VirtIO}: interfaz de dispositivos \emph{virtuales}.
+        Pensada para SO corriendo sobre máquinas virtuales. Define
+        diferentes tipos de dispositivos y sus interfaces \emph{lógicas}
+        (puertos y operación). \emph{No} incluye detalles físicos, ya
+        que su objetivo es definir dispositivos virtuales emulados por
+        software.
+\end{itemize}
+
+% =====================================================================
+\section{VirtualIO interface}
+% =====================================================================
+
+VirtIO define una \textbf{interfaz unificada} para diferentes tipos de
+dispositivos. Los dispositivos VirtIO aparecen mapeados en memoria o
+conectados a un bus PCI y exponen:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item su \emph{tipo} (block, network, input device, \ldots),
+    \item su \emph{estado},
+    \item las \emph{características} que soportan,
+    \item el mecanismo de \emph{notificaciones},
+    \item un espacio de \emph{configuración},
+    \item y una o más \textbf{virtual queues}.
+\end{itemize}
+
+\subsection{Virtual queues}
+
+\begin{definicion}
+Una \textbf{virtual queue} es una estructura que permite gestionar
+buffers de entrada/salida \emph{compartidos} entre el device driver y
+el device controller (el dispositivo). Es el canal de transferencia de
+datos y requerimientos entre ambos.
+\end{definicion}
+
+\paragraph{Uso típico.}
+
+\begin{itemize}[leftmargin=*]
+    \item Con dispositivos como \textbf{discos}, el driver usa
+        \emph{una} virtual queue con los requerimientos y buffers de
+        lectura/escritura.
+    \item Con dispositivos de \textbf{red}, se usan \emph{dos} virtual
+        queues: una para los paquetes recibidos y otra para los
+        paquetes a enviar.
+\end{itemize}
+
+% =====================================================================
+\section{Cierre}
+% =====================================================================
+
+El subsistema de E/S es la capa que pone en contacto al kernel con la
+diversidad infinita de hardware que existe afuera. La forma en que
+las Notas organizan esta diversidad puede resumirse en pocas ideas:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Clasificar} los dispositivos por dirección de
+        transmisión y por modo de transferencia (caracteres, bloques,
+        paquetes) permite definir interfaces uniformes.
+    \item \textbf{Conectar} los dispositivos a la CPU vía buses
+        dedicados o vía \emph{memory-mapped I/O}; las arquitecturas
+        modernas (RISC-V) se inclinan a MMIO porque aprovecha el
+        espacio de direcciones lógicas y simplifica el hardware.
+    \item \textbf{Programar} cada dispositivo mediante un conjunto de
+        \emph{puertos} de control, datos y estado, encapsulados en su
+        controlador.
+    \item \textbf{Abstraer} cada dispositivo con un \textbf{device
+        driver} que implementa una API polimórfica común (detección,
+        init, read/write, manejo de IRQ). El subsistema de E/S
+        mantiene la tabla de dispositivos y la asociación driver
+        $\leftrightarrow$ dispositivo.
+    \item \textbf{Compartir} código entre drivers mediante \emph{software
+        independiente del dispositivo}: disciplinas de líneas, buffer
+        de caché de bloques (con LRU), planificación de requerimientos
+        (FIFO, prioridades, algoritmo del elevador en discos).
+    \item \textbf{Acelerar} las transferencias mediante \textbf{DMA},
+        que libera a la CPU del trabajo de copiar datos por software.
+    \item \textbf{Integrar} todo en el filesystem: los dispositivos son
+        archivos especiales en \texttt{/dev}, con \emph{major}/\emph{minor
+        numbers}, accesibles vía la API estándar \texttt{open}/
+        \texttt{read}/\texttt{write}/\texttt{close}; en Linux la
+        \texttt{struct file\_operations} concreta esta idea.
+    \item \textbf{Extender} el sistema con dispositivos virtuales
+        (\texttt{random}, \texttt{zero}, \texttt{null}, tty virtuales,
+        RAID por software) y con módulos cargables dinámicamente
+        (LKM, \texttt{insmod}, \texttt{rmmod}).
+    \item \textbf{Estandarizar} las interfaces de hardware (IDE/ATA,
+        UART, VirtIO) para simplificar la escritura de drivers; VirtIO
+        en particular hace lo mismo pero para dispositivos virtuales
+        en máquinas virtuales, usando \emph{virtual queues}.
+\end{itemize}
+
+\begin{idea}
+La gran idea es la \textbf{uniformidad}: todo lo que pasa en E/S, por
+distinto que sea el dispositivo, termina presentándose al resto del
+kernel y al usuario como ``otro archivo''. Ese principio Unix --- "todo
+es un archivo" --- es lo que hace manejable la complejidad inmensa del
+hardware moderno.
+\end{idea}
+
+\end{document}

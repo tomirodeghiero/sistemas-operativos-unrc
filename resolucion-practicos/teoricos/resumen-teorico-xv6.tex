@@ -1,0 +1,1022 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- Encoding ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands]{babel}
+\usepackage{lmodern}
+
+% --- Layout ---
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{parskip}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em plus 0.2em minus 0.1em}
+
+% --- Tables and graphics ---
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{positioning,shapes.geometric,arrows.meta,fit,backgrounds,calc,decorations.pathreplacing}
+\usepackage{caption}
+\usepackage{amsmath,amssymb}
+
+% --- Code listings ---
+\usepackage{listings}
+\definecolor{codegray}{rgb}{0.96,0.96,0.96}
+\definecolor{codeborder}{rgb}{0.85,0.85,0.85}
+\definecolor{codecomment}{rgb}{0.30,0.55,0.30}
+\definecolor{codekeyword}{rgb}{0.10,0.30,0.70}
+\definecolor{codestring}{rgb}{0.65,0.15,0.10}
+
+\lstdefinestyle{cstyle}{
+    language=C,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+}
+
+\lstdefinestyle{shellstyle}{
+    language=bash,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstdefinestyle{textstyle}{
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstset{style=textstyle}
+
+% --- Definition / Idea / Important boxes ---
+\usepackage[most]{tcolorbox}
+\newtcolorbox{definicion}[1][]{
+    colback=blue!5!white,
+    colframe=blue!50!black,
+    fonttitle=\bfseries,
+    title=Definición,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{idea}[1][]{
+    colback=orange!5!white,
+    colframe=orange!60!black,
+    fonttitle=\bfseries,
+    title=Idea intuitiva,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{importante}[1][]{
+    colback=red!5!white,
+    colframe=red!50!black,
+    fonttitle=\bfseries,
+    title=Importante,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+
+% --- Hyperlinks ---
+\usepackage[colorlinks=true,
+            linkcolor=blue!60!black,
+            urlcolor=blue!50!black,
+            citecolor=blue!60!black]{hyperref}
+
+% --- Color palette ---
+\definecolor{xv1}{HTML}{4C72B0}
+\definecolor{xv2}{HTML}{DD8452}
+\definecolor{xv3}{HTML}{55A868}
+\definecolor{xv4}{HTML}{8172B2}
+\definecolor{xv5}{HTML}{C44E52}
+
+% --- Title ---
+\title{
+    \vspace{-2.5em}
+    \textbf{Resumen teórico/práctico --- Sistemas Operativos} \\[0.3em]
+    \large Notas del curso: \emph{Taller xv6}
+}
+\author{
+    Tomás Rodeghiero \\
+    \small Sistemas Operativos --- Universidad Nacional de Río Cuarto
+}
+\date{2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent
+Este documento es un resumen teórico/práctico del capítulo
+\emph{Taller xv6} de las \emph{Notas del curso} de Sistemas Operativos
+(Marcelo Arroyo, UNRC). Se describe \textbf{xv6}, el SO educativo del
+MIT en su port a RISC-V usado en el taller: su diseño monolítico,
+su estructura de fuentes (\texttt{kernel/} y \texttt{user/}), el
+\emph{build system} (Makefile, qemu, ELF, \texttt{fs.img}), la
+representación de los procesos (\texttt{struct proc}), la arquitectura
+RISC-V que ejecuta el sistema (ISA modular, modos \emph{machine},
+\emph{supervisor} y \emph{user}, registros de control y estado),
+el mecanismo de \emph{traps} y delegación a modo supervisor, los
+mapas de memoria y la implementación de tablas de páginas multinivel
+en Sv39 (con la página \emph{trampoline} mapeada en cada proceso),
+los traps en modo usuario y, finalmente, la secuencia completa de
+\emph{boot} (de \texttt{\_entry} en assembly hasta el primer
+\texttt{exec("sh")}) cuando se ejecuta \texttt{make qemu}. El objetivo
+es servir de material de estudio para el taller xv6 y el final de la
+materia.
+\end{abstract}
+
+\tableofcontents
+\bigskip
+
+% =====================================================================
+\section{Introducción}
+% =====================================================================
+
+\textbf{xv6} es un sistema operativo simple, tipo UNIX, desarrollado en
+el curso \emph{Operating System Engineering} del MIT con el objetivo
+de usar un SO \emph{simple de entender pero realista} en cursos de
+grado y posgrado. En su versión actual se ha realizado un
+\emph{port} a la arquitectura \textbf{RISC-V}.
+
+\subsection{Toolchain}
+
+Para compilar xv6 hay que instalar un \textbf{cross-compiler} (un
+compilador que corre en una plataforma pero genera código para otra).
+Las herramientas usadas son:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{qemu}: máquina virtual usada como plataforma RISC-V.
+    \item \textbf{GNU toolchain para RISC-V}: \texttt{gcc}
+        (cross-compiler y linker), \texttt{gdb} (debugger),
+        \texttt{binutils} (\texttt{objdump} y otros).
+\end{itemize}
+
+\begin{idea}
+xv6 corre dentro de una máquina virtual qemu que emula una placa
+RISC-V (\emph{virtIO board}). El SO huésped se cree corriendo sobre
+hardware real, pero todo lo que toca son dispositivos virtuales que
+qemu provee.
+\end{idea}
+
+% =====================================================================
+\section{Descripción general}
+% =====================================================================
+
+xv6 está escrito en \textbf{C} con pocas líneas de assembly. El
+objetivo de su diseño e implementación es la \textbf{facilidad de
+lectura y comprensión}, no el rendimiento. Sus características
+principales son:
+
+\begin{itemize}[leftmargin=*]
+    \item Diseño \textbf{monolítico}: kernel en un único espacio de
+        memoria.
+    \item \textbf{Mono-usuario} y \textbf{multitarea} con preemption.
+    \item Soporta arquitecturas \textbf{multicore} o
+        \textbf{multiprocesamiento simétrico (SMP)}.
+    \item Ofrece una API que es un \emph{subconjunto} del UNIX v6.
+\end{itemize}
+
+% =====================================================================
+\section{Diseño y estructura del código}
+% =====================================================================
+
+El código fuente se divide en dos carpetas principales:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{kernel/}: implementación del núcleo de xv6.
+    \item \texttt{user/}: código de los procesos de usuario básicos
+        (comandos, un shell de línea de comandos y un \texttt{README}).
+\end{itemize}
+
+\subsection{Módulos del kernel}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Parámetros del sistema}: constantes sobre tamaños
+        máximos de estructuras (\texttt{param.h}).
+    \item \textbf{Gestión de procesos}: \texttt{proc.c}, \texttt{exec.c}.
+    \item \textbf{Gestión de memoria}: \texttt{kalloc.c}, \texttt{vm.c}.
+    \item \textbf{Dispositivos de E/S}: soporta básicamente dos
+        dispositivos:
+        \begin{enumerate}[leftmargin=*,nosep]
+            \item \textbf{Terminal} (teclado y pantalla) conectada
+                al puerto serie \textbf{UART}, implementada en los
+                archivos \texttt{console.c} y \texttt{uart.c}.
+            \item \textbf{Disco} que soporta la interfaz virtIO
+                (\texttt{virtio\_disk.c}).
+        \end{enumerate}
+        En \texttt{plic.c} se implementa el control del \emph{RISC-V
+        Platform Level Interrupt Controller (PLIC)}, que permite
+        controlar y rutear interrupciones de dispositivos.
+    \item \textbf{Sistema de archivos}: basado en \emph{i-nodes} y
+        \textbf{transaccional}. Diseño modular en capas:
+        \begin{enumerate}[leftmargin=*,nosep]
+            \item Buffer caché y E/S de bloques: \texttt{bio.c}.
+            \item Logging (transacciones): \texttt{log.c}.
+            \item I-nodes, directorios, file paths: \texttt{fs.c}.
+            \item File descriptors: \texttt{file.c}.
+        \end{enumerate}
+    \item \textbf{Arquitectura}: soporte para RISC-V en
+        \texttt{riscv.h}. Contiene funciones y macros de bajo nivel
+        para control de CPUs y protección (niveles de ejecución),
+        protección y memoria virtual y control de interrupciones y
+        excepciones.
+\end{itemize}
+
+% =====================================================================
+\section{Build system}
+% =====================================================================
+
+El build system se basa en \texttt{make}. El \texttt{Makefile} contiene
+reglas para construir dos productos:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{\texttt{kernel}}: ejecutable en formato \textbf{ELF},
+        imagen del kernel de xv6.
+    \item \textbf{\texttt{fs.img}}: imagen del sistema de archivos en
+        el formato del FS implementado. Internamente contiene los
+        archivos de usuario (programas y datos); representa la imagen
+        del disco para la máquina virtual qemu.
+\end{itemize}
+
+Al ejecutar \texttt{make qemu} se recompilan los componentes
+necesarios, se generan las imágenes y se invoca:
+
+\begin{lstlisting}[style=shellstyle]
+qemu-system-riscv64 kernel/kernel fs.img
+\end{lstlisting}
+
+con opciones que indican el número de CPUs (cores) y la cantidad de
+RAM a usar (ver la regla \verb|qemu: $K/kernel fs.img| del
+\texttt{Makefile}).
+
+\subsection{Biblioteca estándar de xv6}
+
+Los programas de usuario (en \texttt{user/}) se enlazan con:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{ulib.c}: funciones de manejo de strings y otros.
+    \item \texttt{usys.S}: llamadas al sistema.
+    \item \texttt{printf.c}: implementación de \texttt{printf()}.
+    \item \texttt{umalloc.c}: manejador del heap en modo usuario
+        (\texttt{malloc()} / \texttt{free()}).
+\end{itemize}
+
+Estos módulos conforman la \emph{biblioteca estándar} de xv6. Las
+reglas usan \texttt{objcopy} y \texttt{objdump} para extraer
+información como la tabla de símbolos y el código assembly de cada
+objeto para su análisis.
+
+% =====================================================================
+\section{Procesos: \texttt{struct proc}}
+% =====================================================================
+
+Cada proceso de usuario se representa en el kernel mediante la
+estructura \texttt{struct proc} (definida en \texttt{kernel/proc.h}).
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    cell/.style={draw,minimum height=0.55cm,minimum width=1.5cm,align=center},
+    big/.style={draw,minimum height=0.55cm,minimum width=1.8cm,align=center}
+]
+% struct proc
+\node[cell] (pid) at (0,4.2) {pid};
+\node[cell,below=0pt of pid] (status) {status};
+\node[cell,below=0pt of status] (parent) {parent};
+\node[cell,below=0pt of parent] (kstack) {kstack};
+\node[cell,below=0pt of kstack] (pagetbl) {pagetbl};
+\node[cell,below=0pt of pagetbl] (ofiles) {ofiles};
+\node[cell,below=0pt of ofiles] (sz) {sz};
+\node[cell,below=0pt of sz] (dots) {\ldots};
+
+% kernel mode stack
+\node[big,fill=xv1!15,minimum height=1.5cm,align=center] (kms) at (3.2,3.5)
+    {kernel\\mode\\stack};
+\draw[-Latex,thick] (kstack.east) -- (kms.west);
+
+% pagetable
+\node[big,minimum height=2cm,align=center,fill=xv2!15] (pt) at (3.2,1.4)
+    {pagetable\\[2pt]\rule{1.5cm}{0.3pt}\\\rule{1.5cm}{0.3pt}\\\rule{1.5cm}{0.3pt}};
+\draw[-Latex,thick] (pagetbl.east) -- (pt.west);
+
+% process memory
+\node[cell,fill=xv3!15,minimum height=0.7cm] (text) at (6.5,2.3) {text};
+\node[cell,fill=xv4!15,minimum height=0.7cm,below=0pt of text] (data) {data};
+\node[cell,fill=xv5!15,minimum height=0.7cm,below=0pt of data] (stack) {stack};
+\node[font=\bfseries\small] at (6.5,3.1) {process};
+\draw[-Latex,thick] (pt.east) -- (text.west);
+\draw[-Latex,thick] (pt.east) -- (data.west);
+\draw[-Latex,thick] (pt.east) -- (stack.west);
+\end{tikzpicture}
+\end{center}
+
+\subsection{Campos principales}
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{parent}: puntero al proceso padre. Cada proceso
+        excepto \texttt{init} tiene un padre.
+    \item \texttt{kstack}: la \textbf{pila en modo kernel}. Se usa
+        cuando ocurre un \emph{trap} (interrupción o excepción) o el
+        proceso realiza una syscall: el sistema salta al trap handler
+        del kernel y la CPU cambia de pila.
+    \item \texttt{pagetbl}: la \textbf{tabla de páginas} del proceso,
+        que define el mapa de memoria (código, datos globales y pila
+        en modo usuario).
+    \item \texttt{ofiles}: arreglo con punteros a los descriptores de
+        archivos abiertos por el proceso.
+    \item \texttt{sz}: tamaño del espacio (dirección máxima) de memoria
+        usada por el proceso.
+\end{itemize}
+
+xv6 mantiene a los procesos en un \textbf{arreglo de dimensión fija}
+(ver \texttt{proc.c}).
+
+% =====================================================================
+\section{La arquitectura RISC-V}
+% =====================================================================
+
+\textbf{RISC-V} es un \emph{instruction set architecture} (ISA)
+\emph{abierto}, basado en una arquitectura RISC (\emph{Reduced
+Instruction Set Computer}). El proyecto fue iniciado en 2010 en la
+Universidad de California. El objetivo es definir una arquitectura
+que permita el desarrollo de CPUs compactas, de buen rendimiento y
+bajo consumo.
+
+\subsection{ISA modular}
+
+El diseño es modular: parte de un sistema básico con múltiples
+extensiones posibles.
+
+\begin{center}\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Nombre} & \textbf{Descripción} & \textbf{Instrucciones} \\
+\midrule
+RV32I  & Ops enteros 32 bits  & 40 \\
+RV64I  & Ops enteros 64 bits  & 15 \\
+RV128I & Ops enteros 128 bits & 15 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Algunas extensiones:
+
+\begin{center}\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Nombre} & \textbf{Descripción} & \textbf{Instrucciones} \\
+\midrule
+M & Integer multip./division     & 8 (RV32), 16 (RV64) \\
+A & Atomic instructions          & 11 (RV32), 13 (RV64) \\
+F & Floating point               & 26 (RV32), 30 (RV64) \\
+H & Hypervisor instructions      & 15 \\
+S & Supervisor instructions      & 4  \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{importante}
+xv6 corre sobre una plataforma \textbf{Sv39}: arquitectura de 64 bits
+con extensiones \textbf{M}, \textbf{A} y \textbf{S}, con un espacio de
+direcciones de \textbf{39 bits}.
+\end{importante}
+
+\subsection{Modos de ejecución}
+
+Una CPU RISC-V tiene tres \textbf{modos de ejecución}:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{machine mode}: el modo más privilegiado. La CPU
+        inicia en este modo.
+    \item \textbf{supervisor mode}: generalmente usado como
+        \emph{kernel mode}.
+    \item \textbf{user mode}: modo no privilegiado.
+\end{itemize}
+
+\subsection{La placa virtIO emulada por qemu}
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    box/.style={draw,minimum height=0.7cm,align=center},
+    cpu/.style={draw,minimum width=2.0cm,minimum height=1.2cm,align=center}
+]
+% Outer box
+\node[draw,minimum width=10cm,minimum height=4.0cm] (outer) at (3.5,1.5) {};
+
+\node[cpu,fill=xv1!15] (cpu0) at (1.5,2.3) {cpu0\\\fbox{clint}};
+\node[cpu,fill=xv1!15] (cpu1) at (4.0,2.3) {cpu1\\\fbox{clint}};
+\node[box,fill=xv2!15] (plic) at (6.5,2.0) {PLIC};
+\node[box,fill=xv3!15] (disk) at (8.5,3.0) {disk};
+\node[box,fill=xv3!15] (uart) at (8.5,1.7) {UART};
+\node[anchor=east,font=\small] at (1.0,0.7) {irq};
+\draw[-Latex,thick] (cpu0) -- (cpu1);
+\draw[-Latex,thick] (cpu1) -- (plic);
+\draw[-Latex,thick] (plic) -- (uart);
+
+\node[font=\bfseries\small] at (3.5,0.4) {memory bus};
+\draw[thick] (-1,-0.1) -- (8,-0.1);
+
+\node[box,fill=xv4!15] (ram) at (0.5,-1.0) {RAM};
+\node[box,fill=xv4!15] (rom) at (2.5,-1.0) {ROM};
+\node[box,fill=xv5!15] (term) at (8.5,-1.0) {terminal};
+\draw[thick] (ram) -- ($(ram.north)+(0,0.9)$);
+\draw[thick] (rom) -- ($(rom.north)+(0,0.9)$);
+\draw[thick] (uart) -- (term);
+\draw[thick] (disk) -- ++(0,-3.0);
+\end{tikzpicture}
+\end{center}
+
+Los dispositivos (UART y disco) generan interrupciones que son
+\emph{ruteadas} por el \textbf{Platform-Level Interrupt Controller
+(PLIC)} hacia las CPUs. Cada CPU tiene además un \emph{CLINT} (Core
+Local Interruptor) para sus interrupciones locales (timer).
+
+% =====================================================================
+\section{Traps y modos de ejecución}
+% =====================================================================
+
+En cada modo (\emph{machine}, \emph{supervisor}, \emph{user}) existen
+registros de control y estado (\textbf{CSRs}) e instrucciones que sólo
+pueden accederse o ejecutarse en el modo correspondiente o superior.
+
+Una CPU RISC-V inicia en \emph{machine mode} (mayor privilegio). El SO
+debe configurar cómo \textbf{atrapar los traps}:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Interrupciones}: asíncronas, generadas por
+        dispositivos.
+    \item \textbf{Excepciones}: \emph{bad address/instruction},
+        división por cero, etc.
+    \item \textbf{Llamadas al sistema}: ejecución de la instrucción
+        \texttt{ecall}.
+\end{itemize}
+
+Excepciones y syscalls son \textbf{síncronas} porque las genera la
+CPU al ejecutar \texttt{ecall} o al detectar el error.
+
+\subsection{Pasos que ejecuta la CPU ante un trap}
+
+\begin{enumerate}[leftmargin=*]
+    \item Si es interrupción y \verb|sstatus.SIE == 0| (interrupciones
+        deshabilitadas), se ignora. Si no:
+    \item Deshabilita interrupciones (0 en el bit \texttt{SIE} de
+        \texttt{sstatus}).
+    \item Guarda el program counter \texttt{pc} en \texttt{sepc}.
+    \item Guarda el modo corriente en el bit \texttt{SPP} de
+        \texttt{sstatus}.
+    \item Setea \texttt{scause} con el motivo (código) del trap.
+    \item Pasa a modo supervisor.
+    \item Setea \verb|pc = stvec|. En xv6, \texttt{stvec} apunta a
+        \texttt{uservec} o \texttt{kernelvec} según si estaba en modo
+        usuario o supervisor.
+    \item La CPU salta al \emph{interrupt handler} (\texttt{uservec},
+        por ejemplo).
+\end{enumerate}
+
+\subsection{CSRs en modo supervisor}
+
+\begin{center}\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Nombre} & \textbf{Descripción (uso)} \\
+\midrule
+\texttt{sstatus}  & Registro de estado \\
+\texttt{sedeleg}  & Delegación de excepciones \\
+\texttt{sideleg}  & Delegación de interrupciones \\
+\texttt{sie}      & Habilitación de interrupciones \\
+\texttt{stvec}    & Dirección del trap handler \\
+\texttt{sscratch} & Puntero a datos (parámetros del handler) \\
+\texttt{sepc}     & Valor del program counter previo al trap \\
+\texttt{scause}   & Causa del trap \\
+\texttt{stval}    & Bad address or instruction \\
+\texttt{sip}      & Interrupt pending \\
+\texttt{stp}      & CPU thread (hart) id \\
+\texttt{satp}     & Address translation and protection \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{CSRs en modo machine}
+
+En \emph{machine mode} los registros anteriores aparecen prefijados
+con \texttt{m} en lugar de \texttt{s} (\texttt{mstatus},
+\texttt{mtvec}, \texttt{mepc}, \ldots) y además existen:
+
+\begin{center}\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Nombre}     & \textbf{Descripción} \\
+\midrule
+\texttt{mhartid}        & Identificador de la CPU (core) \\
+\texttt{pmpcfg0-15}     & Physical memory protection: config registers \\
+\texttt{pmpaddr0-63}    & Physical memory protection: address registers \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Los registros \texttt{pmpcfg} y \texttt{pmpaddr} permiten configurar
+\textbf{áreas de memoria} y sus modos de acceso en machine mode. En
+xv6, al inicio se configura un área con toda la memoria accesible
+(ver \texttt{start()} en \texttt{kernel/start.c}).
+
+\subsection{Delegación de traps}
+
+Por omisión, \emph{todas} las interrupciones y excepciones se atrapan
+en machine mode. Se puede configurar la CPU para que las
+\textbf{delegue} a modo supervisor con los registros \texttt{medeleg}
+y \texttt{mideleg}. La función \texttt{start()} delega los traps a
+modo supervisor, \emph{excepto} las interrupciones del \textbf{timer},
+que sólo pueden manejarse en machine mode.
+
+\subsection{Transición de modo}
+
+Para retornar a un modo menos privilegiado se configura el registro de
+status (\texttt{mstatus} o \texttt{sstatus}) y se ejecuta:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{mret}: retorno desde machine mode.
+    \item \texttt{sret}: retorno desde supervisor mode.
+\end{itemize}
+
+Por ejemplo, en xv6, \texttt{start()} corre en machine mode y deja
+\texttt{mepc} apuntando a \texttt{main} y \texttt{mstatus} con
+\texttt{MPP} en supervisor; al ejecutar \texttt{mret} la CPU salta a
+\texttt{main()} en \texttt{main.c} corriendo ya en modo supervisor.
+En cada transición del kernel a un proceso de usuario se configuran
+\texttt{sstatus}, \texttt{sepc} y \texttt{satp} para que \texttt{sret}
+retorne a modo usuario (ver \texttt{usertrapret()} en
+\texttt{trap.c}).
+
+\subsection{Trap handlers en xv6}
+
+xv6 abstrae interrupciones, excepciones y syscalls como
+\textbf{traps}. Los handlers son:
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{kernelvec}, \texttt{timervec} (en
+        \texttt{kernelvec.S}): atrapan traps cuando la CPU está en
+        \emph{supervisor mode}.
+    \item \texttt{uservec} (en \texttt{trampoline.S}): atrapa traps
+        cuando ocurren en \emph{user mode}.
+\end{itemize}
+
+El registro \texttt{stvec} contiene la dirección de \texttt{kernelvec}
+o \texttt{uservec} según corresponda. Estos handlers salvan el estado
+de la CPU:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{kernelvec()} lo hace en la pila actual.
+    \item \texttt{uservec()} lo hace en el \texttt{trapframe}: un área
+        reservada para cada proceso.
+\end{itemize}
+
+Luego invocan a \texttt{kerneltrap()} y \texttt{usertrap()} definidas
+en \texttt{trap.c}.
+
+\begin{importante}
+Una vez iniciado el sistema, las funciones \texttt{kerneltrap()} y
+\texttt{usertrap()} son, en la práctica, los \textbf{puntos de entrada
+al kernel}: todo trap (interrupción, excepción o syscall) pasa por
+ellas.
+\end{importante}
+
+% =====================================================================
+\section{Mapas de memoria y protección}
+% =====================================================================
+
+Las arquitecturas modernas proveen mecanismos de memoria virtual y
+protección. RISC-V particiona la memoria \emph{lógicamente} en
+\textbf{páginas}: bloques de igual tamaño de 4\,KB (paginado). Este
+mecanismo:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Permite definir \emph{espacios de memoria} para cada
+        proceso y para el kernel.
+    \item Restringe a cada hilo a acceder sólo a sus espacios.
+    \item Permite definir \emph{permisos de acceso} (lectura,
+        escritura, ejecución, \ldots) por página.
+\end{itemize}
+
+\begin{definicion}
+Un \textbf{espacio} es un área de memoria \emph{lógicamente contigua}
+(aunque físicamente sus páginas no necesariamente lo estén).
+\end{definicion}
+
+\subsection{Función de traducción}
+
+Los espacios se representan en \textbf{tablas de páginas} que
+conceptualmente definen una función
+\[
+\textit{mem}(\textit{virtual\_address}) \to \textit{physical\_address}.
+\]
+Las tablas se configuran en memoria como arreglos de punteros a
+direcciones base de \emph{frames} (o \emph{pages}).
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    cell/.style={draw,minimum height=0.55cm,align=center}
+]
+\node[anchor=east,font=\small] at (-1.2,2.3) {virtual address:};
+\node[cell,fill=xv1!15,minimum width=1.5cm] (idx) at (-0.2,2.3) {index};
+\node[cell,fill=xv2!15,minimum width=1.5cm,right=0pt of idx] (off) {offset};
+
+\node[font=\bfseries\small] at (4,2.3) {pagetable};
+\node[anchor=east,font=\small] at (3.0,1.7) {satp $\to$};
+\node[cell,fill=xv3!15,minimum width=1.7cm] (p0) at (4,1.7) {};
+\node[anchor=east] at (p0.west) {0};
+\node[cell,minimum width=1.7cm,below=0pt of p0,fill=xv3!15] (p1) {};
+\node[anchor=east] at (p1.west) {1};
+\node[cell,minimum width=1.7cm,below=0pt of p1] (p2) {};
+\node[anchor=east] at (p2.west) {2};
+
+\node[cell,fill=xv4!15,minimum width=2.0cm,minimum height=1.0cm,align=center] (f1) at (7.5,2.0) {frame\\(page)};
+\node[cell,fill=xv4!15,minimum width=2.0cm,minimum height=1.0cm,align=center] (f2) at (7.5,0.4) {frame\\(page)};
+
+\node[font=\bfseries\small,align=center] at (10.0,2.5) {physical\\address};
+\node[font=\small,align=center] at (10.0,1.7) {(frame base + offset)};
+
+\draw[-Latex,thick] (idx.south) -- ++(0,-0.4) -| (p1.west);
+\draw[-Latex,thick] (p0.east) -- (f1.west);
+\draw[-Latex,thick] (p1.east) -- (f2.west);
+\draw[-Latex,thick] (off.east) -- ++(0.4,0) -- ++(0,-0.7) -| (f1.south);
+\end{tikzpicture}
+\end{center}
+
+Una dirección lógica se interpreta como un par
+$(\textit{index},\;\textit{offset})$. La dirección física se computa
+como
+\[
+\textit{physical\_address} = \textit{satp}[\textit{index}] + \textit{offset}.
+\]
+
+\begin{idea}
+xv6 define una \emph{page table} para el kernel y \emph{una por cada
+proceso}. La ROM, la RAM y los puertos de los controladores de los
+dispositivos se mapean en espacios de direcciones físicas de memoria.
+\end{idea}
+
+\subsection{Layout de memoria en qemu-RV39}
+
+\begin{center}
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Rango físico} & \textbf{Contenido} \\
+\midrule
+0 -- 0x1000        & unused \\
+0x1000 -- \ldots   & boot ROM \\
+\ldots             & \ldots \\
+0x0C000000 -- 0x80000000 & mmapped devices (PLIC, UART, virtIO disk) \\
+0x80000000 -- 0x88000000 & physical RAM (kernel + free pages) \\
+$\geq$ 0x88000000  & free physical space \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+La tabla de páginas del kernel mapea la RAM y los dispositivos de
+forma \textbf{1 a 1}. El código y datos del módulo \texttt{trampoline.S}
+se mapean en la \emph{última página direccionable} por la arquitectura
+RV-39, llamada \textbf{MAXVA}. Antes de \texttt{TRAMPOLINE}
+(direcciones menores) se mapean las páginas reservadas para el
+\emph{stack en modo kernel} de cada proceso.
+
+El script \texttt{kernel.ld} indica al linker que el código y datos
+de \texttt{trampoline.S} se enlacen a partir de la dirección
+\texttt{TRAMPOLINE}.
+
+La tabla de páginas de un proceso describe su espacio de memoria
+(código, datos y stack) a partir de la dirección lógica 0 (cero).
+
+% =====================================================================
+\section{Implementación de tablas de páginas en Sv39}
+% =====================================================================
+
+Una tabla plana sería demasiado grande, por eso se implementa como un
+\textbf{árbol}: cada nodo tiene un número de entradas (\emph{ptes})
+tal que el tamaño del nodo coincida con el de una página.
+
+\subsection{Estructura Sv39}
+
+En Sv39 (64\,bits con un bus de direcciones de 39\,bits) y páginas de
+4\,KB, la tabla de páginas es un \textbf{árbol de tres niveles}. Una
+dirección lógica se divide así:
+
+\begin{center}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Bits} & 38--30 & 29--21 & 20--12 & 11--0 \\
+\textbf{Campo} & \texttt{index0} & \texttt{index1} & \texttt{index2} & \texttt{offset} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Cada nodo del árbol es de 4\,KB y contiene 512 \emph{ptes} de 64 bits
+de la forma:
+
+\begin{center}
+\begin{tabular}{@{}cccc@{}}
+\toprule
+63 -- 53     & 53 -- 10 & 9 -- 0 \\
+\midrule
+not used     & page number (pn) & flags \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Donde el \textbf{page number} corresponde a la dirección física base
+de la página, y los flags son bits de permisos de acceso:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{U}: permiso de acceso (si está en 1) en modo usuario.
+    \item \textbf{W}: permiso de escritura en la página.
+    \item \textbf{V}: si es 1, la \emph{pte} es válida.
+    \item Otros (R, X, A, D, G, \ldots).
+\end{itemize}
+
+\subsection{MMU y traducción}
+
+\begin{definicion}
+La \textbf{MMU} (\emph{Memory Management Unit}) es el subsistema de la
+CPU que realiza la traducción de direcciones virtuales a físicas y
+la verificación de acceso.
+\end{definicion}
+
+Los 9 bits 38--30 indexan en la \emph{raíz}, los bits 29--21 en el
+\emph{nodo hijo intermedio}, y los bits 20--12 en el \emph{nodo hoja}.
+La \emph{pte} en la hoja contiene la dirección física base de la
+página. La MMU computa:
+\[
+\textit{pa} = ((\textit{root}[\textit{va}.\textit{index0}].\textit{pn})[\textit{va}.\textit{index1}].\textit{pn})[\textit{va}.\textit{index2}].\textit{pn} + \textit{va}.\textit{offset}.
+\]
+
+\subsection{El registro \texttt{satp}}
+
+En modo supervisor, el registro \textbf{\texttt{satp}} (\emph{Supervisor
+Address Translation and Protection}) apunta a la \emph{raíz} del árbol
+de la tabla de páginas en uso por la CPU.
+
+\begin{importante}
+En cada \emph{context switch}, xv6 debe hacer que \texttt{satp}
+apunte a la tabla de páginas del proceso al que se le da el control.
+Esto se hace en la función assembly \texttt{userret()} (en
+\texttt{trampoline.S}), invocada como \verb|userret(p->pagetable)|
+desde \texttt{usertrapret()} en \texttt{trap.c}. \texttt{userret}
+también retorna desde modo supervisor a modo usuario para continuar
+con la ejecución del proceso corriente.
+\end{importante}
+
+% =====================================================================
+\section{Traps en modo usuario}
+% =====================================================================
+
+Al ocurrir un trap en \emph{user mode}, la CPU salta a
+\texttt{uservec()} en \texttt{trampoline.S}. Esta función forma parte
+del código del kernel, pero \textbf{la CPU está usando la page table
+del proceso de usuario}.
+
+\subsection{La página trampoline}
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    cell/.style={draw,minimum height=0.55cm,minimum width=2.2cm,align=center}
+]
+\node[cell,fill=xv1!15] (text) at (0,4.4) {text};
+\node[cell,fill=xv2!15,below=0pt of text] (data) {data};
+\node[cell,below=0pt of data] (d1) {\ldots};
+\node[cell,fill=xv5!15,below=0pt of d1] (stack) {stack};
+\node[cell,below=0pt of stack] (d2) {\ldots};
+\node[cell,below=0pt of d2] (d3) {\ldots};
+\node[cell,fill=xv4!20,below=0pt of d3] (uv) {uservec()};
+
+\node[anchor=east] at (text.west) {0};
+\node[anchor=east] at (d1.west) {sz};
+\node[anchor=west,xshift=4pt,font=\small] at (uv.east) {$\leftarrow$ trampoline};
+\end{tikzpicture}
+\end{center}
+
+xv6 \textbf{mapea la página física de trampoline} (que contiene
+\texttt{uservec()} y \texttt{userret()}) en el espacio de memoria del
+proceso cuando éste fue creado. Ver \texttt{alloc\_proc()} y
+\texttt{proc\_pagetable()} en \texttt{proc.c}.
+
+\begin{idea}
+Esto es necesario porque cuando ocurre una interrupción, excepción o
+syscall en modo usuario, la CPU \emph{no} cambia automáticamente a la
+tabla de páginas del kernel (como sí ocurre en CPUs x86). La CPU pasa
+a ejecutar código del kernel (\texttt{uservec()}) en modo supervisor
+pero en el \emph{espacio de memoria del proceso}; ese código debe ser
+accesible. Podemos decir que \texttt{trampoline.S} contiene
+\textbf{código compartido entre el kernel y todos los procesos}.
+\end{idea}
+
+\subsection{Secuencia del trap}
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item La CPU salta a \texttt{uservec()}.
+    \item \texttt{uservec()} hace que la CPU use la tabla de páginas
+        \emph{del kernel}.
+    \item Se ejecuta el código del kernel.
+    \item Antes de retornar a modo usuario, se restaura el valor de
+        \texttt{satp} para que apunte nuevamente a la tabla de
+        páginas del proceso correspondiente.
+\end{enumerate}
+
+% =====================================================================
+\section{Ejecución de xv6 sobre qemu: \texttt{make qemu}}
+% =====================================================================
+
+La regla \texttt{make qemu} del Makefile lanza qemu con
+\texttt{kernel} como imagen del kernel y \texttt{fs.img} como imagen
+del disco, con \verb|CPUS| cores y 128\,MB de RAM.
+
+qemu carga el kernel en la dirección \texttt{0x80000000} (comienzo de
+la RAM física) y pasa el control a esa dirección. El código del
+kernel está compilado y enlazado (ver \texttt{kernel/kernel.ld}) para
+ejecutar a partir de allí. La primera función enlazada en el kernel
+(en \texttt{0x80000000}) es \texttt{\_entry()}, definida en assembly
+en \texttt{entry.S}.
+
+\subsection{Pasos del boot}
+
+\begin{importante}
+En RISC-V cada CPU inicia en paralelo en \emph{machine mode}: cada CPU
+comienza a ejecutar \texttt{\_entry()}.
+\end{importante}
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{\texttt{\_entry()}}: prepara cada CPU (\emph{hart} en
+        terminología de RISC-V) para usar un \emph{stack inicial} y
+        invoca a \texttt{start()} (en \texttt{start.c}).
+
+    \item \textbf{\texttt{start()}}: configura cada CPU para saltar a
+        \texttt{main()} (\texttt{main.c}) en \emph{modo supervisor}.
+        Deshabilita paginado (por el momento) y configura las CPUs
+        para que las interrupciones (disco, UART) y excepciones se
+        atrapen en modo supervisor. Aquí también se configura el
+        \emph{timer} (CLINT) para cada CPU y el \emph{timer interrupt
+        handler} (\texttt{timervec} en \texttt{kernelvec.S}). Las
+        interrupciones del timer se deben atrapar en \emph{machine
+        mode}.
+
+    \item \texttt{start()} retorna del machine mode ejecutando
+        \texttt{mret} y salta a \texttt{main()} en modo supervisor.
+
+    \item \textbf{\texttt{main()}}: hace que la CPU 0 inicialice los
+        subsistemas y cree el primer proceso (ver \texttt{userinit()}
+        en \texttt{proc.c}), que tiene como código
+        \texttt{initcode} (binario extraído de \texttt{initcode.S} y
+        \emph{hardcoded} en el arreglo \texttt{initcode[]}). Esa
+        secuencia de instrucciones de máquina es equivalente a
+        \verb|exec("init", ["init", 0])|. Finalmente, cada CPU
+        invoca a \texttt{scheduler()}.
+
+    \item \textbf{\texttt{scheduler()}}: las CPUs compiten por
+        seleccionar un proceso en estado \texttt{RUNNABLE} y lo
+        pasan a \texttt{RUNNING} (le asignan la CPU corriente),
+        haciendo el primer \emph{context switch} a modo usuario. Una
+        de las CPUs encontrará al primer proceso con el código de
+        \texttt{initcode}, que tiene un \emph{contexto} salvado de
+        interrupción (creado durante su creación).
+        \texttt{scheduler()} cambia al contexto del proceso ejecutando
+        \verb|swtch(&c->context, &p->context)|.
+
+    \item La CPU continúa ejecutando \texttt{forkret()} (indicado por
+        el valor de \texttt{pc} en \verb|p->context|) y finalmente
+        alcanza \texttt{usertrapret()}, que ejecuta un \emph{retorno
+        de interrupción} de modo supervisor a modo usuario,
+        restaurando previamente los valores de los registros de la
+        CPU guardados en el \texttt{trapframe} en el stack en modo
+        kernel del proceso. En el primer proceso, el \texttt{pc}
+        queda apuntando a la primera instrucción del programa
+        \texttt{initcode}.
+
+    \item El código de \texttt{initcode} ejecuta la syscall
+        \verb|exec("init", ...)|. Esta llamada al sistema:
+        \begin{itemize}[leftmargin=*,nosep]
+            \item \textbf{Reemplaza} la imagen de memoria del código
+                y datos del proceso corriente.
+            \item Carga del disco (filesystem) las instrucciones y
+                datos del ejecutable \texttt{init} (ELF).
+            \item Inicializa el stack en modo usuario (argumentos de
+                \texttt{main}).
+            \item Configura el \emph{trapframe} para que, al retornar
+                de la interrupción, \texttt{init} comience en su
+                \emph{entry point} (\texttt{main}).
+        \end{itemize}
+
+    \item El proceso \texttt{init} (con \texttt{pid = 1}) abre los
+        archivos de entrada y salida estándar y lanza el shell
+        haciendo \texttt{fork()} y \verb|exec("sh", ...)|. Este
+        último permite la \textbf{interacción del usuario} con el
+        sistema.
+\end{enumerate}
+
+A partir de aquí, cada comando que el usuario tipea es procesado por
+el shell, que realiza las syscalls correspondientes para lanzar
+nuevos procesos.
+
+\begin{idea}
+Para más detalles del diseño e implementación de xv6, ver el
+\emph{xv6 book} (manual oficial del MIT).
+\end{idea}
+
+% =====================================================================
+\section{Cierre}
+% =====================================================================
+
+xv6 es la encarnación didáctica más simple posible de un SO realista.
+Las ideas más importantes del taller:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Diseño minimalista pero completo}: monolítico,
+        multitarea preemptive, con soporte SMP/multicore y una API
+        subconjunto del UNIX v6. Lo justo para entender qué hace un
+        SO sin perderse en la complejidad de Linux.
+    \item \textbf{Estructura clara del código fuente}: \texttt{kernel/}
+        y \texttt{user/}. Cada subsistema en pocos archivos
+        identificables (gestión de procesos, memoria, dispositivos,
+        FS basado en inodes con \emph{logging} transaccional).
+    \item \textbf{Build system simple}: un \texttt{Makefile} produce
+        \texttt{kernel} (ELF) y \texttt{fs.img}. \texttt{make qemu}
+        lanza todo dentro de un emulador RISC-V con CPUs y RAM
+        configurables.
+    \item \textbf{Procesos representados por \texttt{struct proc}}:
+        un arreglo de tamaño fijo, con \texttt{pagetbl},
+        \texttt{kstack}, \texttt{ofiles} y demás campos esenciales.
+    \item \textbf{RISC-V} es una ISA \emph{abierta} y modular con
+        tres modos de privilegio (\emph{machine}, \emph{supervisor},
+        \emph{user}). xv6 usa el modelo \textbf{Sv39}: 64\,bits con
+        39\,bits de dirección física.
+    \item \textbf{Traps unificados}: interrupciones, excepciones y
+        syscalls. Los pasos automáticos de la CPU (guarda
+        \texttt{pc}, modo, causa; pasa a supervisor; salta a
+        \texttt{stvec}) se encadenan con \texttt{uservec} /
+        \texttt{kernelvec} y, en C, con \texttt{usertrap()} /
+        \texttt{kerneltrap()}, que son en la práctica los puntos de
+        entrada al kernel.
+    \item \textbf{Tablas de páginas multinivel} (árbol de 3 niveles
+        en Sv39), apuntadas por \texttt{satp}. xv6 mantiene una
+        tabla por proceso y una para el kernel. Una página
+        \textbf{trampoline} se mapea en \texttt{MAXVA} en todos los
+        espacios para permitir que el kernel atrape traps de modo
+        usuario sin cambiar de tabla automáticamente.
+    \item \textbf{Boot determinístico}: \texttt{\_entry} $\to$
+        \texttt{start} (machine) $\to$ \texttt{main} (supervisor)
+        $\to$ \texttt{scheduler} $\to$ primer context switch a
+        \texttt{initcode} $\to$ \texttt{exec("init")} $\to$
+        \texttt{init} abre stdio y lanza \texttt{sh}. A partir de
+        ese momento, el usuario está al mando.
+\end{itemize}
+
+\begin{idea}
+xv6 cierra el círculo de todo lo visto en la materia: paginado,
+memoria virtual, scheduling, interrupciones, syscalls, filesystem,
+drivers, multicore. Su lectura es la mejor forma de \emph{ver} cómo
+encajan los conceptos del curso en un sistema operativo real,
+ejecutable y compacto.
+\end{idea}
+
+\end{document}

@@ -1,0 +1,977 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- Encoding ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands]{babel}
+\usepackage{lmodern}
+
+% --- Layout ---
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{parskip}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em plus 0.2em minus 0.1em}
+
+% --- Tables and graphics ---
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{positioning,shapes.geometric,arrows.meta,fit,backgrounds,calc,decorations.pathreplacing}
+\usepackage{caption}
+\usepackage{amsmath,amssymb}
+
+% --- Code listings ---
+\usepackage{listings}
+\definecolor{codegray}{rgb}{0.96,0.96,0.96}
+\definecolor{codeborder}{rgb}{0.85,0.85,0.85}
+\definecolor{codecomment}{rgb}{0.30,0.55,0.30}
+\definecolor{codekeyword}{rgb}{0.10,0.30,0.70}
+\definecolor{codestring}{rgb}{0.65,0.15,0.10}
+
+\lstdefinestyle{cstyle}{
+    language=C,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+}
+
+\lstdefinestyle{textstyle}{
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstset{style=textstyle}
+
+% --- Definition / Idea / Important boxes ---
+\usepackage[most]{tcolorbox}
+\newtcolorbox{definicion}[1][]{
+    colback=blue!5!white,
+    colframe=blue!50!black,
+    fonttitle=\bfseries,
+    title=Definición,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{idea}[1][]{
+    colback=orange!5!white,
+    colframe=orange!60!black,
+    fonttitle=\bfseries,
+    title=Idea intuitiva,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{importante}[1][]{
+    colback=red!5!white,
+    colframe=red!50!black,
+    fonttitle=\bfseries,
+    title=Importante,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+
+% --- Hyperlinks ---
+\usepackage[colorlinks=true,
+            linkcolor=blue!60!black,
+            urlcolor=blue!50!black,
+            citecolor=blue!60!black]{hyperref}
+
+% --- Memory diagram color palette ---
+\definecolor{mem1}{HTML}{4C72B0}
+\definecolor{mem2}{HTML}{DD8452}
+\definecolor{mem3}{HTML}{55A868}
+\definecolor{mem4}{HTML}{8172B2}
+\definecolor{memshared}{HTML}{4FC3C7}
+\definecolor{memfile}{HTML}{F4A261}
+
+% --- Title ---
+\title{
+    \vspace{-2.5em}
+    \textbf{Resumen teórico --- Sistemas Operativos} \\[0.3em]
+    \large Notas del curso: \emph{Memoria virtual}
+}
+\author{
+    Tomás Rodeghiero \\
+    \small Sistemas Operativos --- Universidad Nacional de Río Cuarto
+}
+\date{2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent
+Este documento es un resumen teórico del capítulo \emph{Memoria virtual}
+de las \emph{Notas del curso} de Sistemas Operativos (Marcelo Arroyo,
+UNRC). Se desarrollan las técnicas que extienden la memoria física
+disponible usando disco: \emph{swapping} o \emph{demand paging},
+mapeo de archivos en memoria (\texttt{mmap}), carga de programas bajo
+demanda, crecimiento dinámico del stack, memoria compartida entre
+procesos, \emph{copy on write} en \texttt{fork()} y los algoritmos
+clásicos de reemplazo de páginas (FIFO, second chance / clock, LRU /
+NFU, NRU, working set). Cierra con el caso de estudio del kernel de
+GNU/Linux. El objetivo es servir de material de estudio para preparar
+los prácticos asociados a memoria virtual y el segundo parcial.
+\end{abstract}
+
+\tableofcontents
+\bigskip
+
+% =====================================================================
+\section{Introducción: memoria virtual y swapping}
+% =====================================================================
+
+La evolución del hardware permite que las CPUs modernas soporten
+\emph{enormes} espacios de direcciones: una CPU moderna puede manejar
+direcciones de 64\,bits (128\,terabytes) o más. Esto habilita el
+desarrollo de programas grandes.
+
+\begin{importante}
+En un sistema moderno, la suma de memoria RAM requerida por los procesos
+suele ser \textbf{mayor} a la disponible físicamente en el hardware. La
+\textbf{memoria virtual} es la técnica que permite ejecutar esos
+programas, manteniendo en RAM sólo las partes en uso en cada momento.
+\end{importante}
+
+\paragraph{Idea central.}
+Un proceso no necesita estar cargado en memoria \emph{completamente}:
+sólo necesita las partes que está usando ahora. Con el esquema de
+paginado visto en el capítulo anterior, es posible cargar
+(\emph{swap-in}) o desalojar (\emph{swap-out}) \emph{partes} de un
+proceso con la granularidad del tamaño de página.
+
+\subsection{Swap-in y swap-out}
+
+\begin{itemize}[leftmargin=*]
+    \item Un \textbf{swap-in} se produce cuando el proceso referencia
+        una página que reside en disco: hay que traerla a RAM.
+    \item Un \textbf{swap-out} se produce cuando el sistema necesita
+        liberar una página de RAM (por ejemplo, porque no quedan
+        páginas libres). Comúnmente lo invoca el \emph{memory
+        allocator}.
+\end{itemize}
+
+Este proceso de cargar/desalojar páginas en disco se conoce como
+\textbf{swapping} o \textbf{demand paging}.
+
+\subsection{Estado de cada página}
+
+Para implementar memoria virtual, por cada página se debe mantener su
+\emph{estado}: si está mapeada a una página física en RAM, o si está
+guardada en un bloque de disco. Esto se hace almacenando en la
+\emph{pte}:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item el \textbf{physical page number} (\texttt{ppn}) si la página
+        está en RAM, con el bit \textbf{V} (\emph{valid} o
+        \emph{present} en algunas arquitecturas) en 1, o bien
+    \item el \textbf{disk block number} (\texttt{dbn}) si la página
+        reside en disco, con el bit V en 0.
+\end{itemize}
+
+Con esta convención, el hardware genera automáticamente un
+\emph{page fault} cuando se referencia una página con $V=0$ y le da al
+kernel la oportunidad de hacer el swap-in correspondiente.
+
+\subsection{Extender la RAM con disco}
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    cell/.style={draw,minimum height=0.7cm,minimum width=3.0cm,align=center},
+    pcell/.style={draw,minimum height=0.7cm,minimum width=2.2cm,align=center}
+]
+% vpn / page table
+\node[font=\bfseries\small] at (0,5.4) {vpn};
+\node[font=\bfseries\small] at (2.4,5.4) {page table};
+\node[anchor=east] at (-1.1,4.6) {0};
+\node[cell] (e0) at (2.4,4.6) {\ldots};
+\node[anchor=east] at (-1.1,3.9) {i};
+\node[cell,fill=mem3!20] (ei) at (2.4,3.9) {ppn=1\hspace{4pt}V=1};
+\node[cell] (e2) at (2.4,3.2) {\ldots};
+\node[anchor=east] at (-1.1,2.5) {j};
+\node[cell,fill=memfile!30] (ej) at (2.4,2.5) {dbn=k\hspace{4pt}V=0};
+\node[cell] (e3) at (2.4,1.8) {\ldots};
+\node[cell] (e4) at (2.4,1.1) {\ldots};
+\node[anchor=east] at (-1.1,0.4) {n-1};
+\node[cell] (en) at (2.4,0.4) {\ldots};
+
+% physical pages
+\node[font=\bfseries\small] at (7.5,5.4) {Physical pages};
+\node[anchor=east] at (6.0,4.6) {0};
+\node[pcell,fill=memshared!20] (f0) at (7.5,4.6) {};
+\node[anchor=east] at (6.0,3.9) {1};
+\node[pcell,fill=memshared!20] (f1) at (7.5,3.9) {};
+\node[pcell,fill=memshared!20] (f2) at (7.5,3.2) {\ldots};
+\node[anchor=east] at (6.0,2.5) {k};
+\node[pcell,fill=memshared!20] (fk) at (7.5,2.5) {};
+\node[pcell,fill=memshared!20] (f4) at (7.5,1.8) {};
+\node[pcell,fill=memshared!20] (f5) at (7.5,1.1) {};
+\node[anchor=east] at (6.0,0.4) {n-1};
+\node[pcell,fill=memshared!20] (fn) at (7.5,0.4) {};
+
+% Brackets RAM / disk
+\draw[decorate,decoration={brace,amplitude=4pt}]
+    ($(f0.north east)+(0.15,0)$) -- ($(f2.south east)+(0.15,0)$)
+    node[midway,right=5pt,font=\bfseries\small] {RAM};
+\draw[decorate,decoration={brace,amplitude=4pt}]
+    ($(fk.north east)+(0.15,0)$) -- ($(fn.south east)+(0.15,0)$)
+    node[midway,right=5pt,font=\bfseries\small] {on disk};
+
+\draw[-Latex,thick] (ei.east) -- ($(f1.west)+(0,0)$);
+\draw[-Latex,thick] (ej.east) -- ($(fk.west)+(0,0)$);
+\end{tikzpicture}
+\end{center}
+
+\begin{idea}
+Cada \emph{pte} le dice al hardware ``dónde'' está realmente la página:
+si en RAM (vía \texttt{ppn}) o si en disco (vía \texttt{dbn}). La RAM
+se comporta entonces como una caché del conjunto total de páginas
+``virtuales''. El espacio de direcciones del proceso puede ser mayor
+que la RAM física.
+\end{idea}
+
+\subsection{Tratamiento del page fault}
+
+Cuando una instrucción accede a la página $j$ con $V=0$, la CPU genera
+una excepción. El kernel ejecuta un \textbf{swap-in}:
+
+\begin{enumerate}[leftmargin=*]
+    \item Reservar una página física en RAM (sea $\textit{ppn} = X$).
+    \item Leer el contenido del bloque $k$ de disco en la página $X$.
+    \item Mapear la \emph{pte} $j$: $\textit{ppn} = X$ y $V = 1$.
+\end{enumerate}
+
+Al retornar de la excepción, la CPU re-ejecuta la instrucción que falló
+y esta vez sí puede acceder al contenido.
+
+\subsection{Swap area}
+
+El \textbf{swap area} es la región de disco donde se almacenan las
+páginas que están fuera de RAM. Puede ser un \textbf{archivo} dentro de
+un sistema de archivos común o una \textbf{partición} con un formato
+específico de swap. Por ejemplo, GNU/Linux permite ambas configuraciones;
+una partición con formato de tipo \emph{swap} mejora sustancialmente el
+rendimiento respecto a un archivo, porque evita la indirección del
+sistema de archivos.
+
+% =====================================================================
+\section{Mapeo de archivos en memoria}
+% =====================================================================
+
+Una aplicación natural y muy potente de la memoria virtual es el
+\textbf{mapeo de archivos en memoria} (\emph{memory-mapped files}). La
+llamada al sistema típica es:
+
+\begin{lstlisting}[style=cstyle]
+va = mmap(fd, mode);
+\end{lstlisting}
+
+\begin{definicion}
+\texttt{mmap} crea un \emph{mapping} de direcciones lógicas a los
+contenidos del archivo en disco y retorna la dirección lógica base del
+contenido mapeado en memoria. Tras esa llamada, el proceso puede
+acceder al archivo como si fuera un arreglo de bytes en memoria, sin
+usar \texttt{read} o \texttt{write}.
+\end{definicion}
+
+\subsection{Cómo funciona}
+
+El contenido del archivo se divide lógicamente en bloques del tamaño de
+una página. \texttt{mmap} \emph{no} asigna memoria física ni carga el
+archivo al invocarse: sólo prepara el espacio de direcciones (setea
+\emph{ptes} indicando que los datos están en los bloques de disco
+correspondientes, con bit $V=0$).
+
+La carga real ocurre \textbf{bajo demanda}, de forma transparente al
+proceso: cuando el programa referencia \texttt{va[i]}, el hardware
+genera un page fault, el kernel asigna una página, carga en ella el
+bloque correspondiente al offset $i$ y deja el \emph{pte} válido. Las
+siguientes lecturas/escrituras a esa misma página ya van directo a RAM.
+
+En general, la dirección de comienzo del mapping en sistemas tipo UNIX
+es el puntero \textbf{brk} del proceso, que marca el inicio del bloque
+de espacio de direcciones libre. \texttt{mmap} avanza este puntero.
+
+Una llamada al sistema \texttt{unmmap(va)} libera el mapping y la
+memoria física asociada.
+
+\subsection{Ejemplo de uso}
+
+\begin{lstlisting}[style=cstyle]
+// myfile.dat contiene mas de 4096 bytes. Despues de mmap(),
+// se ve como un arreglo de chars buf[]:
+//
+// buf --> +-----------------------------+ 0
+//         | Hello world\0               |
+//         | ...                         | 4095
+//         +-----------------------------+ 4096
+//         | Second page\0               | ...
+//         | padding (zeroes) by mmap    |
+//         +-----------------------------+ 8192
+
+int fd = open("myfile.dat", O_RDONLY);
+char *buf = mmap(fd);
+
+printf("%s\n", buf);          // output: Hello world
+printf("%s\n", buf + 4096);   // output: Second page
+printf("%s\n", buf + 7005);   // output: cadena vacia (ceros)
+printf("%s\n", buf + 8192);   // page fault (quiza)
+\end{lstlisting}
+
+\subsection{Ilustración del cambio en la tabla de páginas}
+
+Antes del \texttt{mmap}, en la tabla de páginas figura el área del
+proceso (text, data, stack) y, a partir de \texttt{brk}, entradas
+inválidas. Después del \texttt{mmap}, las entradas que cubren la región
+mapeada tienen $V=0$ con \texttt{dbn} apuntando a bloques del archivo.
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    sec/.style={draw,minimum width=1.9cm,minimum height=0.5cm,align=center},
+    pte/.style={draw,minimum width=2.5cm,minimum height=0.5cm,align=center},
+]
+% Before mapping
+\node[font=\bfseries\small] at (-3,3.7) {process};
+\node[sec,fill=mem1!20] (t1) at (-3,3.1) {text};
+\node[sec,fill=mem2!20,below=0pt of t1] (d1) {data};
+\node[sec,below=0pt of d1] (f1) {free space};
+\node[sec,fill=mem3!20,below=0pt of f1] (s1) {stack};
+\node[anchor=east] at ($(t1.west)$) {0};
+\node[anchor=east] at ($(d1.south west)+(0,-0.05)$) {brk};
+\node[anchor=east] at ($(s1.south west)$) {sz};
+
+% file
+\node[draw,fill=memfile!50,minimum width=1.0cm,minimum height=0.6cm,right=0.4cm of d1] (file1) {file};
+
+% pgtbl before
+\node[font=\bfseries\small] at (-3,0.5) {page tbl};
+\node[pte,fill=mem3!10] (p1a) at (-3,-0.2) {ppn0\hspace{4pt}V=1};
+\node[pte,below=0pt of p1a] (p1b) {\ldots};
+\node[pte,fill=memfile!10,below=0pt of p1b] (p1c) {0\hspace{4pt}V=0};
+\node[pte,below=0pt of p1c] (p1d) {\ldots};
+\node[pte,fill=mem3!10,below=0pt of p1d] (p1e) {ppnX\hspace{4pt}V=1};
+\node[anchor=east] at ($(p1a.west)$) {0};
+\node[anchor=east] at ($(p1c.west)$) {brk};
+\node at (-3,-2.95) {a) Before mapping.};
+
+% After mapping
+\node[font=\bfseries\small] at (3.5,3.7) {process};
+\node[sec,fill=mem1!20] (t2) at (3.5,3.1) {text};
+\node[sec,fill=mem2!20,below=0pt of t2] (d2) {data};
+\node[sec,fill=memfile!30,below=0pt of d2] (m2) {};
+\node[sec,below=0pt of m2] (f2) {free};
+\node[sec,fill=mem3!20,below=0pt of f2] (s2) {stack};
+\node[anchor=east] at ($(t2.west)$) {0};
+\node[anchor=east] at ($(m2.south west)$) {brk};
+\node[anchor=east] at ($(s2.south west)$) {sz};
+
+\node[draw,fill=memfile!50,minimum width=1.0cm,minimum height=0.6cm,right=0.4cm of d2] (file2) {file};
+\draw[-Latex,thick] (file2) -- (m2);
+
+% pgtbl after
+\node[font=\bfseries\small] at (3.5,0.5) {page tbl};
+\node[pte,fill=mem3!10] (p2a) at (3.5,-0.2) {ppn0\hspace{4pt}V=1};
+\node[pte,below=0pt of p2a] (p2b) {\ldots};
+\node[pte,fill=memfile!30,below=0pt of p2b] (p2c) {dbn\hspace{4pt}V=0};
+\node[pte,below=0pt of p2c] (p2d) {\ldots};
+\node[pte,fill=mem3!10,below=0pt of p2d] (p2e) {ppnX\hspace{4pt}V=1};
+\node[anchor=east] at ($(p2a.west)$) {0};
+\node[anchor=east] at ($(p2c.west)$) {va};
+\node[anchor=east] at ($(p2d.west)+(0,0.15)$) {brk};
+\node at (3.5,-2.95) {b) After memory mapped: va=mmap(f).};
+\end{tikzpicture}
+\end{center}
+
+\subsection{Manejo del page fault sobre un mapping}
+
+Cuando el programa accede a la región mapeada y la \emph{pte} tiene
+$V=0$, el hardware genera la excepción. El kernel verifica que la
+dirección lógica sea válida (por ejemplo, que el campo \texttt{ppn} no
+sea cero, indicando que la entrada está \emph{configurada} para
+mapping). Si así es, procesa la excepción:
+
+\begin{enumerate}[leftmargin=*]
+    \item Reservar (\emph{alloc}) una página física, sea $ppn = \alpha$.
+    \item Cargar el bloque \texttt{dbn} de disco en la página obtenida.
+    \item Mapear: setear $\textit{pte}.\textit{ppn} = \alpha$ y los
+        flags ($V=1$) en la \emph{pte} correspondiente.
+\end{enumerate}
+
+Al retornar de la excepción, la CPU vuelve a ejecutar la instrucción que
+la causó y accede exitosamente al contenido.
+
+\paragraph{Escrituras y bit dirty.}
+Si el proceso modifica el contenido en memoria del archivo, al liberar
+el mapping el SO puede \emph{escribir esos datos de vuelta al archivo}.
+El bit \textbf{dirty} (D) de la \emph{pte} indica qué páginas fueron
+modificadas, de modo que sólo se escriben las que efectivamente
+cambiaron.
+
+% =====================================================================
+\section{Carga de programas bajo demanda}
+% =====================================================================
+
+La llamada al sistema \texttt{exec(program-file, args)} debe cargar el
+contenido del ejecutable a memoria. Si el programa es grande, hacerlo
+de manera completa requiere tiempo y memoria, gran parte de los cuales
+podrían no usarse nunca.
+
+\begin{idea}
+Si \texttt{exec} \emph{mapea} los segmentos cargables del ejecutable
+con \texttt{mmap} y eventualmente carga sólo la página de código que
+contiene el \emph{entry point}, es posible realizar la carga del
+programa \textbf{bajo demanda}: las demás páginas se traen a RAM a
+medida que la ejecución avanza y referencia nuevas instrucciones o
+datos.
+\end{idea}
+
+Esta optimización es esencial en SO modernos: arrancar un binario
+grande es virtualmente instantáneo porque, salvo una página, todo el
+ejecutable está sólo \emph{mapeado}, no cargado.
+
+% =====================================================================
+\section{Stack con crecimiento dinámico}
+% =====================================================================
+
+Otro problema de la gestión de memoria es decidir cuánta memoria
+reservar para el \emph{stack} de cada proceso. Si reservamos poco, un
+programa con recursión profunda se queda sin pila; si reservamos
+mucho, desperdiciamos memoria.
+
+Con memoria virtual la solución es elegante: se mapea inicialmente
+\textbf{una sola página} en una dirección lógica alta y el SO asigna y
+mapea \emph{más páginas bajo demanda}, a medida que el proceso intenta
+escribir sobre el tope del stack y eso genera una excepción.
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    sec/.style={draw,minimum width=2.0cm,minimum height=0.55cm,align=center},
+]
+% Antes
+\node[sec,fill=mem1!20] (a1) at (0,3.5) {text};
+\node[sec,fill=mem2!20,below=0pt of a1] (a2) {data};
+\node[sec,fill=mem4!20,below=0pt of a2] (a3) {heap};
+\node[sec,below=0pt of a3] (a4) {free};
+\node[sec,below=0pt of a4] (a5) {space};
+\node[sec,fill=mem3!20,below=0pt of a5] (a6) {stack};
+\node[anchor=west,xshift=4pt] at (a3.east) {brk};
+\node[anchor=west,xshift=4pt] at (a6.east) {sz};
+
+% Flecha
+\draw[-Latex,thick] (a6.east) ++(1.6,1.2) -- ++(1.6,0)
+    node[midway,above,font=\small] {exception};
+
+% Despues
+\node[sec,fill=mem1!20] (b1) at (6.5,3.5) {text};
+\node[sec,fill=mem2!20,below=0pt of b1] (b2) {data};
+\node[sec,fill=mem4!20,below=0pt of b2] (b3) {heap};
+\node[sec,below=0pt of b3] (b4) {free};
+\node[sec,below=0pt of b4] (b5) {space};
+\node[sec,fill=mem3!20,below=0pt of b5] (b6) {stack};
+\node[sec,fill=mem3!35,below=0pt of b6] (b7) {stack};
+\node[anchor=west,xshift=4pt] at (b3.east) {brk};
+\node[anchor=west,xshift=4pt] at (b7.east) {sz};
+\end{tikzpicture}
+\end{center}
+
+De esta manera el stack \emph{crece bajo demanda}. El heap,
+simétricamente, suele expandirse hacia arriba (en términos lógicos)
+asignándole más espacio mediante la llamada al sistema
+\verb|sbrk(size)|.
+
+% =====================================================================
+\section{Memoria compartida}
+% =====================================================================
+
+Para que dos o más procesos (o el kernel y los procesos) se comuniquen
+usando memoria, se requiere que \emph{uno o más bloques de memoria
+físicos pertenezcan a sus espacios de direcciones simultáneamente}.
+Esto se logra mapeando en cada proceso un espacio de direcciones
+lógicas que resuelve a las \emph{mismas direcciones físicas}.
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    sec/.style={draw,minimum width=2.2cm,minimum height=0.7cm,align=center},
+]
+% Process 1
+\node[font=\bfseries\small] at (-3,2.0) {process 1};
+\node[sec] (p1a) at (-3,1.3) {\ldots};
+\node[sec,fill=memshared!50,below=0pt of p1a] (p1b) {};
+\node[sec,below=0pt of p1b] (p1c) {\ldots};
+\node[anchor=east] at ($(p1a.west)$) {0};
+\node[anchor=east] at ($(p1b.west)+(0,0.18)$) {va1};
+\node[anchor=east] at ($(p1c.south west)$) {sz1};
+
+% Shared page
+\node[draw,fill=memshared!60,minimum width=2.2cm,minimum height=0.7cm] (sp) at (1.5,0.6) {shared};
+\node[font=\small] at ($(sp.west)+(-0.7,0)$) {ppn=X};
+
+\draw[-Latex,thick] (p1b.east) -- (sp.west);
+
+% Process 2
+\node[font=\bfseries\small] at (6,2.0) {process 2};
+\node[sec] (p2a) at (6,1.3) {\ldots};
+\node[sec,fill=memshared!50,below=0pt of p2a] (p2b) {};
+\node[sec,below=0pt of p2b] (p2c) {\ldots};
+\node[anchor=west] at ($(p2a.east)$) {0};
+\node[anchor=west] at ($(p2b.east)+(0,0.18)$) {va2};
+\node[anchor=west] at ($(p2c.south east)$) {sz2};
+
+\draw[-Latex,thick] (p2b.west) -- (sp.east);
+\end{tikzpicture}
+\end{center}
+
+Las direcciones lógicas $va_1$ y $va_2$ comúnmente son \emph{distintas}
+en cada proceso, pero ambas están mapeadas al mismo número de página
+física $\textit{ppn} = X$.
+
+\subsection{Llamadas al sistema (UNIX)}
+
+Los SO tipo UNIX proveen un conjunto de llamadas para compartir memoria:
+
+\begin{itemize}[leftmargin=*]
+    \item \verb|int shmget(key, size, flags)|: crea u obtiene un
+        descriptor para un bloque de memoria compartida con
+        identificador \texttt{key} de tamaño \texttt{size}.
+    \item \verb|void *shmat(m)|: obtiene la dirección lógica del
+        descriptor $m$ retornado por \texttt{shmget}.
+    \item \verb|int shmdt(address)|: libera (\emph{detach}) el mapping.
+\end{itemize}
+
+\begin{importante}
+Los procesos que se comuniquen mediante memoria compartida \emph{deben}
+usar algún mecanismo de sincronización (semáforos, mutexes, \ldots) para
+evitar condiciones de carrera en el acceso a los datos compartidos. La
+memoria compartida \emph{no} es un canal sincronizado por sí mismo.
+\end{importante}
+
+\subsection{Bibliotecas compartidas}
+
+Esta técnica, junto con el mapeo de archivos en memoria, es la que se
+usa para mapear una \textbf{biblioteca compartida} (\emph{shared
+library}) en el espacio de direcciones de un proceso. Así, varios
+procesos pueden ``ver'' las mismas páginas físicas de libc, libssl,
+etc., en lugar de cargar copias separadas.
+
+\subsection{Liberación y contador de referencias}
+
+La memoria compartida complica la liberación de memoria cuando un
+proceso termina (por ejemplo, en un \texttt{exit()}): hay que liberar
+sólo las páginas que \emph{no} son compartidas con otro proceso.
+
+Una solución estándar es asociar a cada \emph{shared memory region} un
+\textbf{contador de sharing} (o referencias):
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Se incrementa con cada \verb|va = shmat(m)|.
+    \item Se decrementa con cada \verb|shmdt(va)|.
+    \item Cuando llega a cero, es seguro liberar la memoria compartida.
+\end{itemize}
+
+% =====================================================================
+\section{Copiar al escribir (Copy on Write, COW)}
+% =====================================================================
+
+La llamada al sistema \texttt{fork()} crea un proceso hijo \emph{copia}
+del padre. Una implementación naïve copiaría completamente la imagen
+del proceso padre en el hijo, lo cual puede requerir gran cantidad de
+memoria y mucho tiempo, especialmente si luego el hijo va a hacer
+\texttt{exec} y reemplazar toda esa memoria.
+
+\subsection{La optimización}
+
+En lugar de copiar todo, se copia sólo la \textbf{tabla de páginas},
+haciendo que ambos procesos (padre e hijo) compartan inicialmente la
+memoria física. Para mantener el confinamiento de cada proceso, en
+\emph{ambas} tablas de páginas se quitan los permisos de
+\textbf{escritura} ($W=0$) en cada \emph{pte}, dejando la memoria
+compartida como \textbf{sólo de lectura}.
+
+A cada proceso debería asociársele una \emph{shared memory block} que
+describa toda su zona de direcciones COW.
+
+\subsection{Qué pasa cuando alguien quiere escribir}
+
+Cuando uno de los procesos intenta escribir en una página compartida
+(\emph{ppn}) ocurre lo siguiente:
+
+\begin{enumerate}[leftmargin=*]
+    \item La CPU genera una excepción porque no tiene permiso de
+        escritura.
+    \item El kernel captura la excepción y reconoce que se debe a la
+        falta de permisos, pero la dirección es \emph{válida} y
+        \emph{compartida}.
+    \item Asigna (\emph{alloc}) una nueva página, sea con $\textit{ppn}
+        = n$.
+    \item Copia el contenido de la página original en la nueva.
+    \item Mapea la nueva página en el proceso que intentó escribir:
+        $\textit{pte}.\textit{ppn} = n$ y $\textit{pte}.W = 1$.
+    \item En el otro proceso (padre o hijo, según corresponda) también
+        restaura $W=1$ en su \emph{pte}, porque ahora ese proceso es
+        el único dueño de la página original.
+\end{enumerate}
+
+Como en toda excepción recuperable, el kernel prepara la CPU para que
+\textbf{re-intente} la ejecución de la instrucción que provocó la
+falta.
+
+\begin{definicion}
+Este mecanismo se conoce como \textbf{copy on write} (\textbf{COW}): la
+copia real se difiere hasta el momento en que efectivamente se necesita
+porque alguien escribe. Mientras los procesos sólo lean, no hay
+duplicación de memoria.
+\end{definicion}
+
+Para generalizar COW se necesita llevar la pista de las páginas
+compartidas entre procesos, comúnmente usando \emph{shared memory
+regions} en los descriptores de tareas (los \emph{task structs} del
+kernel).
+
+\begin{idea}
+COW es lo que hace que \texttt{fork()} + \texttt{exec()} sea barato: el
+padre no se ``clona'' físicamente; sólo se prepara para clonarse si
+hace falta. Como \texttt{exec()} suele descartar toda la memoria del
+hijo, la copia nunca llega a producirse.
+\end{idea}
+
+% =====================================================================
+\section{Algoritmos de reemplazo de páginas}
+% =====================================================================
+
+Cuando el sistema requiere asignar memoria (por ejemplo
+\verb|allocpage()|), ya sea para un proceso o para el kernel, puede
+ocurrir que no exista ninguna página libre. Esta situación se conoce
+como \textbf{page fault}.
+
+Con swapping el sistema puede elegir una página (la \textbf{víctima})
+que actualmente está en uso, hacerle un \emph{swap-out} a disco y
+reutilizar el frame para satisfacer el requerimiento.
+
+\begin{importante}
+El problema central es: \textbf{¿cómo elegir la víctima?} Lo ideal
+sería que fuera una página que \emph{no} va a referenciarse en mucho
+tiempo (o nunca más). Pero esto no es computable: requiere predecir el
+futuro. Los algoritmos prácticos intentan aproximarlo con heurísticas
+basadas en el comportamiento pasado.
+\end{importante}
+
+% ---------------------------------------------------------------------
+\subsection{FIFO}
+% ---------------------------------------------------------------------
+
+El sistema mantiene una cola de las páginas en uso: la última asignada
+queda al final. Ante un page fault, el algoritmo \textbf{FIFO} elige
+como víctima la página a la \emph{cabeza} de la cola (la que entró hace
+más tiempo). La nueva página se encola al final.
+
+\paragraph{Crítica.}
+FIFO es muy simple, pero puede elegir como víctima una página que se
+usa con \textbf{altísima frecuencia} (por ejemplo, la página de código
+con el bucle principal del programa), sólo por haber entrado primero.
+
+% ---------------------------------------------------------------------
+\subsection{Second chance (algoritmo del reloj, \emph{clock})}
+% ---------------------------------------------------------------------
+
+Es una corrección sencilla de FIFO que aprovecha el bit \textbf{A}
+(\emph{accessed}) que el hardware setea cuando una página es leída o
+escrita.
+
+En vez de tomar la página de la cabeza directamente, se inspecciona
+primero su bit \emph{A}:
+
+\begin{itemize}[leftmargin=*]
+    \item Si $A=1$, se hace $A=0$ y la página se mueve al final de la
+        cola, dándole una ``segunda oportunidad''.
+    \item Si $A=0$, se la elige como víctima.
+\end{itemize}
+
+Esto continúa hasta encontrar una página a la cabeza con $A=0$. La idea
+es que la víctima elegida \emph{no} fue accedida desde el último
+recorrido.
+
+\paragraph{Variante: el algoritmo del reloj.}
+En lugar de usar una cola, se usa una \textbf{lista circular} de las
+páginas usadas, con un puntero o \textbf{hand} que apunta a la página
+``más vieja'' candidata. Ante un page fault se verifica el bit $A$ de
+la página apuntada por \emph{hand}: si es cero, se la elige; si no, se
+hace $A=0$ y se avanza \emph{hand} repitiendo el proceso. Esta
+implementación se conoce como \textbf{algoritmo del reloj}
+(\emph{clock}).
+
+% ---------------------------------------------------------------------
+\subsection{Menos recientemente usada (LRU)}
+% ---------------------------------------------------------------------
+
+\textbf{LRU} (\emph{Least Recently Used}) busca como víctima una página
+que no ha sido usada en el último lapso de tiempo.
+
+\paragraph{Idea pura (costosa).}
+Mantener una lista ordenada de todas las páginas por tiempo de acceso
+(de menor a mayor). En cada intervalo de tiempo (\emph{ticks}), las
+páginas accedidas se mueven al final. Ante un page fault, la víctima es
+la cabeza. Sin soporte de hardware específico, esta implementación es
+inviable: cada acceso a memoria debería actualizar la lista.
+
+\paragraph{Implementación práctica: NFU.}
+Una implementación alternativa se conoce como \textbf{Not Frequently
+Used} (\textbf{NFU}):
+
+\begin{itemize}[leftmargin=*]
+    \item A cada página se le asocia un \emph{contador} inicialmente
+        en cero.
+    \item Periódicamente, el SO recorre cada \emph{pte} de cada tabla
+        de páginas y \emph{suma el bit $A$ al contador}.
+    \item Se mantiene una lista ordenada por contador, de menor a
+        mayor.
+    \item Ante un page fault, la víctima es la página a la cabeza
+        (menor contador).
+\end{itemize}
+
+\paragraph{Dos problemas de NFU y sus soluciones.}
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Recorrer todas las tablas periódicamente es caro.}
+        Se mitiga haciéndolo en momentos de \emph{ocio} del sistema y
+        en forma \emph{incremental}.
+    \item \textbf{El contador sólo crece: nunca olvida.} Páginas que
+        fueron muy usadas en el pasado pero ahora no lo son, quedarían
+        protegidas para siempre. Se resuelve con \textbf{aging}: antes
+        de sumarle el bit $A$, se hace un \emph{shift a derecha} del
+        contador (dividir por dos). Así, los accesos antiguos pesan
+        cada vez menos.
+\end{enumerate}
+
+\paragraph{Caso de estudio: Linux.}
+El kernel de Linux usa actualmente una versión de \emph{software LRU}
+(NFU) de \textbf{dos niveles}, manteniendo dos listas:
+\textbf{active\_list} (páginas accedidas recientemente) e
+\textbf{inactive\_list}. Las páginas inactivas son las candidatas a ser
+reemplazadas.
+
+% ---------------------------------------------------------------------
+\subsection{No recientemente usada (NRU)}
+% ---------------------------------------------------------------------
+
+\textbf{NRU} (\emph{Not Recently Used}) selecciona una página a
+reemplazar usando exclusivamente el soporte de los bits $A$ (accessed)
+y $D$ (dirty) del hardware.
+
+El objetivo es identificar qué páginas fueron accedidas en el último
+período de tiempo. Periódicamente, cada $n$ ticks, el bit $A$ de cada
+\emph{pte} se pone en cero (\emph{cleared}).
+
+\paragraph{Clasificación en clases.}
+Ante un page fault, las páginas se clasifican en 4 clases:
+
+\begin{enumerate}[leftmargin=*]
+    \item $A=0,\;D=0$: no accedida en el último período (mejor
+        candidata).
+    \item $A=0,\;D=1$: escrita en el período anterior; el $A=0$ es
+        producto del \emph{clearing} periódico.
+    \item $A=1,\;D=0$: leída en el último período.
+    \item $A=1,\;D=1$: accedida en el último período, y además fue
+        escrita en algún momento (peor candidata).
+\end{enumerate}
+
+Se elige una víctima en la \textbf{menor clase no vacía}. Este algoritmo
+se conoce también como \emph{software LRU} porque permite implementar
+una aproximación de LRU en arquitecturas modernas \emph{sin} soporte
+específico para LRU.
+
+% ---------------------------------------------------------------------
+\subsection{Working set}
+% ---------------------------------------------------------------------
+
+\begin{definicion}
+El \textbf{working set} de un proceso es el conjunto de páginas a las
+que el proceso accedió en un \emph{período de tiempo} reciente $\tau$.
+\end{definicion}
+
+\begin{idea}
+Los programas raramente acceden a su memoria al azar: en una iteración
+o cuando trabajan sobre datos contiguos, referencian \emph{muchas
+veces} un mismo conjunto de páginas. Mantener ese conjunto en RAM y
+desalojar el resto es una excelente heurística.
+\end{idea}
+
+\paragraph{Implementación.}
+Se asocia a cada página un \emph{reloj lógico} (en ticks) que registra
+el tiempo del último acceso (\emph{tick}).
+
+Ante un page fault se recorre la tabla de páginas inspeccionando el
+bit $A$ de cada \emph{pte}:
+
+\begin{itemize}[leftmargin=*]
+    \item Si $A=1$, se actualiza el reloj asociado a la página y se
+        agrega al working set del período corriente.
+    \item Si $A=0$ se evalúa si puede elegirse como víctima:
+        \begin{itemize}[leftmargin=*,nosep]
+            \item Si su tiempo de acceso cae dentro del intervalo
+                actual ($\textit{tick} - \textit{last\_access}_{\textit{page}} < \tau$),
+                se mantiene en el working set.
+            \item Si no, se considera \emph{fuera} del working set.
+        \end{itemize}
+\end{itemize}
+
+Se elige como víctima una página fuera del working set con menor valor
+de reloj.
+
+Para evitar recorrer toda la tabla de páginas en cada falta, puede
+combinarse con una mejora del estilo del \emph{algoritmo del reloj}
+descripto antes.
+
+El algoritmo de Linux, descripto en \S\,\ref{sec:linux-mv}, intenta de
+alguna manera que la lista de páginas \emph{activas} represente el
+working set actual del sistema.
+
+% ---------------------------------------------------------------------
+\subsection{Otras consideraciones}
+% ---------------------------------------------------------------------
+
+Los algoritmos descriptos arriba no consideran ciertos aspectos
+adicionales que el SO real sí debe tener en cuenta:
+
+\paragraph{Política global vs.\ local.}
+Hay que decidir si la política de reemplazo es:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Global}: no se considera a qué proceso pertenece la
+        página candidata.
+    \item \textbf{Local}: sólo se buscan víctimas entre las páginas
+        \emph{del proceso corriente}.
+\end{itemize}
+
+No es lo mismo reemplazar una página del kernel o de una biblioteca
+compartida, que una página de un proceso de usuario.
+
+\paragraph{Páginas protegidas.}
+Para evitar problemas, ciertas páginas se \textbf{protegen} y se marcan
+para que no puedan ser elegidas como víctimas. Por ejemplo, las páginas
+del kernel o las que pertenecen a espacios de direcciones de dispositivos
+mapeados en memoria (\textbf{MMIO}), donde escribir/leer tiene efectos
+físicos sobre el hardware.
+
+\paragraph{Trashing (sobrepaginación).}
+Uno de los peligros del \emph{page swapping} es justamente este
+fenómeno.
+
+\begin{importante}
+La \textbf{sobrepaginación} (\emph{trashing}) es un estado en el que el
+sistema está corriendo \emph{out of memory} y ocurren repetidamente
+los siguientes eventos:
+\begin{enumerate}[leftmargin=*,nosep]
+    \item Se hace un swap-out para liberar memoria.
+    \item La página recién desalojada vuelve a ser referenciada y hay
+        que cargarla de nuevo (swap-in).
+\end{enumerate}
+\end{importante}
+
+Estos pasos se repiten a alta frecuencia; el sistema degrada el
+rendimiento drásticamente y el progreso de los procesos se hace muy
+lento.
+
+% =====================================================================
+\section{Caso de estudio: GNU/Linux}
+\label{sec:linux-mv}
+% =====================================================================
+
+Linux implementa un algoritmo \textbf{LRU}, aunque la lista de páginas
+no refleja exactamente un orden estricto por tiempo de acceso.
+
+Mantiene dos listas:
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{active\_list}: idealmente contiene un \emph{working
+        set} de todos los procesos.
+    \item \texttt{inactive\_list}: lista de candidatos a ser
+        reemplazados.
+\end{itemize}
+
+Estas listas se actualizan periódicamente. Esto hace que la política
+sea \textbf{global}: cualquier página candidata puede ser elegida,
+independientemente de a qué proceso pertenece.
+
+% =====================================================================
+\section{Cierre}
+% =====================================================================
+
+La memoria virtual es la pieza que conecta el paginado del hardware con
+la realidad de los sistemas modernos, donde la RAM siempre es menos
+abundante que la memoria que los procesos pretenden usar.
+
+\begin{itemize}[leftmargin=*]
+    \item El \textbf{swapping / demand paging} permite que la RAM se
+        comporte como una caché del espacio de direcciones lógicas: el
+        bit $V$ y el \emph{disk block number} en la \emph{pte} indican
+        si una página vive en RAM o en disco.
+    \item El \textbf{mapeo de archivos} (\texttt{mmap}) usa la misma
+        maquinaria para exponer archivos como arreglos de memoria. La
+        carga se difiere hasta el primer acceso, y el bit \emph{dirty}
+        marca qué páginas hay que escribir de vuelta al cerrar.
+    \item La \textbf{carga bajo demanda} y el \textbf{crecimiento
+        dinámico del stack} reducen drásticamente el costo de
+        \texttt{exec()} y eliminan la necesidad de reservar pila por
+        adelantado.
+    \item La \textbf{memoria compartida} (\texttt{shmget}, \texttt{shmat},
+        \texttt{shmdt}) y las bibliotecas compartidas se apoyan en
+        mapear el mismo \texttt{ppn} en varias tablas de páginas; un
+        contador de referencias resuelve la liberación segura.
+    \item El \textbf{copy on write} es lo que hace que \texttt{fork()}
+        sea barato en la práctica: el padre y el hijo comparten la
+        memoria en sólo-lectura hasta que alguien escribe.
+    \item Los \textbf{algoritmos de reemplazo} (FIFO, second
+        chance/clock, LRU/NFU con aging, NRU por clases, working set)
+        son aproximaciones distintas al mismo problema imposible:
+        adivinar qué página no se va a usar más. Cada uno equilibra la
+        precisión de la heurística contra el costo de implementarla.
+    \item \textbf{Linux} combina varias de estas ideas en un esquema de
+        dos listas (\texttt{active}/\texttt{inactive}) con política
+        global, intentando aproximar el working set del sistema.
+\end{itemize}
+
+\begin{idea}
+La memoria virtual no es ``un truco'' aislado: es una capa que se
+construye sobre el paginado y vuelve a usar las mismas herramientas
+(bits $V$, $A$, $D$, \emph{page faults}) para resolver problemas muy
+distintos: ejecutar procesos grandes, compartir bibliotecas, abaratar
+\texttt{fork}, mapear archivos, hacer crecer el stack. El próximo
+capítulo (\emph{Entrada/Salida}) se apoya también en muchas de estas
+ideas, especialmente en el mapeo en memoria de dispositivos.
+\end{idea}
+
+\end{document}

@@ -1,0 +1,1220 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- Encoding ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands]{babel}
+\usepackage{lmodern}
+
+% --- Layout ---
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{parskip}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em plus 0.2em minus 0.1em}
+
+% --- Tables and graphics ---
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{positioning,shapes.geometric,arrows.meta,fit,backgrounds,calc,decorations.pathreplacing}
+\usepackage{caption}
+\usepackage{amsmath,amssymb}
+
+% --- Code listings ---
+\usepackage{listings}
+\definecolor{codegray}{rgb}{0.96,0.96,0.96}
+\definecolor{codeborder}{rgb}{0.85,0.85,0.85}
+\definecolor{codecomment}{rgb}{0.30,0.55,0.30}
+\definecolor{codekeyword}{rgb}{0.10,0.30,0.70}
+\definecolor{codestring}{rgb}{0.65,0.15,0.10}
+
+\lstdefinestyle{cstyle}{
+    language=C,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+}
+
+\lstdefinestyle{shellstyle}{
+    language=bash,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstdefinestyle{textstyle}{
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstset{style=textstyle}
+
+% --- Definition / Idea / Important boxes ---
+\usepackage[most]{tcolorbox}
+\newtcolorbox{definicion}[1][]{
+    colback=blue!5!white,
+    colframe=blue!50!black,
+    fonttitle=\bfseries,
+    title=Definición,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{idea}[1][]{
+    colback=orange!5!white,
+    colframe=orange!60!black,
+    fonttitle=\bfseries,
+    title=Idea intuitiva,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{importante}[1][]{
+    colback=red!5!white,
+    colframe=red!50!black,
+    fonttitle=\bfseries,
+    title=Importante,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+
+% --- Hyperlinks ---
+\usepackage[colorlinks=true,
+            linkcolor=blue!60!black,
+            urlcolor=blue!50!black,
+            citecolor=blue!60!black]{hyperref}
+
+% --- Color palette ---
+\definecolor{fs1}{HTML}{4C72B0}
+\definecolor{fs2}{HTML}{DD8452}
+\definecolor{fs3}{HTML}{55A868}
+\definecolor{fs4}{HTML}{8172B2}
+\definecolor{fs5}{HTML}{C44E52}
+
+% --- Title ---
+\title{
+    \vspace{-2.5em}
+    \textbf{Resumen teórico --- Sistemas Operativos} \\[0.3em]
+    \large Notas del curso: \emph{Sistemas de archivos}
+}
+\author{
+    Tomás Rodeghiero \\
+    \small Sistemas Operativos --- Universidad Nacional de Río Cuarto
+}
+\date{2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent
+Este documento es un resumen teórico del capítulo \emph{Sistemas de
+archivos} de las \emph{Notas del curso} de Sistemas Operativos (Marcelo
+Arroyo, UNRC). Se presentan la estructura lógica de un disco, la
+interfaz de un sistema de archivos (atributos, directorios,
+operaciones, llamadas al sistema UNIX), el diseño del \emph{Virtual
+File System} (VFS) y el \emph{common file model}, la representación
+de archivos y directorios mediante FAT y mediante inodes (incluyendo
+inodes indirectos), el mecanismo de montaje, la abstracción de
+dispositivos como archivos especiales en \texttt{/dev}, el descriptor
+de archivo, las operaciones sobre dispositivos de caracteres, el caso
+de estudio del filesystem por capas de xv6 (con su mecanismo
+transaccional de logging), el proceso de booting (BIOS, GRUB, UEFI,
+secure boot, GPT) y los sistemas de archivos especiales (procfs,
+sysfs, ramfs, initramfs, busybox). El objetivo es servir de material
+de estudio para preparar los prácticos asociados al sistema de
+archivos y el final de la materia.
+\end{abstract}
+
+\tableofcontents
+\bigskip
+
+% =====================================================================
+\section{Introducción y estructura lógica de un disco}
+% =====================================================================
+
+La memoria principal o RAM es \textbf{volátil}: su contenido se pierde
+al apagar el sistema. Además, tiene capacidad limitada. Por eso se
+necesita un medio de almacenamiento \emph{masivo} y \emph{persistente}
+para los datos y programas del sistema y de los usuarios.
+
+Los dispositivos de almacenamiento han evolucionado a través del tiempo
+(tarjetas/cintas perforadas, discos magnéticos y ópticos, hasta las
+actuales memorias no volátiles de estado sólido: pendrives, SSD con
+interfaz ATA, etc.). En estas notas se denomina genéricamente
+\textbf{disco} a un dispositivo de almacenamiento.
+
+\begin{idea}
+Estos dispositivos almacenan datos en \emph{bloques} de tamaño fijo
+(por ejemplo, 512\,bytes). El sistema operativo no lee ni escribe
+``bytes sueltos'' contra un disco: trabaja siempre con bloques.
+\end{idea}
+
+\subsection{Particiones y volúmenes}
+
+Un dispositivo de almacenamiento puede dividirse lógicamente en
+\textbf{particiones} o \textbf{volúmenes}. Esto permite implementar
+sistemas de archivos que no deban manejar un espacio enorme de números
+de bloques. Un dispositivo no particionado provee \emph{al menos un}
+volumen.
+
+\subsection{Formato a bajo nivel}
+
+Un disco se formatea a bajo nivel con la siguiente estructura lógica:
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    cell/.style={draw,minimum height=0.8cm,align=center},
+]
+\node[cell,fill=fs5!20,minimum width=0.8cm] (bs) {bs};
+\node[cell,fill=fs1!15,minimum width=2.4cm,right=0pt of bs] (pt) {partition table};
+\node[cell,fill=fs3!15,minimum width=1.7cm,right=0pt of pt] (v1) {volume 1};
+\node[cell,fill=fs2!15,minimum width=1.7cm,right=0pt of v1] (v2) {volume 2};
+\node[cell,minimum width=1.5cm,right=0pt of v2] (dots) {\ldots};
+\end{tikzpicture}
+\end{center}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Boot sector (bs).} Contiene un pequeño programa
+        encargado de cargar el kernel del SO en memoria y transferirle
+        el control.
+    \item \textbf{Tabla de partición.} Información (comienzo, fin,
+        booteable, tipo de FS, \ldots) sobre la división lógica del
+        disco. Cada parte se denomina \emph{partición} o
+        \emph{volumen}.
+    \item \textbf{Volúmenes.} En cada uno se almacena un sistema de
+        archivos (FS).
+\end{itemize}
+
+\begin{importante}
+El estándar BIOS incluye la tabla de particiones primaria (de
+\emph{cuatro entradas}) dentro del boot sector. El estándar moderno
+UEFI se basa en una estructura mucho menos restrictiva, descripta más
+adelante.
+\end{importante}
+
+Una plataforma de hardware puede incluir varios dispositivos de
+almacenamiento de distintas tecnologías. El subsistema del SO que
+provee abstracciones para gestionar objetos de datos y programas se
+conoce como \textbf{sistema de archivos (filesystem)}.
+
+% =====================================================================
+\section{Interfaz de un sistema de archivos}
+% =====================================================================
+
+El sistema de archivos abstrae una unidad de almacenamiento en un
+\textbf{archivo}. Para organizar la enorme cantidad de archivos de un
+sistema, éstos se almacenan en contenedores llamados
+\textbf{directorios} o carpetas.
+
+\begin{definicion}
+Un \textbf{archivo} se representa como un par
+$(\textit{attributes},\;\textit{data})$: una colección de
+\emph{metadatos} (atributos) más una secuencia lógicamente contigua de
+\emph{datos}, aunque físicamente esos datos pueden estar dispersos en
+distintos bloques del dispositivo.
+\end{definicion}
+
+\subsection{Atributos típicos}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Nombre.}
+    \item \textbf{Tipo} (según el formato lógico del contenido).
+    \item \textbf{Tamaño} (comúnmente en bytes).
+    \item \textbf{Dueño}: usuario que define el control de acceso.
+    \item \textbf{Creador}: usuario que lo creó originalmente.
+    \item \textbf{Permisos de acceso}: qué usuarios pueden acceder y
+        cómo (lectura, escritura, ejecución, etc.).
+    \item \textbf{Hora y fecha de último acceso}; otros tiempos
+        (creación, modificación).
+\end{itemize}
+
+\subsection{Árbol de directorios y paths}
+
+Los directorios contienen archivos y \emph{subdirectorios}, formando
+una estructura de \textbf{árbol}: los archivos son las hojas y los
+directorios los nodos intermedios. Todo sistema de archivos contiene
+al menos un \textbf{directorio raíz}:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item En SO tipo UNIX se denota \texttt{/}.
+    \item En MS-Windows se denota \texttt{\textbackslash}
+        (\emph{backslash}).
+\end{itemize}
+
+Para identificar unívocamente a un archivo se usa su \textbf{path}
+(camino desde la raíz), por ejemplo
+\verb|/home/os-student/books/SO-book.pdf|. Esto permite reusar nombres
+en distintas carpetas.
+
+\subsection{Tipos de archivo}
+
+En DOS o MS-Windows, el tipo del archivo se determina por su
+\emph{extensión} (sufijo del nombre): \verb|.com|, \verb|.exe|, etc.
+En los SO tipo UNIX, el tipo está en los \emph{metadatos} y la
+extensión es sólo una convención entre usuarios; el sistema no la
+interpreta (por ejemplo, \verb|ld-linux.so.2|). UNIX clasifica los
+archivos en:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Regulares}: archivos de datos y ejecutables.
+    \item \textbf{Directorios}: contenedores de archivos y
+        subdirectorios.
+    \item \textbf{Enlaces simbólicos}: referencias (alias) a otros
+        archivos.
+    \item \textbf{Pipes y FIFOs}: usados para IPC.
+    \item \textbf{Especiales}: representan dispositivos (de bloques o
+        caracteres).
+    \item \textbf{Sockets}: mecanismo de comunicación local o remoto.
+\end{itemize}
+
+% =====================================================================
+\section{Operaciones sobre archivos y directorios}
+% =====================================================================
+
+\subsection{Operaciones sobre archivos regulares}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Creación, lectura, escritura, ejecución, borrado
+        (\emph{delete}).
+    \item \textbf{Append}: escribir datos al final.
+    \item \textbf{Truncado}: borrar datos al final.
+    \item \textbf{Posicionado}: mover el cursor de lectura/escritura.
+    \item \textbf{Renombrado}: cambiar el nombre.
+    \item \textbf{Locking}: obtener acceso exclusivo.
+    \item Cambiar otros metadatos (dueño, permisos, \ldots).
+\end{itemize}
+
+\subsection{Operaciones sobre directorios}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Creación.} Es común que un directorio vacío se cree
+        con \emph{dos enlaces}: \verb|..| (referencia al directorio
+        padre) y \verb|.| (referencia al directorio actual).
+    \item \textbf{Búsqueda} de un archivo o subdirectorio. Cada
+        elemento dentro de un directorio se llama \emph{directory
+        entry}.
+    \item \textbf{Eliminación.} Comúnmente se exige que el directorio
+        esté vacío.
+\end{itemize}
+
+\subsection{Paths absolutos y relativos}
+
+En las operaciones que reciben un \texttt{path}, éste puede ser un
+\textbf{full path} (desde la raíz) o \textbf{relativo} al directorio
+corriente. Por ejemplo:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \verb|open("/home/user1/docs/mycv.tex")| usa un full path.
+    \item \verb|open("docs/mycv.tex")| refiere al mismo archivo si el
+        directorio corriente es \verb|/home/user1/|.
+\end{itemize}
+
+\paragraph{Variables de ambiente.}
+Un programa se ejecuta en un \emph{ambiente} representado por un
+conjunto de \textbf{variables de ambiente}, cada una un par
+\verb|variable=value|. En UNIX, un programa accede a ellas mediante el
+tercer argumento de \texttt{main}. El directorio corriente está
+representado por la variable \texttt{PWD} (\verb|echo $PWD|).
+
+\subsection{Llamadas al sistema (UNIX)}
+
+Algunas llamadas al sistema sobre archivos en UNIX:
+
+\begin{lstlisting}[style=cstyle]
+int  creat (file_path, flags);             // creacion
+int  open  (file_path, flags);             // apertura -> file descriptor
+int  close (fd);                           // cierre
+int  read  (fd, buffer, count);            // lectura desde el cursor
+int  write (fd, buffer, count);            // escritura desde el cursor
+int  seek  (fd, pos, from);                // posicionado del cursor
+int  unlink(path);                         // eliminacion
+int  link  (dst, name);                    // hard link
+int  symlink(dst, name);                   // symbolic link
+int  stat  (fd, stat_buffer);              // metadatos
+\end{lstlisting}
+
+Y sobre directorios:
+
+\begin{lstlisting}[style=cstyle]
+int mkdir(path, mode);
+int rmdir(path);
+\end{lstlisting}
+
+\begin{idea}
+\texttt{open} retorna un \emph{file descriptor} que se usa en todas las
+operaciones siguientes. Posiciona el cursor en cero al abrir en modo
+lectura/escritura, o al final si se abre en modo \texttt{APPEND}.
+\texttt{read} retorna 0 cuando el cursor estaba en EOF.
+\end{idea}
+
+Para acceder al \emph{contenido} de un directorio, éste puede leerse
+como un archivo cuyos registros son los metadatos de los archivos que
+contiene. La biblioteca estándar de cada SO ofrece funciones para
+manipular directorios (en UNIX, ver \texttt{readdir()}).
+
+% =====================================================================
+\section{Virtual File System (VFS)}
+% =====================================================================
+
+Los SO modernos soportan diferentes tipos (o formatos) de sistemas de
+archivos en distintos dispositivos y tecnologías. En estos casos debe
+presentarse al usuario un sistema de archivos \emph{uniforme} con
+operaciones que oculten los detalles de bajo nivel.
+
+\begin{definicion}
+El \textbf{Virtual File System (VFS)} es el subsistema del kernel
+que, ante una llamada al sistema sobre archivos, determina
+\emph{sobre qué dispositivo} y \emph{con qué sistema de archivos
+concreto} debe realizarse la operación. Define un \emph{common file
+model} basado --- en los UNIX --- en nodos índices (\emph{inodes}).
+\end{definicion}
+
+\subsection{Diseño del VFS}
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    box/.style={draw,minimum height=0.7cm,align=center},
+    big/.style={draw,minimum height=0.9cm,align=center}
+]
+\node[big,fill=fs1!20,minimum width=1.8cm] (proc) at (0,5.0) {process};
+\node[anchor=west] at (proc.east) {syscalls};
+
+\node[big,fill=fs3!15,minimum width=8.5cm,minimum height=1.3cm] (vfs) at (0,3.4) {};
+\node[font=\bfseries\small] at (0,3.85) {VFS - common file model};
+\node[box,fill=white,minimum width=0.9cm] (sb)    at (-3.2,3.05) {sb};
+\node[box,fill=white,minimum width=0.9cm] (file)  at (-1.9,3.05) {file};
+\node[box,fill=white,minimum width=1.2cm] (inode) at (-0.4,3.05) {inode};
+\node[box,fill=white,minimum width=0.9cm] (dir)   at (1.2,3.05) {dir};
+\node[box,fill=white,minimum width=1.0cm] (fops)  at (2.6,3.05) {fops};
+
+\node[box,fill=fs2!15] (ext3) at (-3.5,1.7) {ext3};
+\node[box,fill=fs2!15] (fat32) at (-1.75,1.7) {fat32};
+\node[box,fill=fs2!15] (procfs) at (0,1.7) {proc};
+\node[box,fill=fs2!15] (ntfs) at (1.75,1.7) {NTFS};
+\node[box,fill=fs2!15] (nfs) at (3.5,1.7) {NFS};
+
+\node[big,fill=fs4!20,minimum width=3.0cm] (bc) at (0,0.4) {buffer cache};
+\node[big,fill=fs5!20,minimum width=4.5cm] (bdd) at (0,-0.9) {block device drivers};
+
+\draw[thick] (proc.south) -- (vfs.north);
+\draw[thick] (ext3.north)   -- ($(ext3.north)+(0,0.5)$);
+\draw[thick] (fat32.north)  -- ($(fat32.north)+(0,0.5)$);
+\draw[thick] (procfs.north) -- ($(procfs.north)+(0,0.5)$);
+\draw[thick] (ntfs.north)   -- ($(ntfs.north)+(0,0.5)$);
+\draw[thick] (nfs.north)    -- ($(nfs.north)+(0,0.5)$);
+
+\draw[thick] (ext3.south) -- (bc.north);
+\draw[thick] (fat32.south) -- (bc.north);
+\draw[thick] (procfs.south) -- (bc.north);
+\draw[thick] (ntfs.south) -- (bc.north);
+\draw[thick] (nfs.south) -- (bc.north);
+
+\draw[thick] (bc.south) -- (bdd.north);
+\end{tikzpicture}
+\end{center}
+
+\subsection{Estructuras de datos del common file model}
+
+El VFS define una interfaz que cada FS concreto debe implementar y
+estructuras de datos comunes que ocultan los detalles de cada filesystem
+real. Cada implementación concreta debe \textbf{mapear} su representación
+al modelo abstracto.
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Superblock (sb).} Metadatos del filesystem: tipo o
+        id, número y tamaño de bloques, ubicación del directorio raíz,
+        etc.
+    \item \textbf{File.} Representa un archivo \emph{abierto por un
+        proceso}. Contiene al menos un puntero al \emph{inode} del
+        archivo y un \emph{offset} (cursor de lectura/escritura).
+    \item \textbf{Inode.} Contiene los \emph{metadatos} del archivo:
+        tamaño, dispositivo, bloques de datos usados, etc.
+    \item \textbf{Directory (dir).} Un directorio es un archivo de
+        datos cuyas entradas son pares (\emph{name}, \emph{inode
+        number}). El VFS define también una interfaz abstracta para
+        buscar por \emph{file paths}.
+    \item \textbf{fops.} Interfaz abstracta que cada filesystem
+        concreto debe implementar con operaciones como
+        \texttt{open}, \texttt{read}/\texttt{write} y
+        \texttt{free} sobre inodes.
+\end{itemize}
+
+\subsection{Servicios comunes provistos por el VFS}
+
+\begin{itemize}[leftmargin=*]
+    \item Punto de entrada de las llamadas al sistema (\texttt{open},
+        \texttt{read}, \texttt{write}, \ldots).
+    \item \textbf{Buffers de caché} para dispositivos de bloques. Los
+        bloques de datos se mantienen en una caché con \emph{pool}
+        limitado y políticas de reemplazo (LRU, similar a memoria
+        virtual). \emph{No} se usa caché sobre dispositivos de
+        caracteres.
+    \item \textbf{Gestión de los requerimientos de E/S}, basada en
+        colas y algoritmos de ordenamiento (algoritmo del elevador
+        para discos, FIFO para ttys).
+    \item Registración de los sistemas de archivos concretos.
+    \item Registración de los device drivers.
+    \item Montaje y desmontaje de filesystems concretos.
+\end{itemize}
+
+\begin{importante}
+El módulo de \emph{buffers de caché} es el que se comunica con los
+\emph{block device drivers}. Los filesystems usan sus servicios para
+leer/escribir bloques: nunca tocan directamente al driver.
+\end{importante}
+
+% =====================================================================
+\section{Representación de archivos y directorios}
+% =====================================================================
+
+Para gestionar archivos y directorios se necesitan estructuras de
+control y metadatos almacenadas en el propio dispositivo. Mínimamente:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Metadatos del FS (ubicación del bloque del directorio raíz,
+        número de bloques en el dispositivo, etc.).
+    \item Conjunto de bloques libres y usados.
+    \item Descripción de espacios de bloques de datos y de metadatos.
+\end{itemize}
+
+La forma concreta que toman esas estructuras se llama \emph{formato del
+sistema de archivos}. Crear un sistema de archivos inicial se conoce
+como \textbf{formatear} el dispositivo (comandos \texttt{mkfs} en UNIX
+o \texttt{format} en DOS/Windows).
+
+A continuación se analizan dos formatos ampliamente usados: FAT e
+inodes.
+
+% ---------------------------------------------------------------------
+\subsection{FAT}
+% ---------------------------------------------------------------------
+
+\textbf{FAT} (\emph{File Allocation Table}) fue desarrollado para DOS y
+se usó en las primeras versiones de MS-Windows. Su estructura:
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    cell/.style={draw,minimum height=0.7cm,align=center},
+]
+\node[cell,fill=fs5!15,minimum width=0.7cm] (sb) {sb};
+\node[cell,fill=fs1!15,minimum width=1.2cm,right=0pt of sb] (fat) {FAT};
+\node[cell,fill=fs3!15,minimum width=1.2cm,right=0pt of fat] (root) {root};
+\node[cell,minimum width=1.0cm,right=0pt of root] (blk1) {};
+\node[cell,minimum width=2.6cm,right=0pt of blk1] (dots) {\ldots};
+\node[cell,minimum width=0.8cm,right=0pt of dots] (blkN) {};
+
+\draw[decorate,decoration={brace,mirror,amplitude=4pt}]
+    ($(blk1.south west)+(0,-0.1)$) -- ($(blkN.south east)+(0,-0.1)$)
+    node[midway,below=4pt,font=\small] {data blocks (clusters)};
+\end{tikzpicture}
+\end{center}
+
+\paragraph{Superblock.}
+Contiene metadatos como el tipo de FS (\emph{FAT magic number}), el
+número de bloques del volumen, el tamaño de bloque, etc.
+
+\paragraph{Clusters.}
+Para reducir el número de bloques y la fragmentación de datos, los
+bloques físicos se agrupan en \textbf{clusters}: grupos de bloques
+contiguos (típicamente de 1, 2, 4, 8 o 16 bloques). Un cluster es la
+\emph{unidad mínima} de asignación de datos para un archivo. El primer
+cluster de datos contiene el directorio raíz. En lo que sigue, ``bloque''
+y ``cluster'' se usan como sinónimos.
+
+\paragraph{La tabla FAT.}
+\texttt{fat[N]} es un arreglo con tantas entradas como clusters de
+datos. Implementa \emph{listas enlazadas} de los bloques de datos de
+cada archivo. Un directorio se representa como un archivo cuya
+secuencia de registros tiene la forma:
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    cell/.style={draw,minimum height=0.7cm,align=center},
+]
+\node[cell,minimum width=2.4cm,fill=fs1!15] (name) {file name};
+\node[cell,minimum width=1.2cm,fill=fs2!15,right=0pt of name] (a) {attrs};
+\node[cell,minimum width=1.6cm,fill=fs3!15,right=0pt of a] (c) {cluster1};
+\end{tikzpicture}
+\end{center}
+
+En FAT32 cada entrada tiene 32\,bits con 12\,bytes para el nombre y
+bits de atributos (\emph{size}, \emph{read only}, \emph{hidden},
+fechas, \ldots).
+
+\paragraph{Lectura de un archivo.}
+\texttt{cluster1} contiene el número del primer cluster del archivo.
+Los siguientes clusters se obtienen indexando en la FAT:
+\verb|FAT[cluster1]| contiene el \emph{next cluster}. Un valor 0
+indica fin del archivo. Así, un archivo con tres clusters
+$j \to i \to ?$ se representa con
+$\textit{FAT}[j] = i$, $\textit{FAT}[i] = 0$ (terminador).
+
+\begin{idea}
+La FAT contiene la lista de clusters de cada archivo. Los clusters
+\emph{libres} pueden inferirse de la FAT: si un cluster no es
+alcanzable desde ningún directorio, está libre. No hace falta
+almacenarlos en disco; pueden calcularse al inicio y mantenerse en
+memoria.
+\end{idea}
+
+% ---------------------------------------------------------------------
+\subsection{Nodos índices (inodes)}
+% ---------------------------------------------------------------------
+
+Una técnica alternativa, usada por la mayoría de los FS para grandes
+volúmenes (\textbf{ext2/3/4} en GNU/Linux y otros UNIX), \emph{separa}
+los metadatos de la entrada del directorio. Un \textbf{inode}
+(\emph{index node}) contiene los metadatos del archivo más la lista de
+bloques de datos que usa.
+
+\paragraph{Estructura del filesystem.}
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    cell/.style={draw,minimum height=0.7cm,align=center},
+]
+\node[cell,fill=fs5!15,minimum width=0.7cm] (sb) {sb};
+\node[cell,fill=fs1!15,minimum width=1.2cm,right=0pt of sb] (bm) {bitmap};
+\node[cell,fill=fs4!15,minimum width=1.4cm,right=0pt of bm] (in) {inodes};
+\node[cell,minimum width=1.0cm,right=0pt of in] (b1) {};
+\node[cell,minimum width=2.4cm,right=0pt of b1] (dots) {\ldots};
+\node[cell,minimum width=0.7cm,right=0pt of dots] (bN) {};
+
+\draw[decorate,decoration={brace,mirror,amplitude=4pt}]
+    ($(b1.south west)+(0,-0.1)$) -- ($(bN.south east)+(0,-0.1)$)
+    node[midway,below=4pt,font=\small] {data blocks (clusters)};
+\end{tikzpicture}
+\end{center}
+
+\paragraph{Contenido de un inode.}
+Un inode contiene:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Atributos (dueño, permisos, tamaño en bytes, fechas, \ldots).
+    \item Un arreglo o tabla de números de bloques de datos
+        (\emph{data blocks table}) de tamaño \emph{predefinido} $k$,
+        que representa la secuencia de bloques que ocupa el archivo.
+\end{itemize}
+
+\paragraph{Directorios.}
+Un directorio es un archivo estructurado cuyas entradas tienen sólo
+dos campos: $(\textit{filename},\;\textit{inode})$. Habitualmente el
+directorio raíz está representado por el primer inode. Los inodes
+están numerados/indexados.
+
+\paragraph{Gestión de espacios libres.}
+Es conveniente usar un \textbf{bitmap} para la gestión de inodes y
+bloques de datos libres. Si bien se podrían deducir por
+\emph{complemento} de los alcanzables, esto sería costoso porque la
+información está distribuida en todos los inodes.
+
+\paragraph{Tamaño de un inode.}
+Por eficiencia se elige el tamaño de un inode igual al de un bloque
+físico (sector) del disco.
+
+\begin{importante}
+Un inode con tabla de tamaño $k$ puede representar archivos de \emph{a
+lo sumo} $k$ bloques de datos. Para archivos más grandes se usa la
+técnica de los \textbf{inodes indirectos}.
+\end{importante}
+
+\paragraph{Inodes indirectos.}
+La idea es que las últimas entradas de la tabla del inode apunten a
+\emph{otros inodes} que sólo contienen tablas de números de bloques
+adicionales. Comúnmente las entradas finales son:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Indirecto simple}: árbol de un nivel.
+    \item \textbf{Indirecto doble}: árbol de dos niveles.
+    \item \textbf{Indirecto triple}: árbol de tres niveles.
+\end{itemize}
+
+Cuantos más niveles de indirección, más grande puede ser el archivo,
+pero más lentos son los accesos a los últimos bloques (más
+indirecciones a resolver).
+
+\paragraph{En la creación del filesystem.}
+Al ejecutar \texttt{mkfs} se decide la cantidad de inodes a reservar en
+el disco. El número de inodes determina la \emph{cantidad máxima de
+archivos y directorios} que puede tener el filesystem.
+
+% =====================================================================
+\section{Montaje de sistemas de archivos}
+% =====================================================================
+
+Los SO presentan el espacio de nombres global de dos maneras distintas:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{MS-Windows.} Cada FS aparece de forma
+        \emph{independiente}: un full path toma la forma de un nombre
+        de dispositivo (una letra) seguido por dos puntos y un path.
+        Típicamente \texttt{C} es el disco primario.
+    \item \textbf{UNIX.} Se presenta al usuario un \textbf{único árbol}
+        de archivos. La raíz corresponde al FS del dispositivo de
+        almacenamiento primario. Para acceder a otro dispositivo hay
+        que \textbf{montarlo} en algún directorio (por ejemplo
+        \texttt{/mnt/mypendrive}) del árbol. Los comandos son
+        \texttt{mount} y \texttt{umount}.
+\end{itemize}
+
+\begin{idea}
+El mecanismo de montaje permite que las aplicaciones accedan a
+archivos con nombres preestablecidos sin nombrar dispositivos
+(\texttt{C:}, \texttt{D:}). Esto facilita escribir aplicaciones
+portables.
+\end{idea}
+
+\subsection{Ejemplo: montar un pendrive FAT en Linux}
+
+\begin{lstlisting}[style=shellstyle]
+mkdir /mnt/mypendrive
+mount /dev/sdb /mnt/mypendrive
+\end{lstlisting}
+
+Esta operación ``cuelga'' el FS del pendrive en el directorio
+\verb|/mnt/mypendrive| del FS raíz. Luego, los archivos del pendrive
+son accesibles mediante el path \verb|/mnt/mypendrive/...|.
+
+\subsection{Tabla de montaje}
+
+El VFS mantiene una tabla de filesystems montados, por ejemplo:
+
+\begin{center}
+\small
+\begin{tabular}{@{}llllc@{}}
+\toprule
+\textbf{mount point} & \textbf{fs type} & \textbf{device} & \textbf{major} & \textbf{access mode} \\
+\midrule
+\texttt{/}                & ext4    & \texttt{/dev/sda1} & 1 & rw \\
+\texttt{/mnt/mypendrive}  & fat32   & \texttt{/dev/sdb}  & 5 & r \\
+\texttt{/proc}            & procfs  & proc               & 0 & rw \\
+\ldots                    & \ldots  & \ldots             & \ldots & \ldots \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+En UNIX, esta información se obtiene con el comando \texttt{mount} o
+leyendo \verb|/etc/mtab|.
+
+\paragraph{umount.}
+El comando \verb|umount /mnt/mypendrive| desmonta el filesystem. Es
+seguro retirar el dispositivo recién \emph{después} de desmontarlo
+porque hace un \texttt{flush} de los bloques que aún pudieran estar en
+caché.
+
+\subsection{Interfaz de FS que el VFS exige}
+
+Cada FS concreto debe implementar y registrar:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{mount}: cargar y registrar el superblock.
+    \item \texttt{umount}: liberar el superblock.
+    \item Operaciones sobre directorios (creación, destrucción,
+        búsqueda por file paths, \ldots).
+    \item Operaciones sobre archivos (inodes).
+\end{itemize}
+
+Cada proceso registra sus archivos abiertos en una tabla de su propio
+descriptor (en xv6 es el campo \verb|ofile[]| de \verb|struct proc|),
+representada como un arreglo de punteros a entradas en la tabla de
+\verb|struct file|.
+
+\subsection{Anatomía de un \texttt{open}}
+
+Cuando un proceso ejecuta
+\verb|fd = open("/home/user1/docs/mycv.tex", ...)|, el VFS:
+
+\begin{enumerate}[leftmargin=*]
+    \item Determina en qué FS concreto está el archivo (en este caso
+        el FS raíz, de tipo \texttt{ext4}).
+    \item Invoca una función del tipo
+        \verb|inode = fs.dir_lookup("/home/user1/docs/mycv.tex")| que
+        busca y lee el inode correspondiente.
+    \item Crea una nueva entrada en la tabla de archivos abiertos del
+        sistema.
+    \item Registra el archivo abierto en el descriptor del proceso.
+    \item Retorna el índice en \verb|ofiles[]| (el \emph{file
+        descriptor}).
+\end{enumerate}
+
+\subsection{Anatomía de un \texttt{write}}
+
+Cuando luego el proceso ejecuta \verb|write(fd, buffer, count)|, el
+VFS:
+
+\begin{enumerate}[leftmargin=*]
+    \item Accede a la \texttt{struct file} correspondiente a
+        \texttt{fd}.
+    \item De la tabla de montaje determina el FS concreto a usar (por
+        ejemplo, el módulo \texttt{ext4}).
+    \item Invoca una función del tipo
+        \verb|fs.write(inode, buffer, count, offset)|.
+        Esta requerirá escribir en uno o más bloques, servicio que
+        provee la capa de \emph{buffer de caché} mediante
+        \verb|bio_write(buf, dev)|.
+    \item Si \texttt{buf} no está en la caché, hay que cargarlo del
+        disco en un nuevo buffer; luego se modifica y se marca como
+        \emph{dirty} (se escribirá a disco en un \texttt{close(fd)} o
+        cuando expire un timer).
+    \item Si hay que hacer un requerimiento a disco, éste se encola
+        según una política de scheduling (algoritmo del elevador).
+    \item El \emph{I/O scheduler} eventualmente invoca a
+        \verb|block_dev.do_request(request)| del device driver
+        registrado. El \emph{major number} del inode determina cuál es
+        el driver; el \emph{minor number} le dice al driver con qué
+        dispositivo concreto interactuar.
+\end{enumerate}
+
+\begin{idea}
+Como un device driver puede controlar varios dispositivos del mismo
+tipo, la pareja (major, minor) es la clave: major elige el driver y
+minor elige el dispositivo concreto dentro de ese driver.
+\end{idea}
+
+% =====================================================================
+\section{Dispositivos como archivos especiales}
+% =====================================================================
+
+En muchos SO los dispositivos aparecen en el sistema de archivos como
+\textbf{archivos especiales}. En UNIX viven bajo \verb|/dev| (por
+\emph{devices}). Estos archivos le permiten al VFS mantener la relación
+entre los dispositivos y los device drivers correspondientes.
+
+\paragraph{Major y minor numbers.}
+Cada archivo especial contiene un par de campos numéricos:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{major number}: determina el \emph{tipo} de
+        dispositivo. Se usa para relacionar una clase de dispositivos
+        con su device driver.
+    \item \textbf{minor number}: identifica un dispositivo dentro de
+        ese tipo.
+\end{itemize}
+
+\subsection{Tabla de device drivers registrados}
+
+Cada device driver se registra en el VFS en su inicio, indicando el
+archivo especial y el major number. Así, el VFS mantiene una tabla:
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    cell/.style={draw,minimum height=0.55cm,align=center},
+]
+\node[font=\bfseries\small] at (0,2.5) {devices};
+\node[cell,minimum width=1.8cm,fill=fs1!10] (d1) at (0,2.0) {\ldots};
+\node[cell,minimum width=1.8cm,fill=fs2!20] (di) at (0,1.45) {};
+\node[cell,minimum width=1.8cm,fill=fs1!10] (d3) at (0,0.9) {\ldots};
+\node[anchor=east] at (di.west) {i};
+
+\node[font=\bfseries\small] at (4.0,2.5) {dev fops};
+\node[cell,minimum width=1.4cm,fill=fs3!20] (op1) at (4.0,2.0) {open};
+\node[cell,minimum width=1.4cm,fill=fs3!20,below=0pt of op1] (op2) {write};
+\node[cell,minimum width=1.4cm,fill=fs3!20,below=0pt of op2] (op3) {read};
+\node[cell,minimum width=1.4cm,below=0pt of op3] (op4) {\ldots};
+
+\node[anchor=west] at (6,2.0) {driver open function};
+\node[anchor=west] at (6,1.45) {driver write function};
+\node[anchor=west] at (6,0.9) {driver read function};
+
+\draw[-Latex,thick] (di.east) -- ($(op2.west)+(-0.2,0)$);
+\draw[-Latex,thick] (op1.east) -- (6,2.0);
+\draw[-Latex,thick] (op2.east) -- (6,1.45);
+\draw[-Latex,thick] (op3.east) -- (6,0.9);
+\end{tikzpicture}
+\end{center}
+
+Cada entrada se indexa por el major number. Asocia el dispositivo con
+las operaciones registradas por el driver.
+
+% =====================================================================
+\section{Descriptor de archivo}
+% =====================================================================
+
+\texttt{open} retorna un \textbf{file descriptor} que queda registrado
+en la \emph{opened files table} (\verb|ofiles|) del descriptor del
+proceso. Esta tabla es un arreglo de punteros a estructuras como:
+
+\begin{lstlisting}[style=cstyle]
+struct file {
+    union {
+        struct pipe  *pipe;
+        struct inode *inode;
+    };
+    int          ref_count;   // procesos trabajando con este file
+    unsigned int offset;      // posicion actual de lectura/escritura
+};
+\end{lstlisting}
+
+Un inode puede representarse como:
+
+\begin{lstlisting}[style=cstyle]
+struct inode {
+    unsigned int num;        // numero de inode (en disco)
+    int          ref_count;
+    // los campos siguientes se traen/guardan de/a disco
+    short int    type;       // file, directory, FIFO, device, ...
+    short int    major;
+    short int    minor;
+    short int    links;      // numero de symlinks a este inode
+    // otros metadatos: owner id, group id, permisos, ...
+    unsigned int size;       // en bytes
+    unsigned int data_blocks[N];
+};
+\end{lstlisting}
+
+% =====================================================================
+\section{Operaciones con dispositivos de caracteres}
+% =====================================================================
+
+La E/S con dispositivos de caracteres se diferencia de la de bloques en
+dos aspectos:
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item No tienen filesystem asociado.
+    \item La E/S \textbf{no pasa por la caché de bloques} (no es
+        buffered): se realiza \emph{directamente} contra el
+        dispositivo.
+\end{enumerate}
+
+\subsection{Ejemplo: escribir a stdout}
+
+Cuando un proceso desea escribir en el descriptor 1 (salida estándar),
+ese descriptor refiere a una \texttt{struct file} cuyo \texttt{inode}
+describe un \emph{archivo especial} (por ejemplo \verb|/dev/tty| en
+Linux o \texttt{console} en xv6) representando un dispositivo de
+caracteres. El \emph{major number} identifica al driver con el que se
+debe interactuar. El VFS invoca a la función correspondiente:
+
+\begin{lstlisting}[style=cstyle]
+devices[p->ofiles[1]->inode.major].write(p->ofiles[1], ...);
+\end{lstlisting}
+
+\subsection{Caso xv6}
+
+En xv6 (similar a UNIX) los character device drivers se registran en
+\verb|struct devsw devsw[]|. En xv6-riscv hay un único dispositivo
+registrado: la \textbf{consola}. La comunicación se hace por el puerto
+serie UART:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{uart.c} implementa el \emph{bottom half} (bajo
+        nivel).
+    \item \texttt{console.c} implementa la lógica de alto nivel
+        (\emph{tty discipline}) del driver.
+\end{itemize}
+
+El archivo \texttt{console} en la raíz del FS es un archivo especial
+que representa al dispositivo. Es abierto por \texttt{init}
+\textbf{tres veces} para entrada estándar, salida estándar y salida
+estándar de errores. Esos descriptores son \emph{heredados} por los
+demás procesos (shell y otros) vía \texttt{fork()}.
+
+% =====================================================================
+\section{Filesystem de xv6}
+% =====================================================================
+
+Xv6 monta un \emph{único} sistema de archivos con su propio formato
+basado en inodes. Se construye al compilar los procesos de usuario
+mediante la utilidad \texttt{mkfs} incluida en el build-system.
+
+\subsection{Implementación por capas}
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    cell/.style={draw,minimum height=0.6cm,minimum width=3.5cm,align=center},
+]
+\node[cell,fill=fs1!20] (fd) at (0,4.2) {File descriptor};
+\node[cell,fill=fs2!20,below=0pt of fd] (pn) {Pathname};
+\node[cell,fill=fs2!20,below=0pt of pn] (di) {Directory};
+\node[cell,fill=fs2!20,below=0pt of di] (in) {Inode};
+\node[cell,fill=fs3!20,below=0pt of in] (lg) {Logging};
+\node[cell,fill=fs4!20,below=0pt of lg] (bc) {Buffer cache};
+\node[cell,fill=fs5!20,below=0pt of bc] (dd) {Disk driver};
+
+\node[anchor=west,xshift=4pt] at (fd.east) {file.h/c};
+\node[anchor=west,xshift=4pt] at (di.east) {fs.h/c};
+\node[anchor=west,xshift=4pt] at (lg.east) {log.c};
+\node[anchor=west,xshift=4pt] at (bc.east) {bio.c};
+\node[anchor=west,xshift=4pt] at (dd.east) {virtio disc.c};
+\end{tikzpicture}
+\end{center}
+
+\subsection{FS transaccional con logging}
+
+\begin{importante}
+El filesystem de xv6 es \textbf{transaccional} para evitar
+inconsistencias en \emph{crashes} o cortes de energía. Antes de escribir
+un conjunto de requerimientos a disco, xv6 los escribe en un
+\textbf{log} (área especial). Luego realiza un \emph{commit},
+replicando (o moviendo) las operaciones del log a los bloques
+correspondientes. Finalmente borra el log.
+\end{importante}
+
+\paragraph{Recuperación tras crash.}
+Cuando el sistema inicia, el FS verifica el log:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Si está marcado como \emph{completado}, se realizan las
+        copias a los bloques de datos contenidos en el log.
+    \item Si no, el log se ignora y se elimina. En este caso el
+        sistema pierde las últimas escrituras, pero queda en un
+        estado \textbf{consistente}.
+\end{itemize}
+
+\subsection{Buffer cache simplificada}
+
+El buffer de caché de xv6 consiste en una \textbf{lista doblemente
+encadenada} de bloques (buffers). Los buffers son fijos (arreglo
+declarado estáticamente) y \emph{no} implementa una técnica de
+reemplazo. El manual de xv6 describe en mayor detalle el diseño y la
+implementación.
+
+% =====================================================================
+\section{Booting}
+% =====================================================================
+
+El proceso de inicio (\emph{boot}) comúnmente comienza por un programa
+en ROM conocido como \textbf{firmware}.
+
+\subsection{BIOS}
+
+En la PC el firmware se denomina \textbf{Basic Input-Output System
+(BIOS)}. Consiste en un conjunto de programas que verifica la RAM
+física instalada y algunos dispositivos básicos (teclado, discos).
+Suele almacenarse en ROM o EPROM. Usa una memoria volátil mantenida
+con una pequeña batería, conocida como \textbf{CMOS}, donde guarda
+fecha, hora y parámetros de configuración del hardware.
+
+\paragraph{Carga del kernel.}
+La BIOS carga en memoria el \emph{primer sector} del disco primario
+(el \textbf{boot sector}) y le transfiere el control. Este programa
+\textbf{boot loader} se encarga de cargar en memoria el código y los
+datos del kernel del SO y transferirle el control.
+
+El boot loader es muy pequeño (debe caber en un bloque de típicamente
+512\,bytes); ese bloque también puede contener la tabla de particiones.
+El programa debe saber dónde se encuentra el kernel en el disco o
+volumen.
+
+\subsection{Multiboot loaders (GRUB)}
+
+Un \textbf{boot loader genérico multiboot} como \textbf{GRUB} permite
+iniciar diferentes sistemas operativos instalados en distintos
+dispositivos o volúmenes. Realiza la tarea en \emph{dos etapas}:
+
+\begin{enumerate}[leftmargin=*]
+    \item El boot loader del boot sector carga el multiboot loader
+        (GRUB) y le transfiere el control.
+    \item GRUB --- que conoce formatos de filesystems y de
+        ejecutables (ELF, COFF, etc.) --- lee un archivo de
+        configuración y presenta un menú al usuario para que
+        seleccione el SO a iniciar.
+\end{enumerate}
+
+Estos multiboot loaders se usan para iniciar SO tipo UNIX (como
+GNU/Linux), donde el kernel es un archivo más cuya ubicación dentro del
+FS no se conoce a priori.
+
+El método descripto se conoce como \textbf{BIOS booting} y se
+desarrolló en 1975, principalmente para la PC y DOS.
+
+\subsection{UEFI}
+
+Actualmente es común el estándar \textbf{Unified Extensible Firmware
+Interface (UEFI)}, basado en un mecanismo mucho más flexible. Sus
+características:
+
+\begin{itemize}[leftmargin=*]
+    \item Para que sea booteable, un disco debe contener una partición
+        de tipo FAT rotulada \emph{EFI}. En ella se almacenan
+        directamente los kernels de los SO o arrancadores (como GRUB)
+        y sus archivos de configuración. UEFI conoce el formato FAT y
+        carga el SO en base a esos archivos.
+    \item Define en qué áreas de memoria el kernel encontrará
+        información sobre la configuración del hardware.
+    \item Cada kernel (o boot loader) es un archivo con extensión
+        \texttt{.efi} compilado y enlazado para soportar el estándar.
+    \item \textbf{Secure boot}: soporta firmas de kernels para
+        verificar su integridad. El firmware permite almacenar en la
+        EPROM certificados con las claves públicas de las empresas u
+        organizaciones que los desarrollan.
+    \item Soporta booteo remoto y tablas de partición de tamaño
+        arbitrario basadas en el estándar \textbf{GPT} (\emph{Guided
+        Partition Table}).
+\end{itemize}
+
+% =====================================================================
+\section{Sistemas de archivos especiales}
+% =====================================================================
+
+Algunos SO modernos como GNU/Linux soportan sistemas de archivos cuyo
+contenido \emph{no necesariamente se almacena en disco}. Se conocen
+como \textbf{pseudo filesystems} o \emph{especiales}.
+
+\subsection{procfs}
+
+En GNU/Linux se usa \textbf{procfs}, comúnmente montado en
+\verb|/proc|. Brinda información sobre datos del kernel y de cada
+proceso en ejecución, en forma de un árbol de directorios y archivos.
+Los usuarios pueden acceder y modificar datos (variables) internos del
+kernel como si fueran archivos:
+
+\begin{lstlisting}[style=shellstyle]
+cat /proc/cpuinfo    # detalles de las CPUs
+cat /proc/meminfo    # uso de la memoria
+\end{lstlisting}
+
+Salida típica de \verb|cat /proc/meminfo|:
+
+\begin{lstlisting}[style=textstyle]
+MemTotal:       994548 kB
+MemFree:         65228 kB
+MemAvailable:   263724 kB
+Buffers:         21396 kB
+Cached:         304440 kB
+SwapCached:      25260 kB
+Active:         267424 kB
+Inactive:       503720 kB
+Active(anon):   110956 kB
+Inactive(anon): 351176 kB
+...
+\end{lstlisting}
+
+Es posible modificar parámetros del kernel mediante:
+
+\begin{lstlisting}[style=shellstyle]
+echo <value> > /proc/sys/<class>/<parameter>
+\end{lstlisting}
+
+\subsection{sysfs}
+
+\textbf{sysfs} está diseñado específicamente para contener archivos
+especiales que representan dispositivos. Comúnmente se monta en
+\verb|/dev|. Simplifica la manipulación de parámetros del kernel y de
+dispositivos/drivers. En sistemas tipo BSD-UNIX o Linux se logra lo
+mismo con el comando (y syscall) \texttt{sysctl}.
+
+\subsection{ramfs e initramfs}
+
+Otros filesystems se implementan en memoria principal, como
+\textbf{ramfs}. Se usan durante el \emph{booting} como sistema de
+archivos raíz inicial: el boot loader carga en memoria una imagen del
+filesystem y se la presenta al kernel como un \textbf{initramfs}. Estos
+filesystems contienen un conjunto reducido de programas de inicio y de
+montaje de otros sistemas de archivos en disco.
+
+\paragraph{busybox.}
+En Linux, el \emph{initramfs} contiene comúnmente un FS con las
+utilidades del paquete \textbf{busybox}, que contiene versiones
+mínimas de las utilidades más comunes de UNIX en un único ejecutable.
+Busybox también se usa en \emph{embedded systems}, ya que permite
+generar un FS muy pequeño con algunos archivos de configuración en
+\texttt{/etc}, dispositivos en \verb|/dev/| y un kernel (generalmente
+Linux).
+
+% =====================================================================
+\section{Cierre}
+% =====================================================================
+
+El subsistema de archivos es la capa que organiza la persistencia y le
+da forma humana al almacenamiento masivo. Las ideas más importantes:
+
+\begin{itemize}[leftmargin=*]
+    \item Un disco se ve a través de \textbf{volúmenes}; cada uno
+        contiene un \emph{filesystem} con su propio formato (FAT,
+        ext, NTFS, \ldots).
+    \item Cada archivo es un par
+        $(\textit{attributes},\;\textit{data})$ y se organiza dentro
+        de un \textbf{árbol de directorios}. La unidad de
+        identificación es el \emph{path}.
+    \item El \textbf{VFS} provee un \emph{common file model} basado en
+        \texttt{sb}, \texttt{file}, \texttt{inode}, \texttt{dir} y
+        \texttt{fops}. Cada FS concreto mapea su formato a este
+        modelo y se enchufa al kernel implementando una API definida.
+    \item Dos formatos paradigmáticos: \textbf{FAT} (listas enlazadas
+        de clusters indexadas en la tabla FAT) e \textbf{inodes} (cada
+        archivo es un nodo índice con metadatos + tabla de bloques;
+        para archivos grandes se usan inodes indirectos
+        simple/doble/triple).
+    \item El \textbf{montaje} cuelga otro FS en algún directorio del
+        árbol raíz. La tabla de montaje del VFS le permite enrutar
+        cada operación al filesystem correcto.
+    \item Bajo el principio Unix de ``todo es un archivo'', los
+        dispositivos viven como \textbf{archivos especiales} en
+        \verb|/dev|, con un par (major, minor): major elige el
+        driver, minor elige el dispositivo concreto. El descriptor de
+        archivo del proceso (\verb|ofiles|) apunta a una
+        \texttt{struct file} con cursor compartido.
+    \item Los \textbf{dispositivos de caracteres} no usan caché de
+        bloques: la E/S va directa al driver. Ejemplo paradigmático:
+        la consola de xv6, abierta tres veces por \texttt{init} y
+        heredada vía \texttt{fork}.
+    \item El \textbf{filesystem de xv6} está organizado en capas
+        (file descriptor / pathname / directory / inode / logging /
+        buffer cache / disk driver). Es \emph{transaccional}: el log
+        garantiza que un crash deje el FS en estado consistente.
+    \item El \textbf{booting} arranca con el firmware (BIOS) que carga
+        un boot loader (eventualmente multiboot, como GRUB); el
+        estándar moderno UEFI usa una partición FAT con archivos
+        \texttt{.efi} y soporta \emph{secure boot} y GPT.
+    \item Los \textbf{filesystems especiales} (procfs, sysfs, ramfs,
+        initramfs con busybox) exponen información o servicios del
+        kernel como si fueran archivos: el mismo principio uniforme
+        que con los dispositivos.
+\end{itemize}
+
+\begin{idea}
+La gran abstracción del sistema de archivos es presentar a procesos y
+usuarios un \emph{único árbol uniforme} en el que conviven discos,
+particiones, dispositivos, parámetros del kernel y procesos en
+ejecución. Esa uniformidad es la base que permite construir, encima,
+un shell expresivo y herramientas Unix simples y componibles.
+\end{idea}
+
+\end{document}

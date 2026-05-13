@@ -1,0 +1,706 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- Encoding ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands]{babel}
+\usepackage{lmodern}
+
+% --- Layout ---
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{parskip}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em plus 0.2em minus 0.1em}
+
+% --- Tables and graphics ---
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{positioning,shapes.geometric,arrows.meta,fit,backgrounds,calc,decorations.pathreplacing}
+\usepackage{caption}
+\usepackage{amsmath,amssymb}
+
+% --- Code listings ---
+\usepackage{listings}
+\definecolor{codegray}{rgb}{0.96,0.96,0.96}
+\definecolor{codeborder}{rgb}{0.85,0.85,0.85}
+\definecolor{codecomment}{rgb}{0.30,0.55,0.30}
+\definecolor{codekeyword}{rgb}{0.10,0.30,0.70}
+\definecolor{codestring}{rgb}{0.65,0.15,0.10}
+
+\lstdefinestyle{cstyle}{
+    language=C,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+}
+
+\lstdefinestyle{shellstyle}{
+    language=bash,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstdefinestyle{textstyle}{
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstset{style=shellstyle}
+
+% --- Definition / Idea / Important boxes ---
+\usepackage[most]{tcolorbox}
+\newtcolorbox{definicion}[1][]{
+    colback=blue!5!white,
+    colframe=blue!50!black,
+    fonttitle=\bfseries,
+    title=Definición,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{idea}[1][]{
+    colback=orange!5!white,
+    colframe=orange!60!black,
+    fonttitle=\bfseries,
+    title=Idea intuitiva,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{importante}[1][]{
+    colback=red!5!white,
+    colframe=red!50!black,
+    fonttitle=\bfseries,
+    title=Importante,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+
+% --- Hyperlinks ---
+\usepackage[colorlinks=true,
+            linkcolor=blue!60!black,
+            urlcolor=blue!50!black,
+            citecolor=blue!60!black]{hyperref}
+
+% --- Color palette ---
+\definecolor{sec1}{HTML}{4C72B0}
+\definecolor{sec2}{HTML}{DD8452}
+\definecolor{sec3}{HTML}{55A868}
+\definecolor{sec4}{HTML}{8172B2}
+\definecolor{sec5}{HTML}{C44E52}
+
+% --- Title ---
+\title{
+    \vspace{-2.5em}
+    \textbf{Resumen teórico --- Sistemas Operativos} \\[0.3em]
+    \large Notas del curso: \emph{Usuarios y seguridad}
+}
+\author{
+    Tomás Rodeghiero \\
+    \small Sistemas Operativos --- Universidad Nacional de Río Cuarto
+}
+\date{2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent
+Este documento es un resumen teórico del capítulo \emph{Usuarios y
+seguridad} de las \emph{Notas del curso} de Sistemas Operativos
+(Marcelo Arroyo, UNRC). Se presentan los mecanismos que un SO debe
+ofrecer para soportar múltiples usuarios: la identificación mediante
+usuarios y grupos (con sus bases de datos en \texttt{/etc/passwd},
+\texttt{/etc/shadow} y \texttt{/etc/group}), el proceso de login y la
+autenticación basada en contraseñas con \emph{hash criptográfico} y
+\emph{salt} (incluyendo PAM y la autenticación multifactor), el control
+de acceso a recursos mediante la \emph{matriz de control de acceso} y
+su implementación como ACLs (con el modelo UNIX U/G/O de 9 bits y las
+\emph{full ACLs}), los modelos DAC y MAC (con un ejemplo de
+Bell-LaPadula), los privilegios de un proceso (real UID, effective
+UID, \texttt{setuid}, \texttt{su}, \texttt{sudo}) y las
+\emph{capacidades} como mecanismo más fino de control de privilegios.
+El objetivo es servir de material de estudio para el final de la
+materia.
+\end{abstract}
+
+\tableofcontents
+\bigskip
+
+% =====================================================================
+\section{Introducción}
+% =====================================================================
+
+Soportar \textbf{múltiples usuarios} en un sistema operativo no es sólo
+una cuestión de comodidad: implica un conjunto de mecanismos que el SO
+debe definir e implementar para que los usuarios convivan sin pisarse,
+sin invadirse y sin agotar los recursos compartidos. Las Notas listan
+siete responsabilidades centrales:
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Separación de ambientes de trabajo} de cada usuario
+        en el sistema de archivos (cada usuario tiene su propio
+        \emph{home}, sus archivos privados, sus configuraciones).
+    \item \textbf{Identificar} y \textbf{autenticar} a los usuarios.
+    \item Relacionar programas, procesos y usuarios (todo programa que
+        se ejecuta corre ``a nombre de'' algún usuario).
+    \item Establecer \textbf{límites} en la utilización de recursos
+        para que todos los usuarios puedan trabajar.
+    \item Ofrecer \textbf{servicios} (comandos y syscalls) de gestión
+        de usuarios.
+    \item Ofrecer mecanismos de \textbf{control de acceso} a recursos.
+    \item Opcionalmente, ofrecer múltiples terminales/consolas (reales
+        o virtuales) para que varios usuarios puedan operar en
+        paralelo.
+\end{enumerate}
+
+\begin{idea}
+A grandes rasgos, los temas que siguen tratan: \emph{quién} es un
+usuario (sección 2), \emph{cómo} demuestra que es quien dice ser
+(sección 3), \emph{a qué} puede acceder (secciones 4 y 5) y con
+\emph{qué privilegios} corre un proceso suyo (secciones 6 y 7).
+\end{idea}
+
+% =====================================================================
+\section{Usuarios, grupos y archivos}
+% =====================================================================
+
+Un SO asocia a cada usuario con:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item un \textbf{identificador único} (en UNIX, un entero positivo,
+        el \emph{uid}),
+    \item un \textbf{rótulo} o \emph{nombre de usuario}, y
+    \item un conjunto de \textbf{credenciales de autenticación}.
+\end{itemize}
+
+\subsection{Grupos y recursos}
+
+\begin{definicion}
+Un \textbf{grupo} representa un conjunto de usuarios. Se usa para
+facilitar la gestión del control de acceso: en lugar de listar
+permisos usuario por usuario, basta con asignar permisos al grupo y
+agregar al usuario al grupo.
+\end{definicion}
+
+Un \textbf{recurso} es un archivo de datos o programa, un mecanismo de
+IPC (por ejemplo, un pipe), un proceso o un dispositivo de hardware.
+El SO debe proteger los recursos respecto a quién puede acceder a
+cada uno.
+
+\subsection{El usuario privilegiado}
+
+\begin{importante}
+En todo sistema existe \emph{al menos un} \textbf{usuario privilegiado}.
+Es quien puede crear nuevos usuarios y asignarles roles o permisos. No
+tiene restricciones de acceso a los recursos y actúa como
+\textbf{administrador} del sistema.
+\begin{itemize}[leftmargin=*,nosep]
+    \item En UNIX se llama \textbf{root}.
+    \item En MS-Windows se llama \textbf{Administrador}.
+\end{itemize}
+\end{importante}
+
+\subsection{Gestión de usuarios y grupos}
+
+El sistema ofrece utilidades para crear/eliminar usuarios y grupos.
+En UNIX:
+
+\begin{lstlisting}[style=shellstyle]
+adduser   alice    # crear usuario
+deluser   alice    # eliminar usuario
+addgroup  devs     # crear grupo
+delgroup  devs     # eliminar grupo
+\end{lstlisting}
+
+\subsection{Bases de datos en UNIX}
+
+En los sistemas tipo UNIX, los datos de los usuarios viven en dos
+archivos del directorio \verb|/etc|:
+
+\paragraph{\texttt{/etc/passwd}.}
+Contiene registros (uno por usuario) de la forma:
+
+\begin{lstlisting}[style=textstyle]
+user:x:uid:gid:full name:homedir:shell
+\end{lstlisting}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{user}: nombre de usuario.
+    \item \texttt{x}: si está presente, significa que la contraseña
+        está en \verb|/etc/shadow| (separación deliberada por
+        seguridad).
+    \item \texttt{uid}, \texttt{gid}: identificadores numéricos de
+        usuario y grupo principal.
+    \item \texttt{full name}: nombre completo (campo descriptivo).
+    \item \texttt{homedir}: directorio \emph{home}.
+    \item \texttt{shell}: shell que se le abre al hacer login (por
+        ejemplo \verb|/bin/bash|).
+\end{itemize}
+
+\paragraph{Usuarios sin login.}
+Una configuración típica incluye usuarios que \emph{no} tienen acceso
+interactivo: usan \verb|/usr/bin/nologin| como shell. Ejemplos:
+\texttt{bin}, \texttt{sys}, \texttt{mail}. Permiten asociar un
+\emph{dueño}, un grupo y permisos a programas o servicios del sistema
+sin que nadie pueda iniciar sesión con esa cuenta.
+
+\paragraph{Identificadores especiales.}
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{root} tiene \texttt{uid = 0}.
+    \item Al primer usuario \emph{real} del sistema se le asigna
+        comúnmente \texttt{uid = 1000}.
+\end{itemize}
+
+\paragraph{\texttt{/etc/group}.}
+Cada usuario tiene un grupo \emph{principal} y puede ser miembro de
+otros. La base de grupos está en \verb|/etc/group|.
+
+\begin{idea}
+La idea de poner la contraseña en \verb|/etc/shadow| (legible sólo por
+root) y dejar \verb|/etc/passwd| legible por todo el mundo es lo que
+permite a comandos comunes (\texttt{ls -l}, \texttt{ps}, \ldots)
+traducir uids a nombres sin exponer los hashes de las contraseñas.
+\end{idea}
+
+% =====================================================================
+\section{Login y autenticación}
+% =====================================================================
+
+El sistema ejecuta en cada terminal el programa \texttt{login}, que
+generalmente pide el nombre de usuario y las credenciales de
+autenticación. El método más común es la presentación de una
+\textbf{contraseña} (\emph{password}).
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Cada usuario puede cambiar su contraseña con \texttt{passwd}
+        (UNIX).
+    \item El administrador asigna la contraseña inicial al crear el
+        usuario.
+\end{itemize}
+
+\subsection{Formato de \texttt{/etc/shadow}}
+
+Las contraseñas se almacenan en \verb|/etc/shadow|. Cada línea tiene
+el formato:
+
+\begin{lstlisting}[style=textstyle]
+user:hashed-password:last-changed:min-days:max-days:warn-days:ina...
+\end{lstlisting}
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{user}: nombre del usuario.
+    \item \texttt{hashed-password}: \textbf{hash de la contraseña},
+        comúnmente prefijado por \verb|$n$|, donde $n$ indica el código
+        del algoritmo de hash utilizado.
+    \item Los demás campos contienen fechas o días desde el último
+        cambio, período en el que el sistema debería pedir el cambio
+        de contraseña, días de inactividad y la fecha de expiración de
+        la cuenta.
+\end{itemize}
+
+\subsection{Hash criptográfico}
+
+Para no almacenar el secreto en forma plana, se guarda
+$\textit{hash}(\textit{passwd})$. La función hash es un \textbf{hash
+criptográfico} (MD5, SHA, \ldots).
+
+\begin{definicion}
+Una función \textbf{hash criptográfica} es una función
+$\textit{hash} : \{0,1\}^* \to \{0,1\}^n$, donde $n$ es el número de
+bits de la salida. Toma una entrada de longitud arbitraria y produce
+una salida de longitud fija. Por ejemplo, MD5 produce 128\,bits.
+\end{definicion}
+
+\paragraph{Propiedad clave.}
+Una de las propiedades deseables es la \textbf{resistencia a
+preimágenes}: dado el par $(x,\;\textit{hash}(x))$, debe ser
+\emph{muy} difícil encontrar un $x'$ tal que
+$\textit{hash}(x') = \textit{hash}(x)$. Esto requiere gran poder de
+cómputo por ser un problema NP-Hard.
+
+\begin{importante}
+Actualmente esa propiedad está \emph{quebrada} para MD5: es
+relativamente fácil romperla con el cómputo moderno, por lo que MD5 no
+debe usarse para autenticación de contraseñas.
+\end{importante}
+
+\subsection{Verificación en el login}
+
+El programa \texttt{login} autentica al usuario verificando que:
+\[
+\textit{hash}(\textit{provided\_password}) \;=\; \textit{saved\_password}.
+\]
+Es decir, nunca compara contraseñas en texto plano; sólo hashes.
+
+\subsection{Salt y ataques por diccionario}
+
+Comúnmente, \texttt{passwd} agrega al password provisto un prefijo
+llamado \textbf{salt}: un valor generado aleatoriamente (en UNIX,
+típicamente dos caracteres) que se almacena como prefijo del hash.
+
+\paragraph{Por qué hace falta.}
+El salt previene los \textbf{ataques por diccionario}.
+
+\begin{idea}
+Un ataque por diccionario aplica cuando un atacante \emph{roba} el
+archivo de contraseñas. El atacante dispone de un \emph{diccionario}
+generado previamente: un conjunto de pares
+$(\textit{plaintext},\;\textit{hash}(\textit{plaintext}))$ para
+millones de palabras y combinaciones comunes. Si una contraseña (hash)
+robada coincide con el segundo elemento de algún par del diccionario,
+el atacante ya conoce el texto plano correspondiente: la inferencia se
+reduce a una búsqueda en el diccionario.
+
+El \textbf{salt} hace que para cada usuario se calcule el hash con un
+prefijo distinto. Para que el ataque sirva, el diccionario debería
+contener \emph{todas} las combinaciones (\emph{plaintext + salt});
+generarlo se vuelve incomparablemente más costoso.
+\end{idea}
+
+\subsection{Otros mecanismos de autenticación}
+
+El sistema de login puede aceptar otras credenciales:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Biométricos} en sistemas físicos: huellas dactilares,
+        reconocimiento de rostro, etc.
+    \item \textbf{Autenticación multifactor.} Por ejemplo, doble
+        factor: el usuario provee, además, un código enviado por un
+        servicio de mensajería (mail, chat, \ldots) o generado por un
+        generador de códigos de autenticación.
+\end{itemize}
+
+\subsection{PAM (Pluggable Authentication Modules)}
+
+GNU/Linux ofrece un sistema de autenticación muy flexible llamado
+\textbf{Pluggable Authentication Modules (PAM)}. PAM permite
+\emph{configurar}, \emph{usar} y \emph{desarrollar} mecanismos de
+autenticación que pueden combinarse (por ejemplo: contraseña +
+huella + token).
+
+% =====================================================================
+\section{Control de acceso}
+% =====================================================================
+
+El sistema debe asociar \textbf{permisos de acceso} (lectura,
+escritura o ejecución) entre los usuarios y los recursos (archivos de
+datos y programas).
+
+\subsection{Matriz de control de acceso}
+
+Conceptualmente, esto se modela mediante una \textbf{matriz de control
+de acceso}: las filas son los recursos, las columnas son los usuarios,
+y cada celda contiene los permisos que el usuario tiene sobre el
+recurso. Por ejemplo:
+
+\begin{center}
+\small
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{resources / users} & \textbf{f1} & \textbf{f2} & \textbf{\ldots} \\
+\midrule
+root  & rwx & rw- & \ldots \\
+\ldots & \ldots & \ldots & \ldots \\
+alice & r-{}- & -{}-{}- & \ldots \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{importante}
+Implementar esta matriz directamente es un desafío: podría ser
+\emph{inmensa} por la cantidad de recursos y usuarios (millones de
+archivos por miles de usuarios). Por eso los SO la representan de
+forma comprimida, comúnmente por \emph{columnas} (ACLs) o por
+\emph{filas} (\emph{capability lists}).
+\end{importante}
+
+% =====================================================================
+\section{Listas de control de acceso (ACLs)}
+% =====================================================================
+
+Una \textbf{ACL} (\emph{Access Control List}) es una representación de
+la matriz \textbf{por columnas}: a cada recurso se le asocia el
+conjunto $\{(\textit{user},\;\textit{perms}), \ldots\}$ de pares
+usuario-permiso.
+
+\subsection{El modelo UNIX: U/G/O}
+
+Para representar este conjunto de forma compacta, en UNIX los usuarios
+se clasifican en tres clases:
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{U (user)}: el dueño (\emph{owner}) del archivo.
+    \item \textbf{G (group)}: el grupo (principal) asociado al archivo.
+    \item \textbf{O (others)}: el resto de los usuarios del sistema.
+\end{enumerate}
+
+Los permisos se asignan al recurso \emph{para cada clase}: permisos
+del dueño, permisos del grupo y permisos del resto.
+
+\paragraph{Representación de 9 bits.}
+Sólo hacen falta 9 bits: tres para \emph{rwx} del dueño, tres para el
+grupo y tres para los otros:
+\[
+\underbrace{r\,w\,x}_{U} \;\; \underbrace{r\,-\,-}_{G} \;\; \underbrace{r\,-\,-}_{O}
+\]
+
+Estos permisos forman parte de los \textbf{metadatos} de cada archivo
+(viven en su \emph{inode}).
+
+\subsection{Comandos UNIX}
+
+\begin{lstlisting}[style=shellstyle]
+chown alice file        # cambiar dueno
+chgrp devs  file        # cambiar grupo
+chmod 644   file        # cambiar permisos (rw-r--r--)
+\end{lstlisting}
+
+\subsection{Limitación y full-ACLs}
+
+\begin{idea}
+La agrupación en sólo tres clases a veces \emph{no} provee la
+flexibilidad necesaria: por ejemplo, dar lectura a Alice y Bob pero no
+a otros miembros del grupo no es expresable con 9 bits.
+\end{idea}
+
+Los SO modernos ofrecen \textbf{full-ACLs}, que permiten asociar el
+conjunto de pares (usuario, permisos) de manera \emph{explícita}. Se
+implementan comúnmente como archivos especiales (ocultos) asociados a
+cada archivo. En GNU/Linux:
+
+\begin{lstlisting}[style=shellstyle]
+getfacl file            # listar ACL extendida
+setfacl -m u:alice:rw file   # otorgar rw a alice
+\end{lstlisting}
+
+\subsection{DAC vs.\ MAC}
+
+\begin{definicion}
+Un sistema en el que los usuarios pueden modificar los permisos de sus
+recursos (de los cuales son dueños) se denomina \textbf{discretional
+access control (DAC)}. UNIX por defecto es DAC: el dueño decide quién
+puede leer/escribir/ejecutar su archivo.
+\end{definicion}
+
+Existen modelos en los que los permisos son asignados por una
+\textbf{autoridad central de seguridad}, no por el dueño. Se conocen
+como \textbf{mandatory access control (MAC)} y son comunes en
+organizaciones militares.
+
+\paragraph{Ejemplo: Bell-LaPadula.}
+Asigna a los usuarios un \emph{nivel de seguridad} y a los recursos
+un \emph{rótulo}. Existe un orden parcial (retículo) de niveles:
+\[
+\textit{TOP\;SECRET} > \textit{SECRET} > \textit{CONFIDENTIAL} > \textit{PUBLIC}.
+\]
+Un general con nivel \emph{SECRET} podrá acceder a recursos con
+rótulo \emph{SECRET}, \emph{CONFIDENTIAL} o \emph{PUBLIC}, pero
+\emph{no} podrá acceder a recursos \emph{TOP SECRET}.
+
+% =====================================================================
+\section{Privilegios de un proceso}
+% =====================================================================
+
+Un proceso usa los permisos de su \textbf{usuario real} (\emph{real
+UID}): el usuario que lanzó su ejecución. Esto le permite acceder a
+los recursos permitidos a ese usuario.
+
+\subsection{Effective UID y \texttt{setuid}}
+
+\begin{definicion}
+El \textbf{effective UID} (\emph{euid}) de un proceso corresponde al
+usuario cuyos permisos efectivamente usa el kernel para validar
+accesos. En general coincide con el real UID. Pero, si un programa
+tiene activado el permiso especial \textbf{setuid}, al ejecutarse el
+\emph{euid} del proceso pasa a ser el del \emph{dueño del programa},
+no el del usuario que lo invocó.
+\end{definicion}
+
+\paragraph{Caso típico: \texttt{passwd}.}
+El programa \verb|/usr/bin/passwd| tiene dueño \texttt{root} y requiere
+acceso a \verb|/etc/shadow|, el cual sólo es legible/escribible por
+root (para evitar que cualquier usuario pueda copiarlo y atacarlo).
+Pero cualquier usuario debe poder cambiar su propia contraseña.
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{passwd} tiene activado el bit \textbf{setuid}.
+    \item Cuando Alice lo ejecuta, el proceso adquiere los permisos de
+        \texttt{root}.
+    \item De ese modo, el proceso puede actualizar \verb|/etc/shadow|
+        a pesar de haber sido lanzado por Alice.
+\end{itemize}
+
+\begin{importante}
+Esto es un mecanismo de \textbf{escalado de privilegios}: pasar
+temporalmente a un nivel de privilegios mayor para realizar una
+operación concreta. Es poderoso pero peligroso: cualquier bug en un
+programa setuid-root puede ser explotado para obtener root completo.
+\end{importante}
+
+\subsection{Otros mecanismos: \texttt{su} y \texttt{sudo}}
+
+Comandos que permiten cambios de privilegio bajo control:
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{su}: permite crear una nueva sesión (\emph{shell})
+        con otro usuario (por omisión, \texttt{root}). \texttt{su}
+        solicita las credenciales de autenticación del \emph{otro}
+        usuario; éste debe tener permitido el login.
+    \item \texttt{sudo}: permite ejecutar un comando como otro
+        usuario. Sólo requiere reingresar las credenciales del
+        \emph{usuario actual}. Su configuración vive en
+        \verb|/etc/sudoers| y especifica qué usuarios pueden ejecutar
+        qué comandos bajo los permisos de qué otros usuarios.
+\end{itemize}
+
+\begin{idea}
+La diferencia clave es de quién se piden las credenciales: \texttt{su}
+exige conocer la contraseña del usuario destino (típicamente root),
+mientras que \texttt{sudo} confía en el usuario actual previa
+configuración en \verb|/etc/sudoers|. Por eso \texttt{sudo} se
+prefiere en sistemas multi-administrador: no hay que compartir la
+contraseña de root.
+\end{idea}
+
+En MS-Windows el comando equivalente a \texttt{su} es \texttt{runas}.
+
+% =====================================================================
+\section{Capacidades}
+% =====================================================================
+
+Que un proceso adquiera privilegios de \texttt{root} (\emph{todos} los
+permisos) puede generar problemas de seguridad: requiere que el
+programa no contenga errores y que acceda \emph{sólo} a los recursos
+estrictamente necesarios.
+
+\subsection{Qué son las capacidades}
+
+\begin{definicion}
+Una \textbf{capacidad} (\emph{capability}) define qué operaciones se
+pueden aplicar sobre un recurso. Comúnmente se usan para
+\emph{limitar} el conjunto de operaciones posibles, en lugar de
+otorgar privilegios totales.
+\end{definicion}
+
+Por ejemplo, si se abre un archivo en modo de sólo lectura, el
+descriptor contiene sólo la capacidad de lectura, inhibiendo cualquier
+operación de escritura o truncado.
+
+\subsection{Capacidades como reemplazo de setuid-root}
+
+Muchos SO modernos usan capacidades en programas privilegiados para
+limitar el conjunto de operaciones o recursos a los que pueden
+acceder.
+
+\paragraph{Ejemplo: \texttt{tcpdump}.}
+El programa \texttt{tcpdump} permite \emph{capturar} paquetes que
+pasan por una interfaz de red. Para esto requeriría privilegios de
+\texttt{root}. La solución moderna es aplicar una \textbf{capacidad}
+que sólo permita acceder a \emph{raw sockets}: en GNU/Linux esa
+capacidad es \verb|CAP_NET_RAW|.
+
+\begin{idea}
+En lugar de darle a \texttt{tcpdump} ``poder absoluto'' como
+setuid-root, se le otorga \emph{exactamente} la capacidad que
+necesita. Si el binario tuviera un bug explotable, el atacante
+ganaría \verb|CAP_NET_RAW|, no root completo: un daño mucho menor.
+\end{idea}
+
+Para más información sobre capacidades en GNU/Linux:
+
+\begin{lstlisting}[style=shellstyle]
+man capabilities
+\end{lstlisting}
+
+% =====================================================================
+\section{Cierre}
+% =====================================================================
+
+El subsistema de usuarios y seguridad implementa, en conjunto, la idea
+de que un sistema multi-usuario debe \emph{identificar} a sus usuarios,
+\emph{autenticar} su identidad y \emph{autorizar} cada operación que
+intentan realizar. Las ideas principales:
+
+\begin{itemize}[leftmargin=*]
+    \item Cada usuario tiene un \textbf{uid} y pertenece a uno o más
+        \textbf{grupos}. La separación de \texttt{/etc/passwd},
+        \texttt{/etc/shadow} y \texttt{/etc/group} es la concreción de
+        este modelo en UNIX. Root (\texttt{uid = 0}) es el único
+        usuario sin restricciones.
+    \item La \textbf{autenticación} compara hashes, no texto plano.
+        Una función hash criptográfica garantiza que conocer
+        $\textit{hash}(x)$ no permite recuperar $x$ con facilidad. El
+        \textbf{salt} es la defensa específica contra ataques por
+        diccionario, multiplicando exponencialmente el costo de
+        precomputar tablas. PAM permite encadenar varios mecanismos
+        (contraseña, biométricos, multifactor).
+    \item El \textbf{control de acceso} se piensa con una matriz
+        recurso $\times$ usuario, pero se implementa como ACLs por
+        columna. UNIX comprime la ACL en 9 bits con las clases
+        \emph{U/G/O}, complementadas con \emph{full ACLs} cuando hace
+        falta más granularidad.
+    \item Hay dos filosofías: \textbf{DAC} (el dueño decide; UNIX por
+        defecto) y \textbf{MAC} (una autoridad central decide; típico
+        de entornos militares, con modelos como Bell-LaPadula).
+    \item Cada proceso tiene un \emph{real UID} y un
+        \textbf{effective UID}. El bit \textbf{setuid} permite
+        ejecutar un programa con los privilegios de su dueño,
+        habilitando casos legítimos como \texttt{passwd} pero abriendo
+        riesgos de escalado. \texttt{su} y \texttt{sudo} ofrecen
+        cambios de privilegio bajo control.
+    \item Las \textbf{capacidades} reemplazan ``setuid-root'' por
+        privilegios \emph{finos y específicos}: en lugar de dar todo
+        el poder, dar exactamente lo necesario (por ejemplo,
+        \texttt{CAP\_NET\_RAW} a \texttt{tcpdump}).
+\end{itemize}
+
+\begin{idea}
+El principio rector que atraviesa todo el capítulo es el de
+\textbf{mínimo privilegio}: cada usuario, proceso y programa debe
+tener exactamente los permisos que necesita, ni más ni menos. Las
+ACLs, \texttt{sudo}, las capacidades y los modelos MAC son técnicas
+distintas para acercarse a ese ideal en escenarios reales.
+\end{idea}
+
+\end{document}

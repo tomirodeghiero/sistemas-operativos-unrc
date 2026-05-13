@@ -1,0 +1,1060 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- Encoding ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands]{babel}
+\usepackage{lmodern}
+
+% --- Layout ---
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{parskip}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em plus 0.2em minus 0.1em}
+
+% --- Tables and graphics ---
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{positioning,shapes.geometric,arrows.meta,fit,backgrounds,calc,decorations.pathreplacing}
+\usepackage{caption}
+\usepackage{amsmath,amssymb}
+
+% --- Code listings ---
+\usepackage{listings}
+\definecolor{codegray}{rgb}{0.96,0.96,0.96}
+\definecolor{codeborder}{rgb}{0.85,0.85,0.85}
+\definecolor{codecomment}{rgb}{0.30,0.55,0.30}
+\definecolor{codekeyword}{rgb}{0.10,0.30,0.70}
+\definecolor{codestring}{rgb}{0.65,0.15,0.10}
+
+\lstdefinestyle{cstyle}{
+    language=C,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+}
+
+\lstdefinestyle{textstyle}{
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstset{style=textstyle}
+
+% --- Definition / Idea / Important boxes ---
+\usepackage[most]{tcolorbox}
+\newtcolorbox{definicion}[1][]{
+    colback=blue!5!white,
+    colframe=blue!50!black,
+    fonttitle=\bfseries,
+    title=Definición,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{idea}[1][]{
+    colback=orange!5!white,
+    colframe=orange!60!black,
+    fonttitle=\bfseries,
+    title=Idea intuitiva,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{importante}[1][]{
+    colback=red!5!white,
+    colframe=red!50!black,
+    fonttitle=\bfseries,
+    title=Importante,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+
+% --- Hyperlinks ---
+\usepackage[colorlinks=true,
+            linkcolor=blue!60!black,
+            urlcolor=blue!50!black,
+            citecolor=blue!60!black]{hyperref}
+
+% --- Memory diagram color palette ---
+\definecolor{mem1}{HTML}{4C72B0}
+\definecolor{mem2}{HTML}{DD8452}
+\definecolor{mem3}{HTML}{55A868}
+\definecolor{mem4}{HTML}{8172B2}
+\definecolor{memused}{HTML}{C44E52}
+\definecolor{memfree}{HTML}{8C8C8C}
+
+% --- Title ---
+\title{
+    \vspace{-2.5em}
+    \textbf{Resumen teórico --- Sistemas Operativos} \\[0.3em]
+    \large Notas del curso: \emph{Gestión de la memoria}
+}
+\author{
+    Tomás Rodeghiero \\
+    \small Sistemas Operativos --- Universidad Nacional de Río Cuarto
+}
+\date{2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent
+Este documento es un resumen teórico del capítulo \emph{Gestión de la
+memoria} de las \emph{Notas del curso} de Sistemas Operativos (Marcelo
+Arroyo, UNRC). Se presentan los conceptos básicos sobre la memoria
+principal y la jerarquía de memorias, las estrategias de asignación de
+memoria desde el heap (bloques de tamaño variable, bloques de tamaño
+fijo y \emph{buddy system}), los mecanismos de protección por registros
+base/límite y segmentación, el código independiente de la posición, el
+esquema de paginado con sus tablas de páginas multinivel y, finalmente,
+los \emph{Translation Lookaside Buffers} (TLB) como caché de
+traducciones. El objetivo es servir de material de estudio para preparar
+los prácticos asociados a la gestión de memoria y el segundo parcial.
+\end{abstract}
+
+\tableofcontents
+\bigskip
+
+% =====================================================================
+\section{Introducción}
+% =====================================================================
+
+La \textbf{memoria principal} o RAM (\emph{Random Access Memory}) es,
+desde el punto de vista del sistema, un arreglo de bytes en el que cada
+byte se identifica por su \emph{dirección} o posición. Es una memoria
+\textbf{volátil}: el contenido se pierde cuando se corta la energía.
+La CPU interactúa directamente con la RAM en cada ciclo de ejecución
+de cada instrucción.
+
+\begin{idea}
+En las arquitecturas \emph{Von Neumann} las instrucciones del programa
+y los datos sobre los que opera \emph{comparten} la misma memoria, a
+diferencia de la arquitectura Harvard que separa físicamente ambos
+espacios.
+\end{idea}
+
+En un sistema multitarea la memoria física debe ser
+\textbf{particionada lógicamente} para separar las instrucciones y los
+datos de cada programa en ejecución. Esto le impone al SO dos
+responsabilidades inseparables:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Asignar} memoria al kernel y a cada uno de los
+        procesos: decidir qué regiones de la RAM le tocan a quién, y
+        cómo se liberan cuando ya no se usan.
+    \item \textbf{Proteger} los espacios de memoria: garantizar que un
+        proceso se ejecute \emph{confinado}, es decir, que sólo pueda
+        acceder a sus propias regiones y no pueda invadir las de otros
+        procesos ni las del kernel.
+\end{itemize}
+
+\subsection{El ciclo de instrucción}
+
+La CPU ejecuta repetidamente un ciclo con tres pasos:
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Fetch (lectura) de la instrucción.} Se carga en un
+        registro interno la instrucción cuya dirección está en el
+        \emph{program counter} (\texttt{pc}).
+    \item \textbf{Decodificación.} Se identifica el tipo de instrucción
+        y sus operandos.
+    \item \textbf{Ejecución} de la instrucción, que en general puede
+        requerir \emph{leer} o \emph{escribir} en memoria.
+\end{enumerate}
+
+Como se ve, todo paso del ciclo toca memoria; por eso la velocidad y la
+correcta gestión de la RAM determinan en gran medida el rendimiento del
+sistema.
+
+% =====================================================================
+\section{Jerarquía de memorias}
+% =====================================================================
+
+Las distintas memorias del sistema no son equivalentes: hay un
+\emph{trade-off} clásico entre \textbf{velocidad} y \textbf{capacidad}
+(y costo). La CPU emplea \emph{registros} internos para ejecutar las
+instrucciones; son las memorias más rápidas, pero hay muy pocos. Cada
+operación de lectura o escritura hacia/desde la RAM puede tomar varios
+ciclos de reloj, lo que obliga a la CPU a \emph{frenarse} (\emph{stall})
+hasta que el dato esté disponible.
+
+Para atenuar esta diferencia de velocidades se introducen las memorias
+\textbf{caché}: memorias de menor capacidad pero de mucha mayor velocidad
+de acceso que la RAM convencional, ubicadas entre los registros y la
+RAM.
+
+\begin{definicion}
+Una memoria \textbf{caché} está diseñada para el acceso a los datos
+\emph{por contenido} en lugar de por dirección. Cuando la CPU referencia
+una dirección de memoria:
+\begin{itemize}[leftmargin=*,nosep]
+    \item si el contenido de esa dirección ya está en la caché
+        (\emph{hit}), se recupera desde allí;
+    \item si no se encuentra (\emph{miss}), se accede a la RAM y se
+        almacena en la caché para los accesos futuros.
+\end{itemize}
+\end{definicion}
+
+Finalmente, para almacenar programas y datos en forma \textbf{permanente}
+se usan dispositivos secundarios como discos magnéticos, unidades de
+estado sólido u otros, que son los más lentos pero también los de mayor
+capacidad. La arquitectura define entonces una \emph{jerarquía} de
+memorias ordenadas por velocidad de acceso (de mayor a menor):
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    box/.style={draw,rounded corners=2pt,minimum width=2.1cm,minimum height=1cm,align=center},
+    arrow/.style={-Latex,thick}
+]
+\node[box,fill=mem1!20] (reg) {cpu\\registers};
+\node[box,fill=mem3!20,right=0.6cm of reg] (cache) {cache};
+\node[box,fill=mem2!20,right=0.6cm of cache] (ram) {main\\memory};
+\node[box,fill=memfree!20,right=0.6cm of ram] (disc) {disc};
+
+\draw[arrow] (cache) -- (reg);
+\draw[arrow] (ram) -- (cache);
+\draw[arrow] (disc) -- (ram);
+\end{tikzpicture}
+\end{center}
+
+\begin{idea}
+A medida que se asciende en la jerarquía (a la izquierda) la memoria es
+más rápida, más cara y de menor capacidad. La idea detrás de la caché es
+explotar la \emph{localidad de referencia}: los programas tienden a
+acceder repetidamente a un conjunto pequeño de direcciones cercanas en
+el tiempo.
+\end{idea}
+
+% =====================================================================
+\section{Asignación (\emph{allocation}) de memoria}
+% =====================================================================
+
+El kernel debe \emph{asignar} y \emph{liberar} bloques de memoria, tanto
+para los procesos de usuario como para sus propias estructuras de datos
+internas.
+
+Una vez que el kernel se cargó en memoria durante el proceso de arranque
+(\emph{boot}), reconoce el área de memoria libre disponible para
+asignar. Esta área se conoce como \textbf{heap}.
+
+Sobre el heap se aplican dos grandes estrategias clásicas:
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Asignación de bloques de tamaño variable:} el heap se
+        particiona lógicamente y se asignan bloques cuyo tamaño se
+        ajusta al pedido.
+    \item \textbf{Asignación de bloques de tamaño fijo:} el heap se
+        particiona en bloques todos del mismo tamaño y se asignan
+        bloques completos (o varios contiguos) por cada pedido.
+\end{enumerate}
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    block/.style={draw,minimum width=3.2cm,minimum height=0.8cm,align=center},
+]
+% Variable size blocks
+\node[font=\bfseries\small] at (0,4.6) {Variable size blocks};
+\node[block,fill=memused!30] (v1) at (0,3.7) {used size=n1};
+\node[block,fill=memfree!20,below=0pt of v1] (v2) {free size=n2};
+\node[block,fill=memused!30,below=0pt of v2,minimum height=1.0cm] (v3) {used size=n3};
+\node[block,fill=memfree!20,below=0pt of v3] (v4) {free size=n4};
+\node[block,below=0pt of v4,minimum height=0.5cm] (vdots) {\ldots};
+
+% Fixed size blocks
+\node[font=\bfseries\small] at (5.5,4.6) {Fixed size blocks};
+\node[block,fill=memused!30] (f1) at (5.5,3.95) {size=n};
+\node[block,below=0pt of f1,fill=memfree!10] (f2) {};
+\node[block,below=0pt of f2,fill=memused!30] (f3) {};
+\node[block,below=0pt of f3,fill=memfree!10] (f4) {};
+\node[block,below=0pt of f4,minimum height=0.5cm] (fdots) {\ldots};
+\end{tikzpicture}
+\end{center}
+
+% ---------------------------------------------------------------------
+\subsection{Heap con bloques de tamaño variable}
+% ---------------------------------------------------------------------
+
+La primera estrategia se implementa habitualmente mediante una
+\textbf{lista de bloques libres} (\emph{freelist}):
+
+\begin{itemize}[leftmargin=*]
+    \item Inicialmente existe un único bloque libre del tamaño total
+        del heap.
+    \item Ante una solicitud de un bloque de tamaño $n$, se busca en la
+        lista un bloque libre $b$ con $b.\textit{size} \geq n$. Si
+        $b.\textit{size} > n$, se \emph{particiona}: se asigna un bloque
+        de tamaño $n$ y queda un nuevo bloque libre $b'$ con
+        $b'.\textit{size} = b.\textit{size} - n$. Si no existe ningún
+        bloque que satisfaga el pedido, se retorna error.
+    \item Ante la liberación de un bloque, se inserta nuevamente en la
+        lista de libres.
+\end{itemize}
+
+El algoritmo concreto que se use para buscar el bloque adecuado
+afecta directamente al rendimiento del sistema. Las tres estrategias
+clásicas son:
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{First fit.} Se asigna el primer bloque encontrado con
+        tamaño $\geq n$. Es la más rápida porque corta la búsqueda en
+        cuanto encuentra un candidato.
+    \item \textbf{Best fit.} Se asigna el bloque que \emph{mejor ajusta},
+        es decir, un bloque $b$ con
+        $b.\textit{size} = m$, $m \geq n$ y para todo $b' \in
+        \textit{freelist}$ se cumple
+        $b'.\textit{size} \geq b.\textit{size}$. Minimiza el desperdicio
+        por pedido, pero suele dejar fragmentos pequeños y exige
+        recorrer toda la lista.
+    \item \textbf{Worst fit.} Se asigna el bloque libre más grande. La
+        idea es que el remanente sea lo suficientemente grande como
+        para poder ser reutilizado.
+\end{enumerate}
+
+\paragraph{Fragmentación externa.}
+A medida que se hacen sucesivos pedidos y liberaciones, el heap puede
+ir \textbf{fragmentándose} en un gran número de bloques libres pequeños.
+Aunque la suma de esos bloques pueda ser grande, ningún bloque
+\emph{individual} alcanza para satisfacer un pedido grande. Este
+problema se conoce como \textbf{fragmentación externa}.
+
+\begin{importante}
+La fragmentación externa es el costo principal del esquema de tamaño
+variable: el heap puede tener mucha memoria libre y aun así rechazar un
+pedido por no poder ofrecer un bloque contiguo suficientemente grande.
+\end{importante}
+
+\paragraph{Semi-compactación.}
+Una estrategia que alivia la fragmentación es: ante la liberación de un
+bloque, si quedan bloques libres \emph{adyacentes}, fusionarlos o
+\emph{compactarlos} en un único bloque libre de mayor tamaño. Esta
+técnica se conoce como \textbf{semi-compactación}.
+
+% ---------------------------------------------------------------------
+\subsection{Heap con bloques de tamaño fijo}
+% ---------------------------------------------------------------------
+
+En esta variante el heap se particiona en $m$ bloques de un tamaño fijo
+$s$.
+
+Ante un requerimiento de un bloque de tamaño $n$:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Si $n \leq s$, se asigna cualquier bloque libre.
+    \item Si $n > s$, se debe asignar el mínimo número $k$ de bloques
+        \emph{contiguos} tales que $k \times s \geq n$.
+\end{itemize}
+
+Una ventaja muy importante en términos de uso de memoria es que las
+listas (o conjuntos) de bloques libres y usados pueden representarse
+como un \textbf{bit vector}: un bit por bloque, encendido si está
+asignado y apagado si está libre.
+
+\paragraph{La elección del tamaño \texorpdfstring{$s$}{s}.}
+El tamaño $s$ es \emph{crítico}:
+
+\begin{itemize}[leftmargin=*]
+    \item Si $s$ es grande, se agrava la \textbf{fragmentación interna}:
+        cada pedido recibe un bloque completo, pero el remanente
+        $s - n$ no se aprovecha.
+    \item Si $s$ es pequeño, una asignación grande requiere encontrar
+        varios bloques libres \emph{contiguos}; si esa contigüidad no
+        existe, el pedido no se puede satisfacer aunque haya muchos
+        bloques libres dispersos.
+\end{itemize}
+
+\begin{idea}
+La fragmentación interna es ``desperdicio dentro del bloque asignado''
+(memoria que el proceso recibió pero no usa). La fragmentación externa
+es ``desperdicio entre bloques'' (memoria libre que no se puede
+asignar porque no es contigua). Ambos esquemas tienen sus
+contraindicaciones.
+\end{idea}
+
+% ---------------------------------------------------------------------
+\subsection{El sistema compañero (\emph{buddy system})}
+% ---------------------------------------------------------------------
+
+Para combinar las ventajas de ambas estrategias se diseñan soluciones
+\emph{híbridas}. El \textbf{buddy system} es el ejemplo clásico.
+
+La idea es particionar el heap en bloques cuyos tamaños sean
+\emph{potencias de 2}, desde un mínimo $2^l$ hasta un máximo $2^h$. Por
+ejemplo, con $l = 16$ y $h = 20$ los bloques posibles son de 64\,KB,
+128\,KB, 256\,KB, 512\,KB y 1024\,KB.
+
+\paragraph{Algoritmo de asignación.}
+\begin{enumerate}[leftmargin=*]
+    \item Inicialmente, el heap se particiona en bloques del tamaño
+        máximo $2^h$ (1024\,KB en el ejemplo).
+    \item Ante un requerimiento de tamaño $n$:
+        \begin{enumerate}[leftmargin=*,label=\arabic*.]
+            \item Seleccionar un bloque libre $b$ con mejor ajuste.
+            \item Si $b.\textit{size} \geq 2n$, dividir $b$ en dos
+                bloques $b_0$ y $b_1$ de tamaño $b.\textit{size}/2$.
+                Tomar $b = b_0$ y repetir este paso mientras
+                $b.\textit{size} \geq 2n$ (y siempre que
+                $b.\textit{size} > 2^l$).
+            \item Asignar el bloque $b$.
+        \end{enumerate}
+\end{enumerate}
+
+\paragraph{Liberación.}
+Cuando se libera un bloque se aplica el algoritmo a la inversa: si el
+bloque \emph{compañero} (\emph{buddy}) contiguo es del mismo tamaño y
+también está libre, ambos se unen en un único bloque del doble de
+tamaño, mientras esto se pueda repetir y sin pasar de $2^h$.
+
+\begin{importante}
+El buddy system es un compromiso entre fragmentación interna y externa:
+mantiene bloques de tamaño potencia de 2 (lo que simplifica la
+contabilidad y la fusión), pero al mismo tiempo permite que el heap se
+particione dinámicamente según los pedidos. Es la base de muchos
+\emph{allocators} de kernel reales (por ejemplo el de Linux).
+\end{importante}
+
+% =====================================================================
+\section{Protección}
+% =====================================================================
+
+Asignar memoria es sólo la mitad del problema: el SO también debe
+garantizar que cada proceso \textbf{sólo pueda acceder a su área de
+memoria}. Supongamos que un proceso recibe su memoria de forma
+\emph{contigua}; entonces basta con que el hardware pueda
+\emph{detectar} todo acceso fuera de rango.
+
+\subsection{Registros base y límite}
+
+El mecanismo más simple consiste en un registro de control que contiene
+la \textbf{dirección base} y la \textbf{dirección límite} del área de
+memoria asignada al proceso. Además puede incluir \textbf{flags} de
+\emph{permisos de acceso}: lectura, escritura, ejecución, etc.
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    reg/.style={draw,minimum height=0.9cm,minimum width=1.4cm,align=center},
+    mem/.style={draw,minimum width=2.6cm,align=center}
+]
+\node[reg] (flags) {flags};
+\node[reg,right=0pt of flags] (base)  {base};
+\node[reg,right=0pt of base]  (limit) {limit};
+
+\node[mem,right=2.0cm of limit,fill=mem3!15,minimum height=2.6cm] (mem)
+    {\\\\process\\memory\\\\};
+\node[anchor=south] at (mem.north) {\ttfamily ...};
+\node[anchor=north] at (mem.south) {\ttfamily ...};
+
+\draw[-Latex,thick] (base.east) .. controls +(1.0,0.7) and +(-1.0,0.5) .. ($(mem.north west)+(0,-0.3)$);
+\draw[-Latex,thick] (limit.east) .. controls +(1.0,-0.8) and +(-1.0,-0.5) .. ($(mem.south west)+(0,0.3)$);
+\end{tikzpicture}
+\end{center}
+
+Cuando el SO realiza un \emph{context switch} a un proceso, carga las
+direcciones correspondientes en estos registros. La CPU, en cada acceso
+a memoria, verifica que la dirección referenciada caiga en el rango
+permitido:
+\[
+\textit{base} \leq \textit{address} \leq \textit{limit}.
+\]
+
+\paragraph{Memory fault exception.}
+Si una instrucción referencia una dirección fuera de los límites, o si
+la operación de lectura/escritura no respeta los permisos definidos en
+los flags, la CPU genera una \textbf{memory fault exception}. El SO
+atrapará la excepción con algún \emph{exception handler} y, si no es
+recuperable, eliminará al proceso. Este error es exactamente el
+conocido \textbf{segmentation fault} de los sistemas tipo UNIX.
+
+\subsection{Segmentación}
+
+El esquema de un único par base/límite es muy rígido: obliga a que toda
+la memoria del proceso esté en un bloque contiguo, lo que no siempre se
+puede lograr en un sistema fragmentado.
+
+La \textbf{segmentación} extiende la idea: se utilizan \emph{varios}
+pares base/límite, uno por cada \emph{segmento} lógico del proceso
+(\emph{texto}, \emph{datos}, \emph{stack}, \emph{heap}, etc.). Así cada
+segmento puede vivir en una región de memoria distinta y los segmentos
+no necesitan ser físicamente contiguos entre sí.
+
+\begin{idea}
+A modo de ejemplo, la arquitectura Intel IA-32 (x86) soporta varios
+registros de segmento (base + límite):
+\textbf{CS} (\emph{code segment}), \textbf{DS} (\emph{data segment}),
+\textbf{SS} (\emph{stack segment}) y otros como \textbf{ES}, \textbf{GS},
+\textbf{FS}.
+\end{idea}
+
+% =====================================================================
+\section{Código independiente de la posición (PIC)}
+% =====================================================================
+
+Con la maquinaria de protección por segmentos aparece otro beneficio:
+el código de un programa puede ejecutarse \emph{independientemente} de
+la dirección base donde se cargó. Esto se logra con
+\textbf{código independiente de la posición} (\emph{position-independent
+code}, \textbf{PIC}).
+
+\begin{definicion}
+En el código PIC, las direcciones de memoria que aparecen como
+operandos de las instrucciones no son \emph{absolutas} sino
+\textbf{relativas} a una dirección base contenida en un registro de
+segmento.
+\end{definicion}
+
+Los registros de segmento contienen las direcciones base; la CPU
+\emph{transforma} cada dirección relativa en una \textbf{dirección
+física} sumándole la dirección base correspondiente al segmento.
+
+\paragraph{Notación en x86.}
+En x86, una dirección de memoria en una instrucción se denota como
+\texttt{segment:offset}. Algunos casos:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Un salto \verb|jmp address| es equivalente a
+        \verb|jmp cs:address|.
+    \item Una instrucción de lectura/escritura desde/hacia memoria
+        como \verb|mov %eax, address| es equivalente a
+        \verb|mov %eax, ds:address|.
+    \item Las instrucciones sobre la pila (\verb|push| / \verb|pop|)
+        refieren por omisión al segmento \verb|ss|.
+\end{itemize}
+
+\begin{idea}
+PIC es lo que permite, por ejemplo, que el mismo binario de una
+biblioteca compartida (\emph{shared library}) se pueda cargar en una
+dirección distinta en cada proceso sin tener que reescribir su código.
+También es la base del esquema ASLR moderno (\emph{Address Space Layout
+Randomization}).
+\end{idea}
+
+% =====================================================================
+\section{Paginado}
+% =====================================================================
+
+La segmentación resuelve el problema de no necesitar bloques contiguos
+grandes para todo el proceso, pero todavía sufre de fragmentación
+externa al manejar segmentos enteros. La solución estándar de los SO
+modernos es el \textbf{paginado}.
+
+\begin{definicion}
+El \textbf{paginado} consiste en particionar la memoria física en
+bloques pequeños del \emph{mismo tamaño}, llamados \textbf{páginas} o
+\emph{frames}, típicamente de 4\,KB. Cada espacio de direcciones lógicas
+de un proceso (y del kernel) se representa como un conjunto de páginas
+que pueden vivir en cualquier ubicación física.
+\end{definicion}
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    page/.style={draw,minimum width=2.6cm,minimum height=0.7cm,align=center}
+]
+\node[page,fill=mem1!15] (p0) {page 0};
+\node[page,fill=mem2!15,below=0pt of p0] (p1) {page 1};
+\node[page,below=0pt of p1] (pd) {\ldots};
+\node[page,fill=mem3!15,below=0pt of pd] (pn) {page n-1};
+
+\node[anchor=west,xshift=0.2cm] at (p0.east) {0};
+\node[anchor=west,xshift=0.2cm] at ($(p0.south east)!0.5!(p1.north east)$) {4096};
+\node[anchor=west,xshift=0.2cm] at ($(p1.south east)!0.5!(pd.north east)$) {8192};
+\node[anchor=west,xshift=0.2cm] at (pn.east) {max address};
+\end{tikzpicture}
+\end{center}
+
+Con paginado es posible definir un \textbf{espacio de memoria} para cada
+proceso (y el kernel) como el conjunto de páginas a las que puede
+acceder. Estos conjuntos se representan en memoria como arreglos y se
+conocen como \textbf{tablas de páginas} (\emph{page tables}).
+
+\paragraph{Direcciones lógicas vs físicas.}
+Las páginas asignadas a un proceso no necesitan estar
+\emph{físicamente contiguas}, aunque para el proceso aparecen como si lo
+estuvieran. Esto requiere de un mecanismo de \emph{traducción} de
+direcciones \textbf{lógicas o virtuales} a direcciones
+\textbf{físicas o reales}. Formalmente, se necesita una función
+\[
+\textit{map} : \textit{va} \to \textit{pa},
+\]
+donde $\textit{va}$ es una dirección lógica (\emph{virtual address}) y
+$\textit{pa}$ es la dirección física correspondiente.
+
+El hardware con soporte de paginado implementa esta función mediante una
+\emph{tabla de páginas} que representa la traducción
+$\textit{paging}: \textit{va} \to \textit{pa}$. Cada entrada de la
+tabla se llama \textbf{page table entry} (\textbf{pte}) y básicamente
+es un par
+$(\textit{ppn},\;\textit{flags})$,
+donde:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{ppn} (\emph{physical page number}) es el número de
+        página física correspondiente (las páginas se numeran desde 0);
+    \item \texttt{flags} son permisos de acceso y bits de control.
+\end{itemize}
+
+Por cada proceso y para el kernel, el SO construye su propio espacio de
+memoria asociando una tabla de páginas distinta.
+
+\subsection{Traducción de una dirección lógica}
+
+\begin{importante}
+En paginado, una dirección que aparece en una instrucción del programa
+es, en realidad, una \emph{dirección lógica} y generalmente se
+interpreta como un par
+$(\textit{index},\;\textit{offset})$.
+\end{importante}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item El \textbf{index} (\emph{virtual page number}, \texttt{vpn})
+        identifica la entrada de la tabla de páginas asociada al
+        proceso.
+    \item El \textbf{offset} es el desplazamiento \emph{dentro} de la
+        página.
+\end{itemize}
+
+La dirección física se obtiene como
+\[
+\textit{pa} = \textit{pagetable}[\textit{index}].\textit{ppn} \times PS
+              + \textit{offset},
+\]
+donde $PS$ es el tamaño de página (\emph{page size}).
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    cell/.style={draw,minimum height=0.7cm,align=center},
+]
+% Logical address
+\node[font=\bfseries\small] at (0,2.3) {logical address};
+\node[cell,fill=mem1!15,minimum width=1.4cm] (idx) at (-0.8,1.6) {index};
+\node[cell,fill=mem2!15,minimum width=1.4cm] (off) at (0.6,1.6) {offset};
+
+% Pagetable
+\node[font=\bfseries\small] at (3.6,2.3) {pagetable};
+\node[cell,minimum width=1.0cm] (p0a) at (3.0,1.6) {ppn};
+\node[cell,minimum width=1.0cm] (p0b) at (4.1,1.6) {flags};
+\node[cell,minimum width=1.0cm,fill=mem3!20] (p1a) at (3.0,0.9) {ppn};
+\node[cell,minimum width=1.0cm,fill=mem3!20] (p1b) at (4.1,0.9) {flags};
+\node[anchor=east] at (p0a.west) {0};
+\node[anchor=east] at (p1a.west) {1};
+\node at (3.6,0.15) {\ldots};
+
+% Frame
+\node[cell,minimum width=2.0cm,minimum height=1.3cm,fill=mem4!20] (frame) at (7.5,1.0) {page\\(frame)};
+
+% Phys addr
+\node[font=\bfseries\small] at (10.7,1.6) {physical};
+\node[font=\bfseries\small] at (10.7,1.1) {address};
+
+\draw[-Latex,thick] (idx.south) -- ++(0,-0.4) -| (p1a.west);
+\draw[-Latex,thick] (p1b.east) -- (frame.west);
+\draw[-Latex,thick] (off.east) -- ++(0.4,0) -- ++(0,-0.6) -| ($(frame.south)+(0.3,0)$);
+\draw[-Latex,thick] (frame.east) -- ++(0.7,0);
+\end{tikzpicture}
+\end{center}
+
+\paragraph{Tamaño del offset.}
+El offset contiene tantos bits como sea necesario según el tamaño de
+página. Por ejemplo, si el tamaño de página es 4096\,bytes
+($2^{12}$), el offset necesita 12\,bits.
+
+\paragraph{Page fault.}
+La CPU genera una excepción de tipo \textbf{page fault} si una dirección
+lógica indexa en una \emph{pte} sin permisos de acceso o inválida (por
+ejemplo, una entrada cuyo bit \texttt{V} está apagado).
+
+\subsection{Espacios de direcciones por defecto}
+
+Con paginado es posible que cada proceso tenga, por ejemplo, un espacio
+de direcciones de la forma $[0, \textit{size}]$ donde \textit{size} es
+la memoria requerida por el proceso. Así todos los programas se pueden
+compilar con opciones de memoria \emph{por default} y pueden coexistir
+en memoria \emph{referenciando las mismas direcciones lógicas}: en
+tiempo de ejecución cada una se traducirá a direcciones físicas
+distintas.
+
+\begin{idea}
+Dos procesos pueden leer la dirección lógica \texttt{0x00001000} sin
+pisarse: la tabla de páginas de cada uno mapea ese índice a frames
+físicos distintos. El hardware se encarga, transparentemente, de que
+cada proceso ``vea'' su propio espacio de memoria.
+\end{idea}
+
+\subsection{Páginas dispersas y heap allocator}
+
+Cuando un proceso usa paginado, un bloque de memoria con páginas
+\emph{lógicamente contiguas} no necesariamente se corresponde con
+páginas \emph{físicamente contiguas}. Esto permite que un
+\textbf{heap allocator} le asigne páginas al proceso con cualquier
+dirección física, mientras quede mapeada a una dirección lógica del
+proceso.
+
+A modo de ejemplo, un proceso podría tener:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item 2 páginas (8\,KB) para el área de \emph{código} (texto);
+    \item 1 página para \emph{datos};
+    \item 1 página para el \emph{stack};
+    \item un \emph{hueco} de páginas inválidas en el medio para detectar
+        \textbf{stack overflow}.
+\end{itemize}
+
+Las páginas de código y datos resultan lógicamente contiguas, pero
+físicamente pueden estar dispersas por toda la memoria.
+
+\paragraph{Ejemplo numérico.}
+Asumiendo direcciones de 32\,bits con los 20\,bits más significativos
+como \emph{index} y los 12 menos significativos como \emph{offset}, en
+páginas de 4\,KB:
+
+Si el espacio de direcciones lógicas es $[0, sz = \texttt{0x5000}]$
+(20\,KB), una instrucción que referencie la dirección lógica
+\texttt{0x00002004} (área de datos) se interpreta con
+\texttt{index = 2} y \texttt{offset = 0x004}. Si la \emph{pte} de la
+entrada 2 contiene \texttt{ppn = 11}, la dirección física final es:
+\[
+11 \times 4096 + 4 = \texttt{0xb004}.
+\]
+
+\subsection{Hardware vs.\ memoria direccionable}
+
+Las tablas de páginas deberían tener suficientes entradas como para
+\emph{barrer} toda la memoria direccionable por el sistema (esto es
+crítico en el kernel, que debe poder acceder a toda la memoria).
+
+\begin{importante}
+Es común que el hardware tenga \emph{menos RAM física} que el espacio de
+direcciones lógicas posibles. Por ejemplo, en el modelo
+\textbf{RISC-V RV39} la CPU es de 64\,bits (espacio de direcciones
+$[0, 2^{64}]$), pero el bus físico de direcciones es de sólo 39\,bits
+(500\,GB).
+\end{importante}
+
+\subsection{Páginas grandes y tablas multinivel}
+
+Con espacios de direcciones grandes (por ejemplo 4\,GB en una
+arquitectura de 32\,bits) el número de entradas en una tabla de páginas
+puede ser enorme. Representar una tabla plana con tantas entradas
+requeriría asignar un bloque de memoria física contigua de gran tamaño,
+algo costoso o directamente inviable.
+
+Para mitigarlo existen dos herramientas combinables:
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Páginas más grandes.} El hardware moderno permite
+        definir tablas que refieran a páginas de mayor tamaño (4\,MB o
+        más). Esto reduce la cantidad total de entradas pero a costa
+        de aumentar la \emph{fragmentación interna}: cada página
+        desperdicia más memoria si no se llena por completo.
+    \item \textbf{Tablas multinivel.} Aún con páginas pequeñas, los
+        procesos suelen dejar muchos \emph{huecos} en su espacio de
+        direcciones lógicas, lo que en una tabla plana sería
+        desperdicio. Por eso las tablas de páginas se representan como
+        \textbf{árboles de $n$ niveles}.
+\end{enumerate}
+
+Cada nodo del árbol tiene el tamaño de una página. Sólo se reservan
+los nodos correspondientes a regiones efectivamente usadas del espacio
+de direcciones; las regiones vacías no consumen memoria.
+
+\subsection{Caso de estudio: paginado en RISC-V RV-32}
+
+En la arquitectura \textbf{RISC-V RV-32} el espacio de direcciones es
+de 32\,bits (4\,GB) y la tabla de páginas tiene la forma de un
+\textbf{árbol de dos niveles}. El registro \texttt{satp}
+(\emph{Supervisor Address Translation and Protection}), de acceso
+privilegiado, contiene el número de página física de la \emph{raíz} del
+árbol.
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    cell/.style={draw,minimum height=0.7cm,align=center},
+]
+\node[font=\bfseries\small] at (3.2,2.3) {virtual address};
+\node[cell,minimum width=1.4cm,fill=mem1!20] (vpn1) at (1.2,1.6) {vpn1};
+\node[cell,minimum width=1.4cm,fill=mem2!20] (vpn0) at (2.7,1.6) {vpn0};
+\node[cell,minimum width=2.0cm,fill=mem3!20] (off)  at (4.6,1.6) {offset};
+\node[font=\scriptsize] at (1.2,2.1) {10 bits};
+\node[font=\scriptsize] at (2.7,2.1) {10 bits};
+\node[font=\scriptsize] at (4.6,2.1) {12 bits};
+\end{tikzpicture}
+\end{center}
+
+Una dirección lógica se divide en tres partes:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{vpn1} (10\,bits más significativos): índice o
+        \emph{virtual page number} al \emph{nodo raíz} del árbol. Su
+        \texttt{pte} contiene el \texttt{ppn} del nodo hijo.
+    \item \texttt{vpn0} (10\,bits siguientes): índice en el nodo hoja.
+        Su \texttt{pte} contiene el \texttt{ppn} de la página o
+        \emph{frame} destino.
+    \item \texttt{offset} (12\,bits menos significativos): desplazamiento
+        dentro de la página destino.
+\end{itemize}
+
+\paragraph{Ejemplo.}
+La dirección lógica \texttt{0x0000100f} se interpreta como:
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\textbf{vpn1} & \textbf{vpn0} & \textbf{offset} \\
+\midrule
+\texttt{0000000011} & \texttt{0000000001} & \texttt{000000001111} \\
+\end{tabular}
+\end{center}
+
+La traducción procede así:
+
+\begin{enumerate}[leftmargin=*]
+    \item Comienza en el nodo raíz en la entrada $\texttt{vpn1}=3$
+        (tercera entrada).
+    \item Suponiendo que esa \texttt{pte} contiene un \texttt{ppn} que
+        lleva al nodo hijo (digamos $y$), se indexa en el nodo hoja
+        $y$ en la entrada $\texttt{vpn0}=1$.
+    \item En esa entrada el \texttt{ppn} = $k$ lleva a la dirección
+        base física del frame destino.
+    \item La dirección física final es la dirección base del frame
+        sumada al offset (\texttt{0x00f}).
+\end{enumerate}
+
+Formalmente, la función de traducción es
+\[
+\textit{pa} = \bigl(\textit{satp}.\textit{ppn}[\textit{va}.\textit{vpn1}].\textit{ppn} \times PS\bigr)[\textit{va}.\textit{vpn0}].\textit{ppn} \times PS + \textit{va}.\textit{offset}.
+\]
+
+\subsection{Formato de una \emph{page table entry} en RV-32}
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    cell/.style={draw,minimum height=0.7cm,align=center},
+]
+\node[cell,minimum width=4.0cm,fill=mem1!20] (ppn) {ppn};
+\node[cell,minimum width=2.0cm,fill=mem2!20,right=0pt of ppn] (flags) {DAGUXWRV};
+\node[font=\scriptsize] at ($(ppn.north west)+(0.2,0.2)$) {31};
+\node[font=\scriptsize] at ($(ppn.north east)+(-0.3,0.2)$) {20 19};
+\node[font=\scriptsize] at ($(flags.north west)+(0.3,0.2)$) {10 9};
+\node[font=\scriptsize] at ($(flags.north east)+(-0.3,0.2)$) {flags 0};
+\end{tikzpicture}
+\end{center}
+
+Los \emph{flags} en una \texttt{pte} son los siguientes bits:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{V} (\emph{Valid}): indica si la entrada es válida.
+    \item \textbf{D} (\emph{Dirty}): encendido por el hardware cuando la
+        página correspondiente fue \emph{modificada} (escrita) por una
+        instrucción.
+    \item \textbf{A} (\emph{Accessed}): encendido por el hardware cuando
+        la página fue accedida para lectura o escritura.
+    \item \textbf{U} (\emph{User mode}): permiso de acceso en modo
+        usuario.
+    \item \textbf{R, W, X}: permisos de \emph{Read}, \emph{Write} y
+        \emph{eXecute} sobre la página.
+    \item \textbf{G} (\emph{Global mapping}): la entrada existe en
+        todas las tablas (mapping global).
+\end{itemize}
+
+En el proceso de traducción de una dirección lógica a una física, la
+CPU verifica los flags correspondientes. Si hay una violación (por
+ejemplo, $V=0$, o el acceso no respeta los permisos $R/W/X/U$), se
+genera un \emph{page fault}. El kernel atrapa estas excepciones y actúa
+en consecuencia.
+
+\paragraph{Context switch.}
+El kernel debe cambiar el registro \texttt{satp} en cada context switch
+para que apunte a la tabla de páginas de la nueva tarea seleccionada.
+Los bits \emph{D} y \emph{A} son la base de muchas políticas de
+\emph{memoria virtual} que se ven en el capítulo siguiente.
+
+% =====================================================================
+\section{Lookaside Translation Buffers (TLB)}
+% =====================================================================
+
+Un sistema con paginado traduce \emph{constantemente} direcciones
+lógicas a físicas usando las tablas de páginas. Estas tablas están
+almacenadas en RAM y son configuradas por el SO.
+
+\begin{importante}
+Sin ninguna optimización, en un esquema multinivel \emph{cada acceso a
+memoria del programa requiere varios accesos extra a RAM}: uno por cada
+nivel del árbol de tablas (por ejemplo, \emph{pte} raíz, \emph{pte} de
+la hoja) y finalmente el acceso al dato. En RV-32 esto multiplicaría
+por 3 cada referencia.
+\end{importante}
+
+\subsection{La caché de traducciones}
+
+Para evitar esta sobrecarga las CPUs modernas usan una memoria caché
+especial dedicada a almacenar las \emph{ptes} más frecuentemente
+referenciadas. Esta caché se conoce como
+\textbf{Translation Lookaside Buffer} (\textbf{TLB}). La TLB reside
+físicamente entre la CPU y la caché de nivel 1 (L1).
+
+\begin{definicion}
+La TLB es una memoria \textbf{direccionable por contenido}: se busca
+por dirección lógica y, si está presente (\emph{hit}), retorna la
+dirección física correspondiente; en caso contrario ocurre un
+\emph{miss} y la CPU debe consultar las tablas de páginas en RAM.
+\end{definicion}
+
+\subsection{TLB con direct mapping}
+
+Generalmente, una TLB implementa una \textbf{función hash} donde la
+clave de búsqueda son una parte de los bits \emph{menos significativos}
+del \emph{virtual page number} (vpn), asociados a un \textbf{tag} que
+es el conjunto de bits \emph{más significativos} del vpn. El par
+(\texttt{tag}, \texttt{index}) identifica unívocamente a un vpn.
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    cell/.style={draw,minimum height=0.7cm,align=center},
+]
+% Virtual address
+\node[font=\bfseries\small] at (2.5,2.3) {virtual address (va)};
+\node[cell,minimum width=1.6cm,fill=mem1!20] (tag)  at (0.8,1.6) {tag};
+\node[cell,minimum width=1.6cm,fill=mem2!20] (idx)  at (2.4,1.6) {index};
+\node[cell,minimum width=1.6cm,fill=mem3!20] (off)  at (4.4,1.6) {offset};
+
+\draw[decorate,decoration={brace,amplitude=4pt}]
+    ($(tag.south west)+(0,-0.1)$) -- ($(idx.south east)+(0,-0.1)$)
+    node[midway,below=4pt,font=\scriptsize\itshape] {virtual page number};
+
+% TLB
+\node[font=\bfseries\small] at (8.5,1.6) {TLB entries};
+\node[cell,minimum width=4.5cm] (e0) at (8.5,1.0) {\ldots};
+\node[cell,minimum width=1.2cm,fill=mem1!20] (et) at (7.0,0.3)  {tag};
+\node[cell,minimum width=1.6cm,fill=mem4!20] (ep) at (8.5,0.3)  {ppn};
+\node[cell,minimum width=1.2cm] (ef) at (9.9,0.3)  {flags};
+\node[cell,minimum width=4.5cm] (e1) at (8.5,-0.4) {\ldots};
+\end{tikzpicture}
+\end{center}
+
+Cada entrada de la TLB contiene el \texttt{tag}, el \texttt{ppn}
+(\emph{physical page number}) y los \texttt{flags}, entre los cuales
+está el bit \textbf{valid} (\textbf{V}) que indica si la entrada es
+válida.
+
+\paragraph{Condición de \emph{hit}.}
+La caché así descripta es \textbf{1-way associative cache} (direct
+mapping): hay una sola \texttt{ppn} posible para cada \texttt{index}.
+Sea \texttt{va.tag} y \texttt{va.index} las partes de la dirección
+virtual recibida; ocurre un \emph{hit} cuando:
+\[
+\textit{TLB}[\textit{index}].\textit{tag} == \textit{va}.\textit{tag}
+\quad\wedge\quad
+\textit{TLB}[\textit{index}].\textit{flags}\;\&\;\textit{BIT\_V} \neq 0,
+\]
+y \texttt{TLB[index].ppn} contiene la \texttt{physical page number}
+buscada.
+
+\paragraph{Manejo de un \emph{miss}.}
+Si ocurre un \emph{miss}, la CPU accede a la tabla de páginas en RAM
+(o a una caché de nivel inferior) y obtiene la \texttt{ppn}
+correspondiente. Luego se setea \texttt{TLB[index]} apropiadamente con
+los datos de la nueva traducción para acelerar accesos futuros.
+
+\paragraph{Colisiones.}
+Inevitablemente, varias direcciones virtuales distintas comparten el
+mismo \texttt{index} pero con \texttt{tag} diferente. Eso produce una
+\textbf{colisión}: la entrada anterior es reemplazada con el nuevo
+trío \texttt{<tag, ppn, flags>}.
+
+\subsection{Otras configuraciones}
+
+Existen organizaciones más sofisticadas que permiten almacenar
+\emph{más de una entrada} (un \emph{set}) en el mismo \texttt{index};
+son las \emph{set-associative caches} (o \emph{associative caches}). La
+configuración \emph{1-way} descripta arriba es el caso más simple. A
+mayor asociatividad menor tasa de colisiones, pero mayor complejidad y
+costo del hardware de búsqueda.
+
+Algunas arquitecturas, como \textbf{MIPS}, permiten que sea el
+\emph{kernel} el que decida (por software) qué hacer ante un
+\emph{miss}: el hardware genera una excepción (trap) y el kernel
+implementa la política de reemplazo y la carga de la nueva entrada.
+
+% =====================================================================
+\section{Cierre y conexión con memoria virtual}
+% =====================================================================
+
+A lo largo del capítulo se construye, paso a paso, la maquinaria que
+hace posible la gestión moderna de memoria:
+
+\begin{itemize}[leftmargin=*]
+    \item La \textbf{jerarquía de memorias} (registros, cachés, RAM,
+        disco) explica por qué la velocidad de acceso a la memoria es
+        un factor crítico y motiva la existencia de toda la maquinaria
+        de caching y traducción.
+    \item Las estrategias clásicas de \textbf{asignación} (tamaño
+        variable con \emph{first/best/worst fit}, tamaño fijo y
+        \emph{buddy system}) muestran el compromiso permanente entre
+        \emph{fragmentación interna} y \emph{externa}.
+    \item Los mecanismos de \textbf{protección} (registros base/límite,
+        segmentación) garantizan que cada proceso quede
+        \emph{confinado} a su espacio de memoria y son el origen del
+        clásico \emph{segmentation fault}.
+    \item El \textbf{código independiente de la posición} (PIC) hace
+        que un mismo binario pueda ejecutarse en cualquier dirección
+        base, lo que habilita bibliotecas compartidas y técnicas
+        modernas como ASLR.
+    \item El \textbf{paginado} unifica todo lo anterior: divide la
+        memoria física en frames del mismo tamaño y le da a cada
+        proceso (y al kernel) un espacio de direcciones lógicas
+        independiente. Las tablas de páginas multinivel evitan el
+        desperdicio de las tablas planas en espacios de direcciones
+        grandes.
+    \item Las \textbf{TLBs} aceleran la traducción dirección
+        lógica $\to$ dirección física, evitando que cada acceso a
+        memoria pague el costo de recorrer varios niveles de tablas en
+        RAM.
+\end{itemize}
+
+\begin{idea}
+Esta maquinaria es exactamente la base sobre la que se construyen las
+políticas de \textbf{memoria virtual} (swapping, demand paging,
+copy-on-write, mapeo de archivos, \ldots) que se estudian en el
+capítulo siguiente. Los bits \texttt{V}, \texttt{D} y \texttt{A} de la
+\emph{pte}, y la posibilidad de generar \emph{page faults}, son las
+herramientas que el SO necesita para implementar esas políticas.
+\end{idea}
+
+\end{document}
