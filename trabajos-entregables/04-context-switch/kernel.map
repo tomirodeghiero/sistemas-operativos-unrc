@@ -1,0 +1,126 @@
+
+There are no discarded input sections
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+*default*        0x00000000         0xffffffff
+
+Linker script and memory map
+
+LOAD /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//cc0m2P0I.o
+LOAD /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//cc6TYE4n.o
+LOAD /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//ccCsKRWD.o
+LOAD /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//ccMgKRAu.o
+LOAD /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//ccw0pRTc.o
+LOAD /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//ccVMZQc1.o
+                0x80000000                        . = 0x80000000
+
+.text           0x80000000      0x664
+ *(.text.boot)
+ *(.text .text.*)
+ .text          0x80000000      0x108 /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//cc0m2P0I.o
+                0x80000000                boot
+                0x80000074                cpuid
+                0x8000007c                disable_interrupts
+                0x80000084                enable_interrupts
+                0x8000008c                context_switch
+ .text          0x80000108       0x58 /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//cc6TYE4n.o
+                0x80000108                init_task_context
+ .text          0x80000160       0x80 /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//ccCsKRWD.o
+                0x80000160                console_putc
+                0x8000019c                console_puts
+ .text          0x800001e0       0xec /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//ccMgKRAu.o
+                0x800001e0                task_a
+                0x80000228                create_task
+                0x8000024c                kernel_main
+ .text          0x800002cc      0x324 /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//ccw0pRTc.o
+                0x800002cc                memset
+                0x80000304                memcpy
+                0x80000344                strcpy
+                0x80000390                strcmp
+                0x800003dc                printf
+ .text          0x800005f0       0x74 /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//ccVMZQc1.o
+                0x800005f0                acquire
+                0x80000634                release
+
+.rodata         0x80000664       0x8d
+ *(.rodata .rodata.*)
+ .rodata.str1.4
+                0x80000664       0x8d /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//ccMgKRAu.o
+                                 0x79 (size before relaxing)
+ .rodata.str1.4
+                0x800006f1        0x0 /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//ccw0pRTc.o
+                                 0x11 (size before relaxing)
+
+.rela.dyn       0x800006f4        0x0
+ .rela.text     0x800006f4        0x0 /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//cc0m2P0I.o
+
+.data           0x800006f4        0x0
+ *(.data .data.*)
+ .data          0x800006f4        0x0 /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//cc0m2P0I.o
+ .data          0x800006f4        0x0 /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//cc6TYE4n.o
+ .data          0x800006f4        0x0 /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//ccCsKRWD.o
+ .data          0x800006f4        0x0 /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//ccMgKRAu.o
+ .data          0x800006f4        0x0 /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//ccw0pRTc.o
+ .data          0x800006f4        0x0 /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//ccVMZQc1.o
+
+.bss            0x800006f4     0x1008
+                0x800006f4                        __bss = .
+ *(.bss .bss.* .sbss .sbss.*)
+ .bss           0x800006f4        0x0 /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//cc0m2P0I.o
+ .bss           0x800006f4        0x0 /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//cc6TYE4n.o
+ .bss           0x800006f4        0x0 /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//ccCsKRWD.o
+ .bss           0x800006f4     0x1000 /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//ccMgKRAu.o
+                0x800006f4                stack_task_a
+ .sbss          0x800016f4        0x8 /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//ccMgKRAu.o
+                0x800016f4                main_thread_sp
+                0x800016f8                task_a_sp
+ .bss           0x800016fc        0x0 /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//ccw0pRTc.o
+ .bss           0x800016fc        0x0 /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//ccVMZQc1.o
+                0x800016fc                        __bss_end = .
+                0x800016fc                        . = ALIGN (0x4)
+                0x800016fc                        __stack0 = .
+                0x800216fc                        . = (. + 0x20000)
+                0x800216fc                        __kernel_end = .
+OUTPUT(kernel elf32-littleriscv)
+
+.riscv.attributes
+                0x00000000       0x4f
+ .riscv.attributes
+                0x00000000       0x4d /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//cc0m2P0I.o
+ .riscv.attributes
+                0x0000004d       0x4b /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//cc6TYE4n.o
+ .riscv.attributes
+                0x00000098       0x4b /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//ccCsKRWD.o
+ .riscv.attributes
+                0x000000e3       0x4b /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//ccMgKRAu.o
+ .riscv.attributes
+                0x0000012e       0x4b /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//ccw0pRTc.o
+ .riscv.attributes
+                0x00000179       0x4b /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//ccVMZQc1.o
+
+.comment        0x00000000       0x19
+ .comment       0x00000000       0x19 /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//cc6TYE4n.o
+                                 0x1a (size before relaxing)
+ .comment       0x00000019        0x0 /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//ccCsKRWD.o
+                                 0x1a (size before relaxing)
+ .comment       0x00000019        0x0 /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//ccMgKRAu.o
+                                 0x1a (size before relaxing)
+ .comment       0x00000019        0x0 /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//ccw0pRTc.o
+                                 0x1a (size before relaxing)
+ .comment       0x00000019        0x0 /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//ccVMZQc1.o
+                                 0x1a (size before relaxing)
+
+.note.GNU-stack
+                0x00000000        0x0
+ .note.GNU-stack
+                0x00000000        0x0 /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//cc6TYE4n.o
+ .note.GNU-stack
+                0x00000000        0x0 /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//ccCsKRWD.o
+ .note.GNU-stack
+                0x00000000        0x0 /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//ccMgKRAu.o
+ .note.GNU-stack
+                0x00000000        0x0 /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//ccw0pRTc.o
+ .note.GNU-stack
+                0x00000000        0x0 /var/folders/48/zg4mhgvx6hdd32cd1k49z1vm0000gn/T//ccVMZQc1.o

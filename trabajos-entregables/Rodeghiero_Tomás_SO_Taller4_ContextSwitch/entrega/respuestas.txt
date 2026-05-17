@@ -1,0 +1,142 @@
+Taller 4 - Threads y cambios de contexto
+Respuestas a los ejercicios
+Alumno: Tomás Rodeghiero - Sistemas Operativos - UNRC
+
+
+Ejercicio 1: Analizar el código en kernel.c, arch.c y arch.s para
+             ver como estan implementados los threads y el cambio
+             de contexto.
+-----------------------------------------------------------------
+
+Un thread, en este paso, es simplemente su pila mas su stack pointer
+guardado. No hay todavia una estructura tipo PCB ni un scheduler:
+cada hilo se representa con dos variables globales en kernel.c, una
+para reservar la pila estaticamente y otra para acordarse del sp al
+ceder la CPU.
+
+  uint8   stack_task_a[PAGE_SIZE];   // pila de task_a
+  uint32* task_a_sp;                 // sp guardado de task_a
+
+El hilo principal (kernel_main) no necesita reservar una pila propia
+porque ya recibio la suya al iniciar el sistema (la arma arch.s en
+boot a partir de __stack0). Solo necesita un sp guardado:
+
+  uint32* main_thread_sp;
+
+La construccion de un hilo nuevo pasa por init_task_context() en
+arch.c. Lo que hace es apilar manualmente lo que context_switch va
+a esperar encontrar la primera vez que se reanude ese hilo: doce
+ceros (uno por cada s0..s11) y el pc del hilo en el lugar de ra.
+Asi, cuando context_switch ejecute su ret final, va a saltar a la
+direccion de la funcion de entrada del hilo, como si ese hilo
+hubiera llamado a context_switch antes y ahora estuviera volviendo.
+
+  *--sp = 0;   // s11
+  ...
+  *--sp = 0;   // s0
+  *--sp = pc;  // ra
+  return sp;
+
+El cambio de contexto en si esta en arch.s. context_switch recibe
+&current_sp y &next_sp, y hace tres cosas:
+
+  1. Apila ra y s0..s11 en la pila actual (13 palabras de 4 bytes).
+  2. Intercambia el stack pointer:
+       *current_sp = sp;   // guarda donde quedo el hilo actual
+       sp = *next_sp;      // toma la pila del proximo hilo
+  3. Desapila ra y s0..s11 de la nueva pila y hace ret.
+
+Como el ra que se restaura es el que el hilo proximo habia guardado
+en su ultimo context_switch (o el pc inicial, si es la primera
+vez), el ret salta exactamente al punto donde ese hilo debe
+reanudar.
+
+En kernel.c, el hilo principal arranca el resto: crea task_a con
+create_task (envoltorio sobre init_task_context), imprime su mensaje
+y llama a context_switch(&main_thread_sp, &task_a_sp). En ese
+momento la CPU pasa a task_a, que imprime y a su vez cede con otro
+context_switch al hilo que corresponda. Toda la "magia" del cambio
+de contexto vive en esas pocas instrucciones de arch.s; el resto
+del paso es estructura para usarlas.
+
+
+Ejercicio 2: ¿Por que tenemos que salvar los registros s0-s11?
+-----------------------------------------------------------------
+
+Porque, segun la ABI de RISC-V, los registros s0-s11 (y tambien ra,
+sp, gp y tp) son "callee-saved": el llamador asume que mantienen su
+valor despues de que retorna la funcion que invoco. Si una funcion
+los modifica, esta obligada a guardarlos al entrar y restaurarlos al
+salir.
+
+En el caso de context_switch() no estamos haciendo un return comun:
+estamos cambiando de hilo. El hilo que pierde la CPU puede tener
+valores vivos en s0-s11 (variables locales que el compilador eligio
+mantener ahi entre llamadas). Si saltaramos al otro hilo sin
+guardarlos, el otro hilo los pisaria con sus propios valores y
+cuando volvamos al hilo original los s0-s11 estarian corruptos.
+
+Por eso context_switch() guarda s0-s11 en la pila del hilo actual
+antes de cambiar de sp, y los restaura desde la pila del hilo que se
+reanuda. Se guarda tambien ra (return address), porque es lo que
+usa la instruccion ret al final de context_switch() para volver al
+punto donde cada hilo habia llamado a context_switch() la vez
+anterior. Sin ra guardado no habria forma de saber adonde reanudar.
+
+
+Ejercicio 3: ¿Por que no salvamos todos los registros?
+------------------------------------------------------
+
+Por dos motivos.
+
+1. Los registros caller-saved (t0-t6, a0-a7) no hace falta
+   guardarlos en context_switch(). La ABI dice que el llamador no
+   puede asumir que sobreviven a una llamada de funcion, asi que el
+   compilador ya derrama (spill) los que necesite preservar antes
+   de hacer la llamada. Cuando se entra a context_switch() esos
+   registros ya son "basura" desde el punto de vista del hilo
+   llamador: gastar instrucciones en guardarlos seria trabajo
+   inutil y haria mas lento el cambio de contexto.
+
+2. Los registros especiales tienen tratamiento aparte:
+     - sp se intercambia explicitamente (es la operacion central
+       del cambio de contexto: cada hilo tiene su propia pila).
+     - tp guarda el hartid, que es propiedad de la CPU y no del
+       hilo, asi que no debe cambiar al cambiar de tarea.
+     - gp es el global pointer, fijo durante toda la ejecucion.
+     - zero (x0) es constante.
+
+En resumen: se guarda lo minimo necesario para que la ABI siga
+siendo correcta al cambiar de pila. Eso es exactamente s0-s11 + ra.
+Guardar mas seria desperdicio y guardar menos romperia variables
+vivas del hilo que pierde la CPU.
+
+
+Ejercicio 4: Crear task_b y producir la traza
+             main_thread -> task_a -> task_b -> task_a
+                                   -> main_thread -> task_b
+-----------------------------------------------------------------
+
+La solucion esta en entrega/kernel.c. La idea es que cada tarea
+ceda dos veces y reanude desde donde quedo la ultima:
+
+  - kernel_main imprime, cede a task_a. Cuando reanuda, imprime
+    de nuevo y cede a task_b.
+  - task_a imprime, cede a task_b. Cuando reanuda, imprime de
+    nuevo y cede a main.
+  - task_b imprime, cede a task_a. Cuando reanuda, imprime de
+    nuevo y cede a main (cierre).
+
+Esto da 5 cambios de contexto y 6 puntos de impresion. La salida
+obtenida en QEMU es:
+
+    In kernel_main() thread
+    Task A on cpu 0
+    Task B on cpu 0
+    Task A again on cpu 0
+    In kernel_main() thread again
+    Task B again on cpu 0
+    Kernel stopped at kernel.c:68
+
+Las seis lineas previas al stop() corresponden uno a uno a la traza
+pedida.

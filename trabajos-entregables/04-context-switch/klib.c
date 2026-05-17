@@ -1,26 +1,23 @@
-/****************************************************************************
- * Kernel library functions                                                 *
- ****************************************************************************/
 #include <stdarg.h>
-#include "klib.h"
 #include "console.h"
+#include "klib.h"
 
-void* memset(void* buf, unsigned char c, unsigned int n) {
-    unsigned char* p = (unsigned char*) buf;
+void *memset(void *buf, char c, unsigned int n) {
+    unsigned char *p = (unsigned char *) buf;
     while (n--)
         *p++ = c;
     return buf;
 }
 
-void* memcpy(void*dst, const void* src, unsigned int n) {
-    unsigned char* d = (unsigned char*) dst;
-    const unsigned char* s = (const unsigned char*) src;
+void *memcpy(void *dst, const void *src, size_t n) {
+    unsigned char *d = (unsigned char *) dst;
+    const unsigned char *s = (const unsigned char *) src;
     while (n--)
         *d++ = *s++;
     return dst;
 }
 
-char* strcpy(char* dst, const char* src) {
+char *strcpy(char *dst, const char *src) {
     char *d = dst;
     while (*src)
         *d++ = *src++;
@@ -28,14 +25,15 @@ char* strcpy(char* dst, const char* src) {
     return dst;
 }
 
-int strcmp(const char* s1, const char* s2) {
+int strcmp(const char *s1, const char *s2) {
     while (*s1 && *s2) {
         if (*s1 != *s2)
             break;
         s1++;
         s2++;
     }
-    return *(unsigned char*)s1 - *(unsigned char*)s2;
+
+    return *(unsigned char *)s1 - *(unsigned char *)s2;
 }
 
 inline void putchar(char c)
@@ -43,7 +41,7 @@ inline void putchar(char c)
     console_putc(c);
 }
 
-void printf(const char* fmt, ...) {
+void printf(const char *fmt, ...) {
     va_list vargs;
     va_start(vargs, fmt);
     while (*fmt) {
@@ -57,7 +55,7 @@ void printf(const char* fmt, ...) {
                     putchar('%');
                     break;
                 case 's': {
-                    const char* s = va_arg(vargs, const char *);
+                    const char *s = va_arg(vargs, const char *);
                     while (*s) {
                         putchar(*s);
                         s++;

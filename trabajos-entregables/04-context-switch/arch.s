@@ -70,3 +70,47 @@ disable_interrupts:
 enable_interrupts:
     csrsi sstatus, 0x2
     ret
+
+# context_switch(address *current_sp, address *next_sp)
+# 1. save (push) cpu registers on current stack (pointed by a0)
+# 2. update prev_sp: *current_sp = sp; 
+# 3. switch to next task stack: sp = *next_sp
+# 4. restore (pop) cpu register saved values from next stack thread
+.global context_switch
+context_switch:
+    # push callee saved registers and task pc (ra) 
+    addi sp, sp, -13 * 4
+    sw ra,  0  * 4(sp)
+    sw s0,  1  * 4(sp)
+    sw s1,  2  * 4(sp)
+    sw s2,  3  * 4(sp)
+    sw s3,  4  * 4(sp)
+    sw s4,  5  * 4(sp)
+    sw s5,  6  * 4(sp)
+    sw s6,  7  * 4(sp)
+    sw s7,  8  * 4(sp)
+    sw s8,  9  * 4(sp)
+    sw s9,  10 * 4(sp)
+    sw s10, 11 * 4(sp)
+    sw s11, 12 * 4(sp)
+
+    # update current_sp and change to next_sp
+    sw sp, (a0)         # *current_sp = sp;
+    lw sp, (a1)         # sp = *next_sp
+
+    # restore register values from next stack
+    lw ra,  0  * 4(sp)
+    lw s0,  1  * 4(sp)
+    lw s1,  2  * 4(sp)
+    lw s2,  3  * 4(sp)
+    lw s3,  4  * 4(sp)
+    lw s4,  5  * 4(sp)
+    lw s5,  6  * 4(sp)
+    lw s6,  7  * 4(sp)
+    lw s7,  8  * 4(sp)
+    lw s8,  9  * 4(sp)
+    lw s9,  10 * 4(sp)
+    lw s10, 11 * 4(sp)
+    lw s11, 12 * 4(sp)
+    addi sp, sp, 13 * 4
+    ret

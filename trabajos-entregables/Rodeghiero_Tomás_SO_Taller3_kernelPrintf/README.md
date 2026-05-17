@@ -16,8 +16,7 @@ Taller 3: funciones de utilidad en el kernel: `printf`.
    `va_end`), las funciones auxiliares de memoria/strings y las macros
    `panic`/`stop` definidas en `klib.h`.
 
-En este paso no se pide modificar el código: el objetivo es leerlo,
-compilarlo, ejecutarlo y documentarlo.
+No se pide modificar el código: el objetivo es leerlo, compilarlo, ejecutarlo y documentarlo.
 
 ## Estructura de la entrega
 

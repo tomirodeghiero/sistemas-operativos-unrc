@@ -1,0 +1,12 @@
+Salida del kernel modificado ejecutado con:
+  qemu-system-riscv32 -machine virt -bios none -nographic --no-reboot -smp 1 -kernel kernel
+
+------------------------------------------------------------
+In kernel_main() thread
+Task A on cpu 0
+Task B on cpu 0
+Task A again on cpu 0
+In kernel_main() thread again
+Task B again on cpu 0
+Kernel stopped at kernel.c:68
+------------------------------------------------------------
