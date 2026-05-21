@@ -1,0 +1,1613 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- Encoding ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands]{babel}
+\usepackage{lmodern}
+
+% --- Layout ---
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{parskip}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em plus 0.2em minus 0.1em}
+
+% --- Tables and graphics ---
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{positioning,shapes.geometric,arrows.meta,fit,backgrounds,calc,decorations.pathreplacing}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{amsmath,amssymb}
+
+% --- Code listings ---
+\usepackage{listings}
+\definecolor{codegray}{rgb}{0.96,0.96,0.96}
+\definecolor{codeborder}{rgb}{0.85,0.85,0.85}
+\definecolor{codecomment}{rgb}{0.30,0.55,0.30}
+\definecolor{codekeyword}{rgb}{0.10,0.30,0.70}
+\definecolor{codestring}{rgb}{0.65,0.15,0.10}
+
+\lstdefinestyle{cstyle}{
+    language=C,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+}
+
+\lstdefinestyle{shellstyle}{
+    language=bash,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstdefinestyle{textstyle}{
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstset{style=textstyle}
+
+% --- Definition / Idea / Important boxes ---
+\usepackage[most]{tcolorbox}
+\newtcolorbox{definicion}[1][]{
+    colback=blue!5!white,
+    colframe=blue!50!black,
+    fonttitle=\bfseries,
+    title=Definición,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{idea}[1][]{
+    colback=orange!5!white,
+    colframe=orange!60!black,
+    fonttitle=\bfseries,
+    title=Idea intuitiva,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{importante}[1][]{
+    colback=red!5!white,
+    colframe=red!50!black,
+    fonttitle=\bfseries,
+    title=Importante,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+
+% --- Hyperlinks ---
+\usepackage[colorlinks=true,
+            linkcolor=blue!60!black,
+            urlcolor=blue!50!black,
+            citecolor=blue!60!black]{hyperref}
+
+% --- Memory palette ---
+\definecolor{mem1}{HTML}{4C72B0}
+\definecolor{mem2}{HTML}{DD8452}
+\definecolor{mem3}{HTML}{55A868}
+\definecolor{mem4}{HTML}{8172B2}
+\definecolor{memused}{HTML}{C44E52}
+\definecolor{memfree}{HTML}{8C8C8C}
+\definecolor{memshared}{HTML}{4FC3C7}
+\definecolor{memfile}{HTML}{F4A261}
+
+% --- Title block ---
+\title{
+    \vspace{-2.5em}
+    \textbf{Práctico 5} \\[0.3em]
+    \large Gestión de la memoria y memoria virtual
+}
+\author{
+    Tomás Rodeghiero \\
+    \small Sistemas Operativos --- Universidad Nacional de Río Cuarto
+}
+\date{2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent
+Este documento presenta la resolución integral del Práctico 5 de la
+materia Sistemas Operativos (UNRC, 2026), centrado en la
+\emph{gestión de la memoria} y la \emph{memoria virtual}. Se resuelven
+nueve ejercicios que cubren: inspección del consumo de memoria con
+\texttt{top}, \texttt{free}, \texttt{smem} y \texttt{swapon};
+\emph{buddy system}; análisis del layout lógico de un proceso C;
+arquitecturas con paginado (tabla de páginas, formato de \emph{pte},
+páginas grandes vs.\ multinivel); memoria compartida entre procesos;
+mapeo de archivos en memoria (\texttt{mmap}); y la API de \emph{shared
+memory} de UNIX (\texttt{shmget}, \texttt{shmat}, \texttt{shmdt},
+\texttt{shmctl}). Cada ejercicio se justifica con los capítulos
+\emph{Gestión de la memoria} y \emph{Memoria virtual} de las Notas del
+curso (Marcelo Arroyo) y con los resúmenes teóricos
+\texttt{resumen-teorico-gestion-memoria} y
+\texttt{resumen-teorico-memoria-virtual} disponibles en
+\texttt{materiales/}.
+\end{abstract}
+
+\tableofcontents
+\bigskip
+
+% =====================================================================
+\section{Introducción}
+% =====================================================================
+
+La gestión de la memoria es una de las funciones más importantes que
+realiza el sistema operativo. Sus dos responsabilidades inseparables
+son la \textbf{asignación} (decidir qué regiones de la RAM le tocan a
+qué procesos y al kernel, y cómo se liberan cuando ya no se usan) y la
+\textbf{protección} (garantizar que un proceso se ejecute confinado a
+sus regiones, sin poder invadir las de otros procesos ni las del
+kernel).
+
+A su vez, la \textbf{memoria virtual} es la técnica que permite
+ejecutar programas cuya memoria total excede la RAM disponible,
+manteniendo en RAM sólo las partes en uso en cada momento y dejando el
+resto en disco. Se apoya en el esquema de \emph{paginado} y en bits de
+control de la \texttt{pte} (\texttt{V}, \texttt{A}, \texttt{D}) para
+implementar \emph{swapping}/\emph{demand paging}, \texttt{mmap},
+crecimiento dinámico del stack, memoria compartida entre procesos y
+\emph{copy on write}.
+
+Este documento aplica esos conceptos a problemas concretos: desde
+inspeccionar el consumo real del sistema hasta diseñar tablas de
+páginas para una arquitectura dada, pasando por la simulación de un
+\emph{buddy allocator} y el análisis empírico de \texttt{mmap} y la
+memoria compartida en Linux.
+
+% =====================================================================
+\section{Ejercicio 1 --- Memoria y swap usados por los procesos}
+% =====================================================================
+
+\textbf{Enunciado.} Determinar los espacios de memoria (incluyendo
+swap) que están usando los procesos del sistema. Ayuda: ver los
+comandos \texttt{top}, \texttt{free}, \texttt{smem} y \texttt{swapon}.
+
+\subsection{Resumen global con \texttt{free}}
+
+\texttt{free} presenta una visión \emph{global} del sistema en una
+sola línea: cuánta RAM y cuánto \emph{swap} hay, cuánto está usado,
+libre, compartido y cuánto se ocupa en \emph{buffers/cache}.
+
+\begin{lstlisting}[style=shellstyle]
+$ free -h
+              total      usado      libre      compart.    buff/cache  disponible
+Mem:           7.6Gi      3.1Gi      980Mi       340Mi       3.6Gi      3.8Gi
+Swap:          2.0Gi      512Mi      1.5Gi
+\end{lstlisting}
+
+Interpretación de columnas:
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{total}: capacidad total de RAM (o swap) reconocida
+        por el kernel.
+    \item \textbf{usado}: RAM efectivamente asignada a procesos,
+        kernel y reservada.
+    \item \textbf{libre}: páginas libres (con bit \texttt{V} apagado
+        en ningún \emph{pte} que las refiera).
+    \item \textbf{compart.}: páginas de \emph{shared memory}
+        (\texttt{tmpfs}, IPC, \texttt{mmap MAP\_SHARED}).
+    \item \textbf{buff/cache}: páginas usadas por el cache de disco
+        (\emph{page cache}). Son liberables: el kernel las descarta
+        si la RAM escasea.
+    \item \textbf{disponible}: estimación de cuánta memoria se puede
+        asignar sin recurrir a swap (esencialmente
+        \texttt{libre + buff/cache} reclamable).
+\end{itemize}
+
+\subsection{Dispositivos de swap con \texttt{swapon}}
+
+\texttt{swapon --show} lista los dispositivos o archivos configurados
+como swap. Cada entrada indica tipo (\emph{partition} o \emph{file}),
+tamaño y cuánto se está usando:
+
+\begin{lstlisting}[style=shellstyle]
+$ swapon --show
+NAME      TYPE        SIZE     USED    PRIO
+/dev/sda3 partition   2.0G     512M    -2
+\end{lstlisting}
+
+Una \emph{partición} con formato de tipo \emph{swap} es más rápida que
+un \emph{archivo} swap, porque evita la indirección del sistema de
+archivos.
+
+\subsection{Vista por proceso con \texttt{top}}
+
+\texttt{top} muestra los procesos en tiempo real. Las columnas
+relevantes para memoria son:
+
+\begin{center}
+\small
+\begin{tabular}{@{}lp{11cm}@{}}
+\toprule
+Columna & Significado \\
+\midrule
+\texttt{VIRT} & Tamaño total del espacio de direcciones lógicas del proceso (texto, datos, heap, stack, \texttt{mmap}, librerías compartidas, etc.). \\
+\texttt{RES}  & \emph{Resident Set Size}: páginas que efectivamente están en RAM. \\
+\texttt{SHR}  & Páginas residentes que son \emph{compartidas} con otros procesos (típicamente librerías \texttt{.so}, \texttt{mmap MAP\_SHARED}). \\
+\texttt{\%MEM} & \texttt{RES} dividido por la RAM total. \\
+\texttt{SWAP} & Páginas del proceso que actualmente residen en el área de swap (sólo si se habilita la columna con \texttt{f} en \texttt{top}). \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{importante}
+\texttt{VIRT} \emph{no} representa memoria realmente consumida: incluye
+\emph{mappings} (por ejemplo, librerías compartidas) que pueden no
+estar en RAM. Sumar \texttt{VIRT} de todos los procesos puede dar
+varias veces la RAM física y no significa que el sistema esté
+\emph{out of memory}.
+\end{importante}
+
+\subsection{Vista detallada con \texttt{smem}}
+
+\texttt{smem} es la herramienta más precisa para conocer el consumo
+\emph{real} de cada proceso, porque introduce las métricas
+\textbf{USS} y \textbf{PSS}:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{USS} (\emph{Unique Set Size}): memoria que sólo
+        usa el proceso. Es lo que se liberaría si el proceso terminara.
+    \item \textbf{PSS} (\emph{Proportional Set Size}): RAM única más
+        las páginas compartidas \emph{prorrateadas} entre los procesos
+        que las comparten. La suma de PSS de todos los procesos da el
+        consumo real de memoria de usuario.
+    \item \textbf{RSS} (\emph{Resident Set Size}): RAM total mapeada
+        por el proceso (cuenta cada página compartida en cada proceso
+        que la usa).
+    \item \textbf{SWAP}: páginas del proceso en el área de swap.
+\end{itemize}
+
+\begin{lstlisting}[style=shellstyle]
+$ smem -tk -c "pid user command swap uss pss rss"
+  PID User  Command                    Swap     USS     PSS     RSS
+ 1234 tomi  /usr/bin/firefox            12M   320M    430M    920M
+ 4567 tomi  /usr/lib/code/code-helper    8M    90M    140M    400M
+ ...
+-----------------------------------------------------------------
+                                       128M  1.1G   1.6G    3.4G
+\end{lstlisting}
+
+\begin{idea}
+\texttt{RSS} sobreestima el consumo porque cuenta varias veces la
+misma página compartida; \texttt{USS} subestima porque ignora las
+compartidas; \texttt{PSS} es el mejor compromiso. Cuando se pregunta
+``\textquestiondown{}cuánta RAM consume este proceso de verdad?'', la respuesta más
+honesta es PSS.
+\end{idea}
+
+\subsection{Información cruda por proceso}
+
+El kernel expone los datos por proceso en \texttt{/proc/<pid>/status}
+y \texttt{/proc/<pid>/smaps}:
+
+\begin{lstlisting}[style=shellstyle]
+$ grep -E "VmSize|VmRSS|VmSwap|VmData|VmStk|VmExe|VmLib" /proc/$$/status
+VmSize:    23012 kB     # tamano virtual total
+VmRSS:      4140 kB     # resident set size
+VmData:     1872 kB     # segmento de datos
+VmStk:       132 kB     # stack
+VmExe:       872 kB     # codigo (text)
+VmLib:      3568 kB     # librerias compartidas
+VmSwap:      256 kB     # paginas en swap
+\end{lstlisting}
+
+El archivo \texttt{/proc/<pid>/smaps} lista cada VMA (región) por
+separado con campos como \texttt{Size}, \texttt{Rss}, \texttt{Pss},
+\texttt{Swap}, \texttt{Shared\_Clean} y \texttt{Shared\_Dirty}, entre
+otros.
+
+\subsection*{Conclusión}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{free} y \texttt{swapon} dan el panorama global del
+        sistema.
+    \item \texttt{top} ordena los procesos por consumo aparente
+        (\texttt{VIRT}/\texttt{RES}) pero no diferencia memoria
+        compartida.
+    \item \texttt{smem} agrega \texttt{PSS}/\texttt{USS} y es lo más
+        adecuado para responder por proceso.
+    \item \texttt{/proc/<pid>/status} y \texttt{smaps} son la fuente
+        cruda que usan todas las herramientas anteriores.
+\end{itemize}
+
+% =====================================================================
+\section{Ejercicio 2 --- Evolución de un heap con \emph{buddy system}}
+% =====================================================================
+
+\textbf{Enunciado.} Mostrar la evolución de un heap de tamaño $1024$
+($2^{10}$) gestionado con un \emph{buddy system} con bloques de tamaño
+entre $2^5$ y $2^{10}$ ante la secuencia
+\texttt{ptr1=malloc(20)},
+\texttt{ptr2=malloc(50)},
+\texttt{ptr3=malloc(1010)},
+\texttt{free(ptr1)} y \texttt{malloc(64)}.
+
+\paragraph{Sobre el tamaño del heap.} El enunciado original menciona
+``$1$\,MB'', pero el rango de bloques permitidos es $2^5$ ($32$ bytes)
+a $2^{10}$ ($1024$ bytes). La interpretación más coherente con esa
+restricción es que el heap tiene tamaño $2^{10} = 1024$ bytes (es decir,
+un único bloque máximo). Así, todas las operaciones se pueden expresar
+en términos de los tamaños permitidos y la subdivisión del bloque
+maestro de $1024$ bytes.
+
+\subsection{Recordatorio del algoritmo}
+
+\begin{itemize}[leftmargin=*]
+    \item Inicialmente, el heap se particiona en bloques del tamaño
+        máximo $2^h$ ($1024$ en este caso).
+    \item Ante un pedido de tamaño $n$: se busca el menor bloque
+        libre $b$ con $b.\textit{size} \geq 2^{\lceil \log_2 n \rceil}$.
+        Si $b.\textit{size} \geq 2n$ y $b.\textit{size} > 2^l$, se
+        divide en dos mitades (\emph{buddies}) y se repite el paso.
+        Finalmente se asigna $b$.
+    \item Ante una liberación: si el \emph{buddy} contiguo del mismo
+        tamaño también está libre, se fusionan en un bloque del doble
+        de tamaño. La fusión se repite mientras se pueda y sin pasar
+        de $2^h$.
+\end{itemize}
+
+\subsection{Operación \texttt{ptr1 = malloc(20)}}
+
+$20$ cabe en el menor bloque permitido: $2^5 = 32$ bytes. El único
+bloque libre es el de $1024$, así que hay que dividir sucesivamente
+hasta llegar a $32$:
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+Paso & Acción & Estado del heap (tamaños) \\
+\midrule
+0 & inicio                        & $[\,1024_L\,]$ \\
+1 & divido 1024                   & $[\,512_L \mid 512_L\,]$ \\
+2 & divido el primer 512          & $[\,256_L \mid 256_L \mid 512_L\,]$ \\
+3 & divido el primer 256          & $[\,128_L \mid 128_L \mid 256_L \mid 512_L\,]$ \\
+4 & divido el primer 128          & $[\,64_L \mid 64_L \mid 128_L \mid 256_L \mid 512_L\,]$ \\
+5 & divido el primer 64           & $[\,32_L \mid 32_L \mid 64_L \mid 128_L \mid 256_L \mid 512_L\,]$ \\
+6 & asigno el primer 32 a ptr1    & $[\,\mathbf{32_U} \mid 32_L \mid 64_L \mid 128_L \mid 256_L \mid 512_L\,]$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\scriptsize},
+    scale=0.85,transform shape,block/.style={draw,minimum height=0.7cm,align=center}
+]
+\node[block,fill=memused!40,minimum width=0.5cm] (b0) at (0.25,0) {32};
+\node[block,fill=memfree!20,minimum width=0.5cm,right=0pt of b0] (b1) {32};
+\node[block,fill=memfree!20,minimum width=1.0cm,right=0pt of b1] (b2) {64};
+\node[block,fill=memfree!20,minimum width=2.0cm,right=0pt of b2] (b3) {128};
+\node[block,fill=memfree!20,minimum width=4.0cm,right=0pt of b3] (b4) {256};
+\node[block,fill=memfree!20,minimum width=8.0cm,right=0pt of b4] (b5) {512};
+\node[font=\scriptsize] at ($(b0.south)+(0,-0.3)$) {0};
+\node[font=\scriptsize] at ($(b5.south east)+(0,-0.3)$) {1024};
+\node[font=\bfseries] at ($(b0.north)+(0,0.25)$) {ptr1};
+\end{tikzpicture}
+\end{center}
+
+\texttt{ptr1} apunta al offset $0$.
+
+\subsection{Operación \texttt{ptr2 = malloc(50)}}
+
+$50$ cabe en $2^6 = 64$ bytes. Hay un bloque libre de exactamente $64$
+(offset $64$), así que se asigna directamente sin más divisiones.
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\scriptsize},
+    scale=0.85,transform shape,block/.style={draw,minimum height=0.7cm,align=center}
+]
+\node[block,fill=memused!40,minimum width=0.5cm] (b0) at (0.25,0) {32};
+\node[block,fill=memfree!20,minimum width=0.5cm,right=0pt of b0] (b1) {32};
+\node[block,fill=memused!40,minimum width=1.0cm,right=0pt of b1] (b2) {64};
+\node[block,fill=memfree!20,minimum width=2.0cm,right=0pt of b2] (b3) {128};
+\node[block,fill=memfree!20,minimum width=4.0cm,right=0pt of b3] (b4) {256};
+\node[block,fill=memfree!20,minimum width=8.0cm,right=0pt of b4] (b5) {512};
+\node[font=\scriptsize] at ($(b0.south)+(0,-0.3)$) {0};
+\node[font=\scriptsize] at ($(b5.south east)+(0,-0.3)$) {1024};
+\node[font=\bfseries] at ($(b0.north)+(0,0.25)$) {ptr1};
+\node[font=\bfseries] at ($(b2.north)+(0,0.25)$) {ptr2};
+\end{tikzpicture}
+\end{center}
+
+\texttt{ptr2} apunta al offset $64$.
+
+\subsection{Operación \texttt{ptr3 = malloc(1010)}}
+
+$1010$ necesita un bloque de $2^{10} = 1024$ bytes. Pero el bloque
+inicial de $1024$ ya fue subdividido y sus pedazos no están
+disponibles en forma contigua (parte está usada por \texttt{ptr1} y
+\texttt{ptr2}). La suma de los bloques libres es
+$32+128+256+512 = 928$, y aún si fuera mayor, en \emph{buddy system}
+\textbf{los pedidos se satisfacen con un único bloque contiguo}.
+
+\begin{importante}
+\texttt{ptr3 = malloc(1010)} \textbf{falla} y retorna \texttt{NULL}.
+Es un caso clásico de \emph{fragmentación externa}: hay memoria libre,
+pero no agrupable en un bloque suficiente.
+\end{importante}
+
+El estado del heap no cambia con este pedido fallido.
+
+\subsection{Operación \texttt{free(ptr1)}}
+
+Se libera el bloque de $32$ en el offset $0$. Su \emph{buddy} es el
+bloque de $32$ en el offset $32$, que también está libre: se
+\textbf{fusionan} en un único bloque de $64$ en el offset $0$.
+
+\textquestiondown{}El nuevo bloque de $64$ tiene un \emph{buddy} libre para seguir
+fusionando? Su \emph{buddy} es el bloque de $64$ en el offset $64$
+(donde está \texttt{ptr2}), que está \textbf{usado}. La fusión se
+detiene.
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\scriptsize},
+    scale=0.85,transform shape,block/.style={draw,minimum height=0.7cm,align=center}
+]
+\node[block,fill=memfree!20,minimum width=1.0cm] (b0) at (0.5,0) {64};
+\node[block,fill=memused!40,minimum width=1.0cm,right=0pt of b0] (b2) {64};
+\node[block,fill=memfree!20,minimum width=2.0cm,right=0pt of b2] (b3) {128};
+\node[block,fill=memfree!20,minimum width=4.0cm,right=0pt of b3] (b4) {256};
+\node[block,fill=memfree!20,minimum width=8.0cm,right=0pt of b4] (b5) {512};
+\node[font=\scriptsize] at ($(b0.south)+(0,-0.3)$) {0};
+\node[font=\scriptsize] at ($(b5.south east)+(0,-0.3)$) {1024};
+\node[font=\bfseries] at ($(b2.north)+(0,0.25)$) {ptr2};
+\end{tikzpicture}
+\end{center}
+
+\subsection{Operación \texttt{malloc(64)}}
+
+$64 = 2^6$. Hay un bloque libre de exactamente $64$ en el offset $0$,
+así que se asigna directamente.
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\scriptsize},
+    scale=0.85,transform shape,block/.style={draw,minimum height=0.7cm,align=center}
+]
+\node[block,fill=memused!40,minimum width=1.0cm] (b0) at (0.5,0) {64};
+\node[block,fill=memused!40,minimum width=1.0cm,right=0pt of b0] (b2) {64};
+\node[block,fill=memfree!20,minimum width=2.0cm,right=0pt of b2] (b3) {128};
+\node[block,fill=memfree!20,minimum width=4.0cm,right=0pt of b3] (b4) {256};
+\node[block,fill=memfree!20,minimum width=8.0cm,right=0pt of b4] (b5) {512};
+\node[font=\scriptsize] at ($(b0.south)+(0,-0.3)$) {0};
+\node[font=\scriptsize] at ($(b5.south east)+(0,-0.3)$) {1024};
+\node[font=\bfseries] at ($(b0.north)+(0,0.25)$) {new};
+\node[font=\bfseries] at ($(b2.north)+(0,0.25)$) {ptr2};
+\end{tikzpicture}
+\end{center}
+
+\subsection*{Resumen}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+Operación & Resultado & Estado del heap (tamaños) \\
+\midrule
+\texttt{ptr1=malloc(20)}   & OK, asigna 32                & $[\,32_U \mid 32_L \mid 64_L \mid 128_L \mid 256_L \mid 512_L\,]$ \\
+\texttt{ptr2=malloc(50)}   & OK, asigna 64                & $[\,32_U \mid 32_L \mid 64_U \mid 128_L \mid 256_L \mid 512_L\,]$ \\
+\texttt{ptr3=malloc(1010)} & \textbf{FALLA} (frag.\ ext.) & (sin cambios) \\
+\texttt{free(ptr1)}        & libera y fusiona 32+32       & $[\,64_L \mid 64_U \mid 128_L \mid 256_L \mid 512_L\,]$ \\
+\texttt{malloc(64)}        & OK, asigna 64                & $[\,64_U \mid 64_U \mid 128_L \mid 256_L \mid 512_L\,]$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{idea}
+El \emph{buddy system} simplifica la administración (cada bloque tiene
+un único \emph{buddy} fácil de calcular: basta con invertir un bit del
+offset) a costa de \emph{fragmentación interna} (cada pedido se
+redondea al alza a la siguiente potencia de 2). El ejercicio muestra
+ambos costos: \texttt{malloc(20)} consume $32$ bytes (12 desperdiciados,
+fragmentación \emph{interna}) y \texttt{malloc(1010)} falla aunque haya
+$928$ libres (fragmentación \emph{externa}).
+\end{idea}
+
+% =====================================================================
+\section{Ejercicio 3 --- Direcciones lógicas de cada área}
+% =====================================================================
+
+\textbf{Enunciado.} Hacer un programa en Linux (o MS-Windows) que
+permita analizar en qué direcciones lógicas se encuentran las áreas de
+código, datos, heap y stack.
+
+\subsection{Programa propuesto}
+
+\begin{lstlisting}[style=cstyle]
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+int dato_inicializado = 42;      // .data
+int dato_no_inicializado;        // .bss
+const char *literal = "hola";    // .rodata (apunta a literal en .text/.rodata)
+
+void funcion(void) { }
+
+int main(int argc, char **argv) {
+    int local = 7;                          // stack
+    int *heap_ptr = (int *)malloc(sizeof(int));  // heap
+
+    printf("PID                  : %d\n", getpid());
+    printf("---- code (.text) ----\n");
+    printf("main()               : %p\n", (void *)main);
+    printf("funcion()            : %p\n", (void *)funcion);
+    printf("literal de cadena    : %p \"%s\"\n", (void *)literal, literal);
+    printf("---- data ----\n");
+    printf("&dato_inicializado   : %p (.data)\n", (void *)&dato_inicializado);
+    printf("&dato_no_inicializado: %p (.bss)\n", (void *)&dato_no_inicializado);
+    printf("---- heap ----\n");
+    printf("malloc()             : %p\n", (void *)heap_ptr);
+    printf("brk actual           : %p\n", sbrk(0));
+    printf("---- stack ----\n");
+    printf("&local               : %p\n", (void *)&local);
+    printf("&argc                : %p\n", (void *)&argc);
+
+    free(heap_ptr);
+    return 0;
+}
+\end{lstlisting}
+
+\subsection{Salida típica}
+
+\begin{lstlisting}[style=textstyle]
+PID                  : 18293
+---- code (.text) ----
+main()               : 0x55a3f4d2b189
+funcion()            : 0x55a3f4d2b169
+literal de cadena    : 0x55a3f4d2c008 "hola"
+---- data ----
+&dato_inicializado   : 0x55a3f4d2e010 (.data)
+&dato_no_inicializado: 0x55a3f4d2e018 (.bss)
+---- heap ----
+malloc()             : 0x55a3f5e6c2a0
+brk actual           : 0x55a3f5e8d000
+---- stack ----
+&local               : 0x7fff89a3c2cc
+&argc                : 0x7fff89a3c2bc
+\end{lstlisting}
+
+\subsection{Lectura del layout}
+
+Las direcciones se ordenan de menor a mayor de la siguiente forma:
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    sec/.style={draw,minimum width=4.0cm,minimum height=0.7cm,align=center}
+]
+\node[sec,fill=mem1!20] (text)  at (0,4.2)  {.text (código)};
+\node[sec,fill=mem1!10,below=0pt of text]  (rodata) {.rodata (literales)};
+\node[sec,fill=mem2!20,below=0pt of rodata] (data)   {.data (inicializados)};
+\node[sec,fill=mem2!10,below=0pt of data]   (bss)    {.bss (no inicializados)};
+\node[sec,fill=mem4!20,below=0pt of bss]    (heap)   {heap $\to$ (crece $\uparrow$)};
+\node[sec,below=0.8cm of heap]              (gap)    {(espacio libre, librerías, mmap)};
+\node[sec,fill=mem3!20,below=0.8cm of gap]  (stack)  {stack ($\downarrow$ crece)};
+
+\node[anchor=west] at ($(text.east)+(0.6,0)$)   {$\sim 0x55\ldots$ (bajo)};
+\node[anchor=west] at ($(heap.east)+(0.6,0)$)   {\texttt{brk}};
+\node[anchor=west] at ($(stack.east)+(0.6,0)$)  {$\sim 0x7fff\ldots$ (alto)};
+\end{tikzpicture}
+\end{center}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{main}, \texttt{funcion} y los literales (\texttt{.text},
+        \texttt{.rodata}) están en la \emph{base baja} del proceso. Son
+        de sólo lectura y ejecutables.
+    \item \texttt{dato\_inicializado} (\texttt{.data}) y
+        \texttt{dato\_no\_inicializado} (\texttt{.bss}) están justo
+        después, en la región de datos. \texttt{.bss} ocupa páginas en
+        cero rellenadas por el cargador.
+    \item \texttt{malloc()} retorna una dirección \emph{por arriba} del
+        segmento de datos: es el \textbf{heap}. \texttt{sbrk(0)}
+        devuelve el límite superior actual del heap (\emph{program
+        break}).
+    \item \texttt{\&local} y \texttt{\&argc} están en la dirección
+        más alta: el \textbf{stack}, que crece hacia abajo. En Linux
+        x86-64, suele empezar cerca de \texttt{0x7fff\ldots}.
+\end{itemize}
+
+\subsection{Verificación con \texttt{/proc/<pid>/maps}}
+
+El layout puede contrastarse con la información que el kernel exporta:
+
+\begin{lstlisting}[style=shellstyle]
+$ cat /proc/$(pidof a.out)/maps
+55a3f4d2b000-55a3f4d2c000 r-xp 00000000 fd:01 ... /home/u/a.out   <- .text
+55a3f4d2c000-55a3f4d2d000 r--p 00001000 ...                       <- .rodata
+55a3f4d2d000-55a3f4d2e000 r--p 00002000 ...                       <- .data ro
+55a3f4d2e000-55a3f4d2f000 rw-p 00003000 ...                       <- .data rw + .bss
+55a3f5e6b000-55a3f5e8d000 rw-p 00000000 00:00 0   [heap]
+7f...     -7f...           r-xp ...   libc.so.6
+7ffe89a1c000-7ffe89a3d000 rw-p 00000000 00:00 0   [stack]
+\end{lstlisting}
+
+\begin{idea}
+La maquinaria de paginado le permite al sistema dejar \emph{huecos}
+gigantes entre \texttt{heap} y \texttt{stack}, sin reservar memoria
+física por ellos: los \emph{pte} intermedios son inválidos
+($V=0$) y sólo se materializan en cuanto el proceso los referencie.
+Esto es lo que viabiliza el crecimiento dinámico del stack y del heap.
+\end{idea}
+
+% =====================================================================
+\section{Ejercicio 4 --- Arquitectura de 16 bits con páginas de 1 KB}
+% =====================================================================
+
+\textbf{Enunciado.} Arquitectura con espacio de direcciones de
+$16$\,bits, paginado con páginas de $1$\,KB.
+
+\subsection{4.a --- Capacidad máxima de la memoria}
+
+Con direcciones de $16$\,bits, el espacio direccionable tiene
+$2^{16} = 65\,536$ bytes, es decir:
+\[
+\boxed{\textit{capacidad máxima} = 2^{16}\,\text{bytes} = 64\,\text{KB}.}
+\]
+
+\subsection{4.b --- Cantidad de páginas}
+
+Con páginas de $1\,\text{KB} = 2^{10}$ bytes:
+\[
+\textit{número de páginas} = \frac{2^{16}}{2^{10}} = 2^{6} = \boxed{64\ \text{páginas}.}
+\]
+
+\subsection{4.c --- Representación de la tabla de páginas y de la \emph{pte}}
+
+Una dirección lógica de $16$\,bits se divide en:
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    cell/.style={draw,minimum height=0.7cm,align=center}
+]
+\node[cell,minimum width=2.2cm,fill=mem1!20] (vpn) at (0,0) {vpn};
+\node[cell,minimum width=4.0cm,fill=mem2!20,right=0pt of vpn] (off) {offset};
+\node[font=\scriptsize] at ($(vpn.north)+(0,0.25)$) {6 bits};
+\node[font=\scriptsize] at ($(off.north)+(0,0.25)$) {10 bits};
+\node[font=\scriptsize] at ($(vpn.north west)+(0.05,-0.05)$) {15};
+\node[font=\scriptsize] at ($(vpn.north east)+(-0.1,-0.05)$) {10};
+\node[font=\scriptsize] at ($(off.north west)+(0.05,-0.05)$) {9};
+\node[font=\scriptsize] at ($(off.north east)+(-0.05,-0.05)$) {0};
+\end{tikzpicture}
+\end{center}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{vpn} ($6$ bits): índice en la tabla de páginas
+        ($2^{6} = 64$ entradas).
+    \item \texttt{offset} ($10$ bits): desplazamiento dentro de la
+        página de $1\,\text{KB}$.
+\end{itemize}
+
+\paragraph{Formato propuesto de \emph{pte}.} Cada entrada describe
+dónde está la página física y con qué permisos. Un diseño compacto de
+$16$\,bits sería:
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    cell/.style={draw,minimum height=0.7cm,align=center}
+]
+\node[cell,minimum width=2.4cm,fill=mem1!20] (ppn) at (0,0) {ppn};
+\node[cell,minimum width=0.6cm,fill=mem3!30,right=0pt of ppn] (V) {V};
+\node[cell,minimum width=0.6cm,fill=mem3!30,right=0pt of V] (R) {R};
+\node[cell,minimum width=0.6cm,fill=mem3!30,right=0pt of R] (W) {W};
+\node[cell,minimum width=0.6cm,fill=mem3!30,right=0pt of W] (X) {X};
+\node[cell,minimum width=0.6cm,fill=mem3!30,right=0pt of X] (U) {U};
+\node[cell,minimum width=0.6cm,fill=mem3!30,right=0pt of U] (A) {A};
+\node[cell,minimum width=0.6cm,fill=mem3!30,right=0pt of A] (D) {D};
+\node[cell,minimum width=1.0cm,right=0pt of D] (res) {res.};
+\node[font=\scriptsize] at ($(ppn.north)+(0,0.25)$) {6 bits};
+\node[font=\scriptsize] at ($(V.north)+(0,0.25)$) {1};
+\node[font=\scriptsize] at ($(R.north)+(0,0.25)$) {1};
+\node[font=\scriptsize] at ($(W.north)+(0,0.25)$) {1};
+\node[font=\scriptsize] at ($(X.north)+(0,0.25)$) {1};
+\node[font=\scriptsize] at ($(U.north)+(0,0.25)$) {1};
+\node[font=\scriptsize] at ($(A.north)+(0,0.25)$) {1};
+\node[font=\scriptsize] at ($(D.north)+(0,0.25)$) {1};
+\node[font=\scriptsize] at ($(res.north)+(0,0.25)$) {3};
+\end{tikzpicture}
+\end{center}
+
+Los campos son los habituales (cf.\ resumen teórico de gestión de
+memoria, formato \emph{pte} de RV-32):
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{ppn} ($6$\,bits): número de página física
+        (\emph{physical page number}).
+    \item \texttt{V}: bit \emph{valid}. Si $V=0$, indexar esa entrada
+        provoca un \emph{page fault}.
+    \item \texttt{R}, \texttt{W}, \texttt{X}: permisos de \emph{read},
+        \emph{write} y \emph{execute}.
+    \item \texttt{U}: permiso en modo \emph{user}.
+    \item \texttt{A}: encendido por el hardware cuando se accede
+        (lectura o escritura).
+    \item \texttt{D}: encendido por el hardware cuando se escribe
+        (\emph{dirty}).
+\end{itemize}
+
+\paragraph{Tamaño total de la tabla.} $64$ entradas $\times$ $16$\,bits
+$= 1024$\,bits $= 128$\,bytes, lo que cabe holgadamente en una sola
+página de $1$\,KB.
+
+\subsection{4.d --- Tabla de páginas de un proceso concreto}
+
+El proceso tiene:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item $1800$\,bytes de \textbf{código};
+    \item $600$\,bytes de \textbf{datos} (a continuación);
+    \item una \textbf{página de guarda} entre datos y pila (para
+        detectar \emph{stack overflow});
+    \item $1$\,KB de \textbf{pila}.
+\end{itemize}
+
+\paragraph{Cuántas páginas usa cada área.}
+
+\begin{align*}
+\text{código} &: \lceil 1800/1024 \rceil = 2\ \text{páginas} & \text{(páginas 0 y 1)} \\
+\text{datos}  &: \lceil 600/1024 \rceil  = 1\ \text{página} & \text{(página 2)} \\
+\text{guarda} &: \text{1 página inválida}                     & \text{(página 3)} \\
+\text{pila}   &: \lceil 1024/1024 \rceil = 1\ \text{página} & \text{(página 4)}
+\end{align*}
+
+El espacio de direcciones del proceso queda $[0, 5\,\text{KB}]$. Las
+entradas $5$ a $63$ no se usan (\texttt{V}=0).
+
+\paragraph{Tabla de páginas.} Los \texttt{ppn} concretos los elige el
+SO según los \emph{frames} libres; en lo que sigue se usan
+\texttt{0x07}, \texttt{0x12}, \texttt{0x1A} y \texttt{0x2F} a modo de
+ejemplo.
+
+\begin{center}
+\small
+\begin{tabular}{@{}clccccccll@{}}
+\toprule
+\#  & Área           & \texttt{ppn}  & V & R & W & X & U & D/A & Comentario \\
+\midrule
+0   & código        & \texttt{0x07} & 1 & 1 & 0 & 1 & 1 & --  & primera página de \texttt{.text} \\
+1   & código        & \texttt{0x12} & 1 & 1 & 0 & 1 & 1 & --  & segunda página de \texttt{.text} \\
+2   & datos         & \texttt{0x1A} & 1 & 1 & 1 & 0 & 1 & --  & \texttt{.data} + \texttt{.bss} \\
+3   & \textbf{guarda} & ---         & 0 & 0 & 0 & 0 & 0 & --  & cualquier acceso $\Rightarrow$ \emph{page fault} \\
+4   & pila          & \texttt{0x2F} & 1 & 1 & 1 & 0 & 1 & --  & 1\,KB de stack \\
+5\,--\,63 & ---     & ---           & 0 & 0 & 0 & 0 & 0 & --  & páginas no asignadas \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    sec/.style={draw,minimum width=3.5cm,minimum height=0.7cm,align=center}
+]
+\node[sec,fill=mem1!20]  (c0) at (0,5.6) {página 0 --- código};
+\node[sec,fill=mem1!20,below=0pt of c0] (c1) {página 1 --- código};
+\node[sec,fill=mem2!20,below=0pt of c1] (d)  {página 2 --- datos};
+\node[sec,fill=memused!30,below=0pt of d] (g) {página 3 --- guarda (V=0)};
+\node[sec,fill=mem3!20,below=0pt of g] (s)  {página 4 --- pila};
+\node[anchor=west,xshift=4pt] at (c0.east) {\texttt{0x0000}};
+\node[anchor=west,xshift=4pt] at (c1.east) {\texttt{0x0400}};
+\node[anchor=west,xshift=4pt] at (d.east)  {\texttt{0x0800}};
+\node[anchor=west,xshift=4pt] at (g.east)  {\texttt{0x0C00}};
+\node[anchor=west,xshift=4pt] at (s.east)  {\texttt{0x1000}};
+\node[anchor=west,xshift=4pt] at ($(s.south east)+(0,0)$) {\texttt{0x1400}};
+\end{tikzpicture}
+\end{center}
+
+\begin{idea}
+Si el stack crece más allá de la página 4, la siguiente referencia cae
+en la página 3 (guarda, $V=0$) y el hardware genera un \emph{page
+fault}. El kernel reconoce el patrón ``escritura a una página de
+guarda inválida'' y aborta el proceso con \emph{stack overflow}. Es
+exactamente el mecanismo descripto en el resumen teórico de gestión
+de memoria.
+\end{idea}
+
+% =====================================================================
+\section{Ejercicio 5 --- Tablas de páginas para 4 GB en 32 bits}
+% =====================================================================
+
+\textbf{Enunciado.} En un SO sobre una arquitectura de $32$\,bits con
+paginado, determinar la cantidad de \emph{ptes} y la memoria total
+necesaria para cubrir $4$\,GB de espacio de direcciones, con
+(a) páginas de $4$\,KB y (b) páginas de $4$\,MB.
+
+Se asume el tamaño habitual de cada \emph{pte}: $32$\,bits
+$=4$\,bytes (espacio para el \texttt{ppn} más los flags). El cálculo
+general es
+\[
+\#\text{ptes} = \frac{2^{32}}{\text{tamaño página}}, \qquad
+\text{memoria de la tabla} = \#\text{ptes} \times 4\,\text{bytes}.
+\]
+
+\subsection{5.a --- Páginas de 4 KB}
+
+\begin{align*}
+\#\text{ptes} &= \frac{2^{32}}{2^{12}} = 2^{20} = 1\,048\,576 \\
+\text{memoria de la tabla} &= 2^{20} \times 4\,\text{B} = 2^{22}\,\text{B} = 4\,\text{MB}.
+\end{align*}
+
+Una tabla \emph{plana} de $4$\,MB \textbf{por proceso} es enorme y
+exigiría un bloque contiguo de RAM grande para alojarla. Por eso los
+SO modernos representan la tabla como un \textbf{árbol de varios
+niveles} (por ejemplo, 2 niveles en RV-32, 4 niveles en x86-64): sólo
+se reservan los nodos correspondientes a regiones del espacio de
+direcciones efectivamente usadas, y los enormes huecos no consumen
+memoria.
+
+\subsection{5.b --- Páginas de 4 MB}
+
+\begin{align*}
+\#\text{ptes} &= \frac{2^{32}}{2^{22}} = 2^{10} = 1024 \\
+\text{memoria de la tabla} &= 2^{10} \times 4\,\text{B} = 2^{12}\,\text{B} = 4\,\text{KB}.
+\end{align*}
+
+Una tabla de sólo $4$\,KB cabe en una sola página, lo que simplifica
+muchísimo la administración. El costo es la \textbf{fragmentación
+interna}: cualquier asignación de memoria, por pequeña que sea, ocupa
+$4$\,MB completos.
+
+\subsection*{Resumen comparativo}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Caso & Tamaño de página & \#ptes & Memoria de la tabla & Comentario \\
+\midrule
+(a) & $4$\,KB   & $2^{20} = 1.048.576$ & $4$\,MB & menor frag.\ interna; tabla enorme \\
+(b) & $4$\,MB   & $2^{10} = 1.024$     & $4$\,KB & tabla chica; gran frag.\ interna \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{importante}
+Hay un compromiso fundamental: \textbf{páginas más chicas} dan menor
+fragmentación interna pero tablas mucho más grandes; \textbf{páginas
+más grandes} (\emph{huge pages}) reducen el tamaño de la tabla y la
+presión sobre el TLB, pero malgastan memoria si los pedidos son
+pequeños. Los SO modernos combinan ambos: páginas de $4$\,KB por
+default, con la opción de usar páginas de $2$\,MB / $1$\,GB
+(\emph{huge pages}) en regiones específicas.
+\end{importante}
+
+% =====================================================================
+\section{Ejercicio 6 --- Representación de la tabla de páginas de un proceso}
+% =====================================================================
+
+\textbf{Enunciado.} Representar la tabla de páginas de un proceso.
+
+Se toma el proceso del Ejercicio 4d (el ejercicio del práctico no fija
+un proceso particular, así que se reutiliza ese ejemplo para
+concretar). La representación enfatiza la traducción de una dirección
+lógica a una dirección física a través de la \emph{pte} indexada.
+
+\begin{center}
+\begin{tikzpicture}[
+    scale=0.85,transform shape,
+    every node/.style={font=\ttfamily\small},
+    cell/.style={draw,minimum height=0.65cm,align=center},
+    page/.style={draw,minimum width=1.6cm,minimum height=0.65cm,align=center}
+]
+
+% Logical addr
+\node[font=\bfseries\small] at (-1.3,4.8) {dirección lógica};
+\node[cell,minimum width=1.0cm,fill=mem1!20] (vpn) at (-2.1,3.6) {vpn};
+\node[cell,minimum width=2.0cm,fill=mem2!20,right=0pt of vpn] (off) {offset};
+\node[font=\scriptsize] at ($(vpn.north)+(0,0.25)$) {6 b};
+\node[font=\scriptsize] at ($(off.north)+(0,0.25)$) {10 b};
+
+% Page table
+\node[font=\bfseries\small] at (3.5,4.8) {tabla de páginas};
+\node[cell,minimum width=1.2cm,fill=mem1!10] (e0p) at (3.0,3.6) {\texttt{0x07}};
+\node[cell,minimum width=2.0cm,fill=mem3!20,right=0pt of e0p] (e0f) {V=1 R=1 X=1};
+\node[anchor=east] at (e0p.west) {0};
+
+\node[cell,minimum width=1.2cm,fill=mem1!10] (e1p) at (3.0,2.9) {\texttt{0x12}};
+\node[cell,minimum width=2.0cm,fill=mem3!20,right=0pt of e1p] (e1f) {V=1 R=1 X=1};
+\node[anchor=east] at (e1p.west) {1};
+
+\node[cell,minimum width=1.2cm,fill=mem1!10] (e2p) at (3.0,2.2) {\texttt{0x1A}};
+\node[cell,minimum width=2.0cm,fill=mem3!20,right=0pt of e2p] (e2f) {V=1 R=1 W=1};
+\node[anchor=east] at (e2p.west) {2};
+
+\node[cell,minimum width=1.2cm,fill=memused!20] (e3p) at (3.0,1.5) {---};
+\node[cell,minimum width=2.0cm,fill=memused!20,right=0pt of e3p] (e3f) {V=0 (guarda)};
+\node[anchor=east] at (e3p.west) {3};
+
+\node[cell,minimum width=1.2cm,fill=mem1!10] (e4p) at (3.0,0.8) {\texttt{0x2F}};
+\node[cell,minimum width=2.0cm,fill=mem3!20,right=0pt of e4p] (e4f) {V=1 R=1 W=1};
+\node[anchor=east] at (e4p.west) {4};
+
+\node[cell,minimum width=3.2cm] (edots) at (3.6,0.1) {\ldots};
+\node[anchor=east] at (edots.west) {5--63};
+
+% Physical memory
+\node[font=\bfseries\small] at (9.5,4.3) {memoria física};
+\node[page,fill=mem1!20] (f07) at (9.5,3.6) {frame \texttt{0x07}};
+\node[page,fill=mem1!20] (f12) at (9.5,2.9) {frame \texttt{0x12}};
+\node[page,fill=mem2!20] (f1A) at (9.5,2.2) {frame \texttt{0x1A}};
+\node[page,fill=mem3!20] (f2F) at (9.5,0.8) {frame \texttt{0x2F}};
+
+% Arrows
+\draw[-Latex,thick] (vpn.south) -- ++(0,-0.4) -| (e0p.west);
+\draw[-Latex,thick] (e0f.east) -- (f07.west);
+\draw[-Latex,thick] (e1f.east) -- (f12.west);
+\draw[-Latex,thick] (e2f.east) -- (f1A.west);
+\draw[-Latex,thick] (e4f.east) -- (f2F.west);
+\end{tikzpicture}
+\end{center}
+
+\paragraph{Traducción de una dirección lógica.}
+Dada la dirección lógica $\textit{va}$, se separa en
+$(\textit{vpn}, \textit{offset})$ con los $6$ bits altos y $10$ bits
+bajos. Se accede a la entrada $\textit{vpn}$ de la tabla. Si $V=1$ y
+los permisos cuadran con el tipo de acceso, la dirección física
+queda
+\[
+\textit{pa} = \texttt{pagetable}[\textit{vpn}].\texttt{ppn}
+              \times 1024 + \textit{offset}.
+\]
+Si $V=0$ o se viola algún permiso, el hardware lanza un \emph{page
+fault}.
+
+\paragraph{Ejemplo numérico.} La instrucción referencia la dirección
+lógica \texttt{0x0814} (en el área de datos). Se descompone como
+$\textit{vpn} = 2$ y $\textit{offset} = \texttt{0x014} = 20$. La
+\emph{pte} 2 tiene $\texttt{ppn} = \texttt{0x1A}$ y $V=1$, $R=1$,
+$W=1$. La dirección física es
+\[
+\texttt{0x1A} \times 1024 + 20 = 26\,624 + 20 = 26\,644 = \texttt{0x6814}.
+\]
+
+% =====================================================================
+\section{Ejercicio 7 --- Memoria compartida entre dos procesos}
+% =====================================================================
+
+\textbf{Enunciado.} Dos procesos comparten un área de memoria de $2$
+páginas. En el primer proceso el área se mapea a partir de
+\texttt{0xA000}; en el segundo desde \texttt{0xF000}. Mostrar con un
+diagrama el layout de memoria de cada proceso y las tablas de páginas.
+Las páginas son de $4$\,KB.
+
+\subsection{Análisis de las direcciones lógicas}
+
+Con páginas de $4\,\text{KB} = 2^{12}$, el \emph{offset} ocupa los
+$12$ bits menos significativos y el \texttt{vpn} ocupa los bits altos.
+Por lo tanto:
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+Dirección & vpn & offset \\
+\midrule
+\texttt{0xA000} & $\texttt{0xA} = 10$ & $0$ \\
+\texttt{0xB000} & $\texttt{0xB} = 11$ & $0$ \\
+\texttt{0xF000} & $\texttt{0xF} = 15$ & $0$ \\
+\texttt{0x10000} & $\texttt{0x10} = 16$ & $0$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Proceso 1.} El área compartida ocupa las páginas lógicas
+$10$ y $11$ (rango $[\texttt{0xA000}, \texttt{0xC000})$).
+\textbf{Proceso 2.} El área compartida ocupa las páginas lógicas
+$15$ y $16$ (rango $[\texttt{0xF000}, \texttt{0x11000})$).
+
+En ambos procesos, esas \emph{ptes} apuntan a los \textbf{mismos dos
+frames físicos} $X$ e $Y$.
+
+\subsection{Diagrama}
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    sec/.style={draw,minimum width=3.6cm,minimum height=0.6cm,align=center},
+    fr/.style={draw,minimum width=2.0cm,minimum height=0.6cm,align=center}
+]
+
+% Proceso 1 layout
+\node[font=\bfseries\small] at (-4,5.5) {proceso 1};
+\node[sec,fill=mem1!20] (p1_text) at (-4,4.8) {.text};
+\node[sec,fill=mem2!20,below=0pt of p1_text] (p1_data) {.data};
+\node[sec,below=0pt of p1_data] (p1_gap1) {\ldots};
+\node[sec,fill=memshared!50,below=0pt of p1_gap1] (p1_sh1) {compartida \#0};
+\node[sec,fill=memshared!50,below=0pt of p1_sh1] (p1_sh2) {compartida \#1};
+\node[sec,below=0pt of p1_sh2] (p1_gap2) {\ldots};
+\node[sec,fill=mem3!20,below=0pt of p1_gap2] (p1_stack) {stack};
+\node[anchor=east] at (p1_sh1.west) {\texttt{0xA000}};
+\node[anchor=east] at (p1_sh2.west) {\texttt{0xB000}};
+\node[anchor=east] at ($(p1_sh2.south west)+(0,-0.05)$) {\texttt{0xC000}};
+
+% Proceso 2 layout
+\node[font=\bfseries\small] at (4,5.5) {proceso 2};
+\node[sec,fill=mem1!20] (p2_text) at (4,4.8) {.text};
+\node[sec,fill=mem2!20,below=0pt of p2_text] (p2_data) {.data};
+\node[sec,below=0pt of p2_data] (p2_gap1) {\ldots};
+\node[sec,fill=memshared!50,below=0pt of p2_gap1] (p2_sh1) {compartida \#0};
+\node[sec,fill=memshared!50,below=0pt of p2_sh1] (p2_sh2) {compartida \#1};
+\node[sec,below=0pt of p2_sh2] (p2_gap2) {\ldots};
+\node[sec,fill=mem3!20,below=0pt of p2_gap2] (p2_stack) {stack};
+\node[anchor=west] at (p2_sh1.east) {\texttt{0xF000}};
+\node[anchor=west] at (p2_sh2.east) {\texttt{0x10000}};
+\node[anchor=west] at ($(p2_sh2.south east)+(0,-0.05)$) {\texttt{0x11000}};
+
+% Shared frames in the middle
+\node[font=\bfseries\small] at (0,2.5) {memoria física};
+\node[fr,fill=memshared!60] (fX) at (0,1.8) {frame X};
+\node[fr,fill=memshared!60,below=0pt of fX] (fY) {frame Y};
+
+% Arrows from each process to the shared frames
+\draw[-Latex,thick] (p1_sh1.east) -- ++(0.8,0) |- (fX.west);
+\draw[-Latex,thick] (p1_sh2.east) -- ++(0.4,0) |- (fY.west);
+\draw[-Latex,thick] (p2_sh1.west) -- ++(-0.8,0) |- (fX.east);
+\draw[-Latex,thick] (p2_sh2.west) -- ++(-0.4,0) |- (fY.east);
+
+\end{tikzpicture}
+\end{center}
+
+\subsection{Tablas de páginas}
+
+\begin{center}
+\small
+\textbf{Proceso 1} \\[0.3em]
+\begin{tabular}{@{}clcccc@{}}
+\toprule
+vpn & decimal & ppn & V & R & W \\
+\midrule
+\ldots & \ldots & \ldots & \ldots & \ldots & \ldots \\
+\texttt{0xA} & 10 & $X$ & 1 & 1 & 1 \\
+\texttt{0xB} & 11 & $Y$ & 1 & 1 & 1 \\
+\ldots & \ldots & \ldots & \ldots & \ldots & \ldots \\
+\bottomrule
+\end{tabular}
+\qquad
+\textbf{Proceso 2} \\[0.3em]
+\begin{tabular}{@{}clcccc@{}}
+\toprule
+vpn & decimal & ppn & V & R & W \\
+\midrule
+\ldots & \ldots & \ldots & \ldots & \ldots & \ldots \\
+\texttt{0xF}  & 15 & $X$ & 1 & 1 & 1 \\
+\texttt{0x10} & 16 & $Y$ & 1 & 1 & 1 \\
+\ldots & \ldots & \ldots & \ldots & \ldots & \ldots \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{idea}
+La clave del esquema es que \emph{distintas} entradas
+($\texttt{vpn}=10$ en P1, $\texttt{vpn}=15$ en P2) almacenan
+\emph{el mismo} \texttt{ppn}. Las direcciones lógicas son distintas
+en cada proceso, pero el hardware traduce ambas al mismo \emph{frame}
+físico. Así, una escritura del proceso 1 a \texttt{0xA000} es
+inmediatamente visible para el proceso 2 leyendo \texttt{0xF000}. Es
+exactamente el mecanismo que usan \texttt{shmat} y \texttt{mmap} con
+\texttt{MAP\_SHARED}.
+\end{idea}
+
+\begin{importante}
+La memoria compartida no es un canal sincronizado por sí mismo: si
+ambos procesos escriben simultáneamente al área compartida, pueden
+producirse \emph{race conditions}. Es responsabilidad del programador
+agregar un mecanismo de sincronización (semáforos, mutex en memoria
+compartida, \texttt{futex}, etc.).
+\end{importante}
+
+% =====================================================================
+\section{Ejercicio 8 --- mmap de un archivo}
+% =====================================================================
+
+\textbf{Enunciado.} Compilar y ejecutar (en Linux) el archivo
+\texttt{mmapfile.c} dado. (a) \textquestiondown{}Por qué \texttt{data + 7000} no causa
+\emph{segmentation fault}, si el archivo ocupa poco más de $4096$
+bytes? (b) Modificar el programa para mapear en lectura y escritura,
+con persistencia automática al \texttt{munmap}; \textquestiondown{}cómo lo hace el SO?
+(c) Verificar el tamaño del archivo después de ejecutar.
+
+\subsection{Listado del programa original}
+
+\begin{lstlisting}[style=cstyle]
+#include <stdio.h>
+#include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/mman.h>
+
+#define PGSIZE   4096
+#define filename "mmapfile.txt"
+
+int createfile(void) {
+    int f = open(filename, O_RDONLY);
+    if (f < 0) {
+        const char *str1 = "Hello world in page 1";
+        const char *str2 = "I'm in second page";
+        const unsigned char zero = 0;
+        int l = strlen(str1), i;
+        f = open(filename, O_RDWR | O_CREAT, 0666);
+        write(f, str1, l);
+        for (i = l; i < PGSIZE; i++) write(f, &zero, 1);
+        write(f, str2, strlen(str2) + 1);
+        close(f);
+        f = open(filename, O_RDONLY);
+    }
+    return f;
+}
+
+int main(void) {
+    int f = createfile();
+    char *data = mmap(0, PGSIZE * 2, PROT_READ, MAP_PRIVATE, f, 0);
+    if (data) {
+        printf("file contents mapped at %p\n", data);
+        printf("%s\n", data);
+        printf("%s\n", data + 4096);
+        printf("%s\n", data + 7000); /* acceso valido aunque el archivo "termine" antes */
+        munmap(data, PGSIZE * 2);
+    } else {
+        printf("mmap error\n");
+    }
+    close(f);
+    return 0;
+}
+\end{lstlisting}
+
+\subsection{Compilación y ejecución}
+
+\begin{lstlisting}[style=shellstyle]
+$ gcc -Wall -O0 -o mmapfile mmapfile.c
+$ ./mmapfile
+file contents mapped at 0x7f8e2c1c4000
+Hello world in page 1
+I'm in second page
+                       <- aparece linea en blanco (los bytes son ceros)
+\end{lstlisting}
+
+\subsection{8.a --- \textquestiondown{}Por qué \texttt{data + 7000} no causa segfault?}
+
+El archivo \texttt{mmapfile.txt} pesa $\texttt{strlen(str1)} + (PGSIZE
+- \texttt{strlen(str1)}) + \texttt{strlen(str2)} + 1 \approx 4115$
+bytes, es decir, poco más de una página.
+
+Sin embargo, la llamada \verb|mmap(0, PGSIZE * 2, ..., f, 0)| pidió
+mapear \textbf{dos} páginas ($8192$ bytes) a partir del offset $0$.
+
+\begin{importante}
+La región mapeada es \emph{redondeada hacia arriba al tamaño de
+página}. Por eso \texttt{mmap} reserva 2 páginas válidas en el espacio
+de direcciones, aunque el archivo no llene la segunda completamente.
+\end{importante}
+
+El kernel, en ese caso, \textbf{rellena con ceros} la parte de la
+última página que excede al EOF del archivo, según lo definido por
+POSIX. Por lo tanto, todas las direcciones del rango
+$[\texttt{data}, \texttt{data} + 8192)$ son válidas y, en particular,
+$\texttt{data} + 7000$:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Está \emph{dentro} de la región mapeada (offsets
+        $[0, 8192)$): la \texttt{pte} correspondiente está definida.
+    \item Los bytes leídos a partir de allí son los del archivo en el
+        offset $7000 - 4096 = 2904$ de la página $1$. Como el archivo
+        no llega hasta ahí, son \textbf{ceros} (rellenados por el
+        kernel).
+\end{itemize}
+
+Por eso \texttt{printf("\%s\textbackslash{}n", data + 7000)} imprime
+una cadena vacía (el primer byte es $\backslash 0$) en lugar de
+provocar un \emph{segmentation fault}.
+
+\begin{idea}
+Si en cambio se accediese a \texttt{data + 8192} (la página $2$, no
+mapeada), la \texttt{pte} no existiría y sí se produciría
+\emph{segfault} (o más precisamente, \emph{SIGSEGV}). El mecanismo
+exacto es el visto en el resumen teórico de memoria virtual: el
+hardware levanta un \emph{page fault}, el kernel detecta que la
+dirección no pertenece a ningún VMA del proceso y, al no ser
+recuperable, envía la señal correspondiente.
+\end{idea}
+
+\subsection{8.b --- Modificación para lectura y escritura con persistencia}
+
+Hay que cambiar dos cosas en la llamada a \texttt{mmap}:
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item Permisos de la página: \verb!PROT_READ! $\to$ \verb!PROT_READ | PROT_WRITE!.
+    \item Modo de compartición: \verb!MAP_PRIVATE! $\to$ \verb!MAP_SHARED!.
+\end{enumerate}
+
+\begin{importante}
+Con \texttt{MAP\_PRIVATE} las escrituras al área mapeada generan una
+copia privada (\emph{copy on write}) y \emph{no} se propagan al
+archivo. Para que las modificaciones queden en el archivo se necesita
+\texttt{MAP\_SHARED}. Además, el archivo debe haberse abierto en
+modo \texttt{O\_RDWR}.
+\end{importante}
+
+\begin{lstlisting}[style=cstyle]
+int main(void) {
+    int f = createfile_rw();    // abre con O_RDWR | O_CREAT
+    char *data = mmap(0, PGSIZE * 2, PROT_READ | PROT_WRITE,
+                      MAP_SHARED, f, 0);
+    if (data == MAP_FAILED) { perror("mmap"); return 1; }
+
+    printf("file contents mapped at %p\n", data);
+    printf("Before: %s\n", data);
+
+    /* modifico el contenido a traves de la memoria mapeada */
+    const char *nuevo = "Hola desde mmap()!";
+    memcpy(data, nuevo, strlen(nuevo) + 1);
+
+    /* munmap se encarga de hacer flush de las paginas dirty al archivo */
+    munmap(data, PGSIZE * 2);
+    close(f);
+    return 0;
+}
+\end{lstlisting}
+
+\paragraph{Cómo lo hace el SO.}
+La explicación está en el resumen teórico de memoria virtual:
+
+\begin{enumerate}[leftmargin=*]
+    \item Por cada página mapeada, el hardware mantiene el bit
+        \textbf{\texttt{D}} (\emph{dirty}) en la \texttt{pte}. Cada
+        vez que el proceso escribe en esa página, el \texttt{D} pasa
+        a $1$ automáticamente.
+    \item Cuando se invoca \texttt{munmap} (o cuando el sistema hace
+        un \emph{flush} periódico, p.\,ej.\ \texttt{pdflush}), el
+        kernel recorre las \texttt{pte} del mapping y escribe al
+        archivo \emph{sólo las páginas con \texttt{D}=1}, en el
+        offset correspondiente. Las páginas con \texttt{D}=0 no se
+        tocan, ahorrando E/S.
+    \item Finalmente, la región del espacio de direcciones se libera
+        y las \texttt{pte} pasan a $V=0$.
+\end{enumerate}
+
+Adicionalmente, la llamada \texttt{msync(addr, len, MS\_SYNC)} permite
+forzar la sincronización a disco \emph{sin} desmontar el mapping; es
+útil cuando se quiere garantizar persistencia antes del \texttt{munmap}
+(por ejemplo, frente a un eventual crash).
+
+\subsection{8.c --- Tamaño del archivo después}
+
+\begin{lstlisting}[style=shellstyle]
+$ ls -l mmapfile.txt
+-rw-r--r-- 1 tomi tomi 4115 may 20 23:01 mmapfile.txt
+$ stat -c "size: %s bytes" mmapfile.txt
+size: 4115 bytes
+\end{lstlisting}
+
+\textbf{El tamaño no cambia.} Aunque el mapping cubre dos páginas
+($8192$ bytes), el archivo subyacente sigue ocupando los $\sim 4115$
+bytes que tenía antes. Las escrituras realizadas en offsets
+$\geq 4115$ \emph{dentro de la primera página} se propagan a esa
+zona del archivo siempre que no excedan el tamaño actual; las
+escrituras dentro de la segunda página \emph{sí} podrían propagarse,
+pero el comportamiento ante escrituras más allá del EOF en un mapping
+de un archivo regular no está definido por POSIX (en Linux suele
+generar \texttt{SIGBUS}).
+
+\begin{importante}
+Para extender el archivo, hay que llamar a \texttt{ftruncate(f,
+new\_size)} \emph{antes} de \texttt{mmap}. Sólo entonces la región
+mapeada coincide con un archivo de ese tamaño y las escrituras quedan
+persistidas correctamente.
+\end{importante}
+
+% =====================================================================
+\section{Ejercicio 9 --- Memoria compartida IPC con shmwriter y shmreader}
+% =====================================================================
+
+\textbf{Enunciado.} Compilar y ejecutar (en ese orden)
+\texttt{shmwriter.c} y \texttt{shmreader.c} para observar cómo
+funciona la API de \emph{shared memory} (IPC de UNIX). (a) Volver a
+correr \texttt{shmreader} y ver qué ocurre. (b) Comentar la línea
+\texttt{shmctl(..., IPC\_RMID, NULL)} de \texttt{shmreader.c}; correr
+\texttt{shmwriter} y luego \texttt{shmreader} varias veces.
+(c) Modificar ambos programas para leer/escribir en la dirección
+lógica \texttt{str+500}.
+
+\subsection{Cómo funciona la API}
+
+\begin{itemize}[leftmargin=*]
+    \item \verb|key_t ftok(path, id)|: deriva una clave numérica a
+        partir de un archivo existente y un \texttt{id} (un byte). Los
+        procesos cooperantes acuerdan el mismo \texttt{path} y
+        \texttt{id} para coincidir en la misma clave.
+    \item \verb|int shmget(key, size, flags)|: obtiene (o crea con
+        \texttt{IPC\_CREAT}) un segmento de \emph{shared memory} con
+        esa clave y tamaño. Devuelve un identificador \texttt{shmid}.
+    \item \verb|void *shmat(shmid, addr, flags)|: mapea el segmento
+        en el espacio de direcciones del proceso. Si \texttt{addr=0},
+        el kernel elige la dirección.
+    \item \verb|int shmdt(addr)|: hace \emph{detach}: quita el mapping
+        de este proceso, pero el segmento sigue existiendo.
+    \item \verb|int shmctl(shmid, IPC_RMID, NULL)|: marca el segmento
+        para destrucción. Se libera cuando el último proceso hace
+        \texttt{shmdt}.
+\end{itemize}
+
+\subsection{Programas provistos}
+
+\begin{lstlisting}[style=cstyle,caption={shmwriter.c}]
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <stdio.h>
+#include <string.h>
+
+int main(void) {
+    key_t key = ftok("shmfile", 65);
+    int shmid = shmget(key, 1024, 0666 | IPC_CREAT);
+    char *str = (char *)shmat(shmid, (void *)0, 0);
+
+    printf("shared memory logical address: %p\n", str);
+    printf("Data to write to shmem: ");
+    fgets(str, 1024, stdin);
+    str[strcspn(str, "\n")] = '\0';
+    printf("Data written in memory: %s\n", str);
+
+    shmdt(str);
+    return 0;
+}
+\end{lstlisting}
+
+\begin{lstlisting}[style=cstyle,caption={shmreader.c}]
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <stdio.h>
+
+int main(void) {
+    key_t key = ftok("shmfile", 65);
+    int shmid = shmget(key, 1024, 0666 | IPC_CREAT);
+    char *str = (char *)shmat(shmid, (void *)0, 0);
+
+    printf("shared memory logical address: %p\n", str);
+    printf("Data read from memory: %s\n", str);
+
+    shmdt(str);
+    shmctl(shmid, IPC_RMID, NULL);  /* destruye el segmento */
+    return 0;
+}
+\end{lstlisting}
+
+\subsection{Ejecución base}
+
+\begin{lstlisting}[style=shellstyle]
+$ touch shmfile
+$ gcc -o shmwriter shmwriter.c
+$ gcc -o shmreader shmreader.c
+
+$ ./shmwriter
+shared memory logical address: 0x7fbcde47b000
+Data to write to shmem: Hola desde shmwriter
+Data written in memory: Hola desde shmwriter
+
+$ ./shmreader
+shared memory logical address: 0x7f0123abc000
+Data read from memory: Hola desde shmwriter
+\end{lstlisting}
+
+\textbf{Observación.} Las direcciones lógicas reportadas son
+\emph{diferentes} ($\texttt{0x7fbc\ldots}$ vs $\texttt{0x7f01\ldots}$),
+pero los datos coinciden: ambos procesos están viendo los mismos
+\emph{frames} físicos a través de \texttt{vpn} distintos. Es
+exactamente el escenario del Ejercicio 7.
+
+\subsection{9.a --- Volver a correr \texttt{shmreader}}
+
+Si \texttt{shmreader} \emph{destruye} el segmento al terminar (con
+\texttt{shmctl(IPC\_RMID)}, como está escrito arriba), la segunda
+ejecución encuentra el siguiente escenario:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item El segmento anterior ya no existe (fue marcado para
+        eliminación y todos los procesos hicieron \texttt{shmdt}).
+    \item \texttt{shmget} con \texttt{IPC\_CREAT} crea uno
+        \textbf{nuevo} con la misma clave, pero su contenido es
+        \emph{indeterminado} (típicamente, todo ceros en Linux).
+    \item \texttt{printf("Data read from memory: \%s\textbackslash{}n",
+        str)} imprime una línea vacía.
+\end{itemize}
+
+\begin{lstlisting}[style=shellstyle]
+$ ./shmreader     # primera vez: ve los datos
+shared memory logical address: 0x7f...
+Data read from memory: Hola desde shmwriter
+
+$ ./shmreader     # segunda vez: segmento recien creado, vacio
+shared memory logical address: 0x7f...
+Data read from memory:
+\end{lstlisting}
+
+\subsection{9.b --- Comentar la destrucción y correr varias veces}
+
+\begin{lstlisting}[style=cstyle]
+// shmctl(shmid, IPC_RMID, NULL);   <-- comentada
+\end{lstlisting}
+
+Con esta modificación, el segmento \emph{persiste} entre ejecuciones.
+Se mantiene activo en el kernel hasta que se borre explícitamente con
+\texttt{ipcrm} o se reinicie el sistema:
+
+\begin{lstlisting}[style=shellstyle]
+$ ./shmwriter
+Data to write to shmem: mensaje persistente
+Data written in memory: mensaje persistente
+
+$ ./shmreader
+Data read from memory: mensaje persistente
+
+$ ./shmreader     # de nuevo: los datos siguen ahi
+Data read from memory: mensaje persistente
+
+$ ./shmreader
+Data read from memory: mensaje persistente
+
+$ ipcs -m         # ver segmentos de memoria compartida activos
+------ Memoria compartida ------
+key        shmid   propietario  perms  bytes      nattch
+0x4180...  98305   tomi         666    1024       0
+\end{lstlisting}
+
+Para limpiar manualmente:
+
+\begin{lstlisting}[style=shellstyle]
+$ ipcrm -m 98305
+\end{lstlisting}
+
+\begin{idea}
+Esto ilustra una propiedad clave de la API: los segmentos IPC de
+System V tienen \textbf{ciclo de vida del kernel}, no del proceso.
+Sobreviven al cierre de todos los procesos que los usan, salvo que se
+los elimine explícitamente. Es una diferencia importante con respecto
+a \texttt{mmap MAP\_ANONYMOUS} o \texttt{shm\_open + mmap} (POSIX),
+cuyo ciclo de vida se administra de manera más parecida a la de un
+archivo.
+\end{idea}
+
+\subsection{9.c --- Lectura/escritura en \texttt{str + 500}}
+
+Se trata de usar como base del dato compartido el offset $500$ dentro
+del segmento. La modificación es simple y se aplica en ambos lados.
+
+\paragraph{shmwriter (modificado).}
+
+\begin{lstlisting}[style=cstyle]
+char *str = (char *)shmat(shmid, (void *)0, 0);
+printf("shared memory logical address: %p\n", str);
+printf("Escribiendo en offset 500 (str+500 = %p):\n", str + 500);
+printf("Data to write: ");
+fgets(str + 500, 1024 - 500, stdin);
+(str + 500)[strcspn(str + 500, "\n")] = '\0';
+printf("Data written in memory at str+500: %s\n", str + 500);
+shmdt(str);
+\end{lstlisting}
+
+\paragraph{shmreader (modificado).}
+
+\begin{lstlisting}[style=cstyle]
+char *str = (char *)shmat(shmid, (void *)0, 0);
+printf("shared memory logical address: %p\n", str);
+printf("Leyendo desde offset 500 (str+500 = %p):\n", str + 500);
+printf("Data read from memory: %s\n", str + 500);
+shmdt(str);
+\end{lstlisting}
+
+\paragraph{Notas.}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{str + 500} es una dirección lógica válida porque el
+        segmento tiene $1024$ bytes y $500 < 1024$.
+    \item La aritmética de punteros funciona porque \texttt{str} es
+        \texttt{char *}: \texttt{str + 500} avanza exactamente $500$
+        bytes.
+    \item En el caso del \texttt{writer} se acota
+        \texttt{fgets(str + 500, 1024 - 500, stdin)} para que no se
+        escriba más allá del fin del segmento.
+    \item Los primeros $500$ bytes del segmento siguen sin tocar; si
+        algún programa anterior los había escrito, su contenido
+        permanece.
+\end{itemize}
+
+\subsection*{Resumen del ejercicio}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item La API \texttt{shmget}/\texttt{shmat}/\texttt{shmdt}/
+        \texttt{shmctl} expone explícitamente la abstracción de
+        \emph{región de memoria compartida} entre procesos.
+    \item Cada proceso mapea la misma región a (posiblemente)
+        \emph{distintas direcciones lógicas}, pero el contenido es
+        compartido porque las \texttt{pte} apuntan a los mismos
+        frames físicos.
+    \item El ciclo de vida del segmento depende del sistema, no de
+        los procesos: si nadie llama a \texttt{shmctl(IPC\_RMID)}, el
+        segmento queda hasta el reboot.
+    \item Es responsabilidad del programador sincronizar accesos al
+        área compartida (semáforos, mutex en \emph{shm}, etc.).
+\end{itemize}
+
+% =====================================================================
+\section{Conclusiones}
+% =====================================================================
+
+A lo largo del práctico se recorrió, ejercicio a ejercicio, toda la
+maquinaria que el sistema operativo usa para gestionar la memoria:
+
+\begin{itemize}[leftmargin=*]
+    \item Los \textbf{Ejercicios 1 y 3} mostraron el \emph{lado
+        práctico}: cómo medir el consumo real de memoria desde la
+        línea de comandos y desde un programa propio, distinguiendo
+        \texttt{VIRT}/\texttt{RES}/\texttt{PSS}/\texttt{USS} y los
+        distintos segmentos del proceso (\texttt{.text},
+        \texttt{.data}, heap, stack).
+    \item Los \textbf{Ejercicios 2, 4, 5 y 6} se concentraron en la
+        \emph{asignación} y el \emph{paginado}: el \emph{buddy
+        system} ilustra los compromisos entre fragmentación interna y
+        externa; el cálculo de la tabla de páginas en arquitecturas de
+        $16$ y $32$ bits muestra por qué hacen falta tablas multinivel
+        y/o \emph{huge pages} en sistemas reales.
+    \item Los \textbf{Ejercicios 7, 8 y 9} aplicaron la maquinaria al
+        problema de \emph{compartir memoria entre procesos} y mapear
+        archivos en memoria. Los detalles relevantes (bit \texttt{D}
+        para persistencia de \texttt{mmap}; ciclo de vida del
+        segmento de \emph{shared memory}; visión común de distintos
+        \texttt{vpn} sobre los mismos \texttt{ppn}) son consecuencia
+        directa del modelo del capítulo teórico.
+\end{itemize}
+
+\begin{idea}
+Lo que une todos los ejercicios es la \emph{misma} abstracción: la
+tabla de páginas. Sirve para confinar un proceso, compartir memoria,
+mapear archivos, hacer crecer el stack y abaratar \texttt{fork()}. La
+diferencia entre cada caso está sólo en cómo el SO configura las
+\texttt{pte} y reacciona ante \emph{page faults}, no en una
+maquinaria nueva por feature.
+\end{idea}
+
+\end{document}
