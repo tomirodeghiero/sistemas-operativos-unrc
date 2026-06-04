@@ -1,0 +1,268 @@
+Taller 5 - Preemptive tasks (kernel threads)
+Respuestas a los ejercicios
+Alumno: Tomas Rodeghiero - Sistemas Operativos - UNRC
+
+
+Ejercicio 1: Tiempo hasta el overflow de un timer de 32 bits a 1 MHz
+--------------------------------------------------------------------
+
+Un registro de 32 bits cuenta hasta 2^32 = 4_294_967_296 valores
+distintos. Si se incrementa una vez por microsegundo (frecuencia
+de 1 MHz, periodo 1 us), el overflow ocurre cuando han pasado
+exactamente 2^32 us.
+
+Conversion a unidades mas comodas:
+
+  2^32 us = 4_294_967_296 us
+          = 4_294_967.296 s
+          = 71_582.788... min
+          = 1_193.046... h
+          = 49.71... dias
+
+Es decir, aproximadamente 49 dias 17 horas 2 minutos y 47 segundos.
+Por eso historicamente los timers de 32 bits a 1 MHz se asocian al
+famoso "wrap" cada ~49.7 dias.
+
+
+Ejercicio 2: Mismo calculo con un timer de 64 bits
+--------------------------------------------------
+
+Con 64 bits el contador puede tomar 2^64 valores. A 1 incremento
+por microsegundo:
+
+  2^64 us = 18_446_744_073_709_551_616 us
+          = 1.8446 * 10^19 us
+          = 1.8446 * 10^13 s
+          = 5.124 * 10^9 h
+          = 213_503_982 dias
+          ~ 584_942 años
+
+Es decir, mas de medio millon de años. Para todos los efectos
+practicos un timer de 64 bits a 1 MHz no se desborda durante la
+vida util de cualquier sistema. Por eso CLINT_MTIME en RISC-V (el
+contador que usa el HAL de este paso, ver arch.h) es de 64 bits:
+no hay que preocuparse del wrap.
+
+
+Ejercicio 3: Analisis de la creacion y manejo de tareas
+-------------------------------------------------------
+
+  (a) Diagrama de transiciones de estado
+
+  Los estados estan definidos en task.h:
+     UNUSED, RUNNABLE, RUNNING, WAITING, TERMINATED
+
+  Las transiciones que aparecen en task.c son:
+
+                       create_task()
+        UNUSED  -------------------------->  RUNNABLE
+                  (slot libre + memset ctx +
+                   sp/ra iniciales + state=RUNNABLE)
+
+                       scheduler()
+       RUNNABLE -------------------------->  RUNNING
+                  (selecciona slot RUNNABLE,
+                   carga quantum y hace context_switch)
+
+                          yield()
+        RUNNING -------------------------->  RUNNABLE
+                  (vencimiento de quantum en trap();
+                   yield() pone RUNNABLE y llama a sched())
+
+                    suspend(cond, lk)
+        RUNNING -------------------------->  WAITING
+                  (sleep(n) y otras condiciones;
+                   guarda wait_condition y llama a sched())
+
+                  wakeup(cond)  ó  wake_up_for_timer()
+        WAITING -------------------------->  RUNNABLE
+                  (la condicion se cumple o el sleep_ticks
+                   llego a 0)
+
+                       terminate()
+        RUNNING -------------------------->  TERMINATED
+                  (la tarea imprime "Task X exit." y
+                   llama a sched(); el slot queda ocupado
+                   pero ya no se elige)
+
+  El estado UNUSED es el inicial de cada slot del arreglo tasks[]
+  (lo deja init_tasks()). Una tarea TERMINATED no vuelve a
+  ejecutarse: el scheduler solo elige slots con state == RUNNABLE,
+  asi que TERMINATED es un estado absorbente.
+
+
+  (b) Politica de scheduling
+
+  Round-robin con desalojo por timer. El scheduler recorre el
+  arreglo tasks[] de forma circular eligiendo el primer slot
+  RUNNABLE y le entrega un quantum (en la version original, el
+  mismo QUANTUM para todas; en la modificada, el quantum propio de
+  cada tarea). Cuando vence el quantum, trap() llama a yield() y
+  el scheduler retoma el for desde el slot siguiente. No hay
+  prioridades.
+
+
+  (c) Que corre la CPU cuando no hay tareas RUNNABLE
+
+  El cuerpo de scheduler() es un while(true) que recorre tasks[]
+  buscando una RUNNABLE. Si no encuentra ninguna, simplemente
+  vuelve a empezar el for con las interrupciones habilitadas y se
+  queda dando vueltas. Es un "busy idle loop": la CPU consume
+  ciclos en el bucle hasta que llegue un timer interrupt o hasta
+  que otra CPU (o un wakeup) ponga alguna tarea RUNNABLE. No hay
+  WFI ni una idle task dedicada.
+
+
+Ejercicio 4: Donde y cuando se guarda el trap frame
+---------------------------------------------------
+
+El trap frame se guarda en la pila kernel del task que estaba en
+CPU al momento del trap, y se guarda en la entrada al handler de
+bajo nivel s_trap (arch.s):
+
+      addi    sp, sp, -30 * 4   # reserva 30 palabras en la pila
+      sw      ra,  0*4(sp)
+      sw      gp,  1*4(sp)
+      sw      t0,  2*4(sp)
+      ...
+      sw      s11, 28*4(sp)
+      sw      sp,  29*4(sp)
+      mv      a0, sp
+      call    trap
+
+Es decir, ni bien la CPU salta a s_trap (por el vector configurado
+en stvec) se descuenta espacio del sp actual y se hace push de los
+30 registros que componen struct trap_frame (definida en arch.h).
+La direccion del frame queda en sp y se pasa como argumento (a0)
+a trap(). Cuando trap() retorna, s_trap restaura los registros
+desde la misma pila y libera el espacio con addi sp,sp,+30*4
+antes de hacer sret.
+
+Detalle importante: la pila usada es la del task vigente porque el
+kernel no usa pilas separadas por modo (no hay sscratch swap). Si
+durante trap() ocurre un yield() y se cambia de contexto a otra
+tarea, al volver a s_trap el sp puede apuntar a OTRA pila (la del
+nuevo task). Esa pila va a contener su propio trap frame, asi que
+el restore desde sp sigue siendo coherente.
+
+
+Ejercicio 5: Compilar y correr, analizar la salida
+--------------------------------------------------
+
+La compilacion original muestra el warning esperado:
+
+  trap.c:8:30: warning: unused parameter 'tf' [-Wunused-parameter]
+
+El kernel arranca con kernel_main en cada CPU. La CPU 0 inicializa
+tasks, crea A, B y C, y luego ambas CPUs entran a scheduler(). En
+la salida (ver entrega/salida-kernel-original.txt) se observa:
+
+  - A y C son tareas "computacionales" (printf + busy loop) y se
+    ejecutan en paralelo en las dos CPUs.
+  - B se va a dormir 4 ticks (sleep(4)), por eso casi no aparece
+    hasta que se cumple su tiempo.
+  - Cuando ticks==3, A y C ejecutan invalid_instruction(): el
+    handler imprime "illegal instruction" y termina la tarea
+    (terminate(-1)). En la salida quedan las lineas:
+
+      Task A in CPU 1 illegal instruction at address 80000790
+      Task A exit.
+      ...
+      Task C in CPU 0 illegal instruction at address 80000790
+      Task C exit.
+
+    A partir de ahi solo B sigue, repitiendo sleep/awake cada 4
+    ticks (porque vuelve a dormirse).
+
+Probe con distintos valores de QUANTUM. Subiendolo a 5 cada tarea
+imprime varias lineas seguidas antes de ceder. Bajandolo a 1 el
+cambio de contexto ocurre en cada tick y se alternan en cada
+linea. La cantidad de prints entre yield/yield es proporcional al
+quantum porque cada print dura mucho menos que un tick (T_INTERVAL
+= 5_000_000 ciclos).
+
+
+Ejercicio 6: Quantum por tarea
+------------------------------
+
+Cambios realizados (todos en la carpeta entrega/):
+
+  1) task.h
+     - Agregue el campo "int quantum;" en struct task para guardar
+       el quantum propio de la tarea.
+     - Cambie la firma de create_task() para que tome el quantum
+       como tercer argumento:
+         struct task* create_task(char* name, task_function pc,
+                                  int quantum);
+
+  2) task.c
+     - create_task() ahora asigna task->quantum = (quantum > 0) ?
+       quantum : QUANTUM. Asi, si el caller pasa 0 (o negativo),
+       se cae al valor por defecto del header.
+     - scheduler() carga next_task->ticks = next_task->quantum
+       (antes era la constante QUANTUM).
+
+  3) kmain.c
+     - create_task("A", f_a, 1);   // quantum bajo, cede rapido
+       create_task("B", f_b, 3);   // quantum mas grande
+       create_task("C", f_a, 2);   // intermedio
+
+Resultado: en la salida (entrega/salida-kernel.txt) se ve que A
+yieldea muchas mas veces que C (porque A tiene quantum 1 y C
+quantum 2). En el log capturado, A aparece como "task A yield CPU"
+con mucho mas frecuencia que "task C yield CPU".
+
+Para chequear que sigue funcionando el caso por defecto, basta con
+llamar create_task("X", f_x, 0) (o pasar -1) y la tarea recibe el
+QUANTUM definido en task.h.
+
+
+Ejercicio 7: Recuperar al task tras una invalid instruction
+-----------------------------------------------------------
+
+Cambio realizado en entrega/trap.c. En la rama
+ILLEGAL_INSTRUCTION, en vez de llamar a terminate(-1) avanzo el
+sepc en 4 bytes (el tamano de una instruccion RISC-V, porque el
+proyecto se compila sin la extension C: -march=rv32imazicsr) y
+dejo seguir a la tarea:
+
+      case ILLEGAL_INSTRUCTION:
+          if (task) {
+              printf("Task %s in CPU %d illegal instruction at "
+                     "address %x; skipping it\n",
+                     task->name, cpu_id, ra);
+              ra += 4;
+          } else
+              panic("Kernel illegal instruction at %x on cpu %d\n",
+                    ra, cpu_id);
+          break;
+
+Por que funciona: en este kernel la variable local "ra" se
+inicializa con trap_ra() (que lee sepc, o sea el PC de la
+instruccion que disparo la excepcion). Al final de trap() ya
+existe la linea set_trap_ra(ra), que escribe sepc nuevamente.
+Si entro a esa linea con ra apuntando a la instruccion siguiente,
+cuando s_trap haga sret la CPU saltara a la siguiente instruccion
+en vez de re-ejecutar la que fallo.
+
+Por que +4: el README dice "remember that all RISC-V instructions
+are the same size". El Makefile usa -march=rv32imazicsr (sin la
+extension C de instrucciones compresas de 2 bytes), asi que todas
+las instrucciones miden 4 bytes. Esto se verifica en kernel.asm,
+donde la "unimp" generada por invalid_instruction() aparece como
+una instruccion de 4 bytes (0xc0001073):
+
+      80000790: c0001073    unimp
+
+Verificacion: en la salida (entrega/salida-kernel.txt), tras los
+mensajes:
+
+      Task A in CPU 1 illegal instruction at address 80000790;
+        skipping it
+      Task C in CPU 0 illegal instruction at address 80000790;
+        skipping it
+
+ninguna de las dos tareas termina (ya no aparece "Task A exit.")
+y siguen imprimiendo "ticks: X, task A/C in cpu Y" en forma
+indefinida. Comparar con entrega/salida-kernel-original.txt, donde
+las mismas tareas terminan y solo queda B.

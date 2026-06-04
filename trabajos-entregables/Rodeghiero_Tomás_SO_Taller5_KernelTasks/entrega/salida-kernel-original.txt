@@ -1,0 +1,141 @@
+task A created!
+task B created!
+task C created!
+ticks: 0, task A in cpu 1 
+ticks: 0, task B in cpu 0, going to sleep...
+ticks: 0, task C in cpu 0 
+ticks: 0, task A in cpu 1 
+ticks: 0, task C in cpu 0 
+ticks: 0, task C in cpu 0 
+ticks: 0, task A in cpu 1 
+ticks: 0, task C in cpu 0 
+ticks: 0, task A in cpu 1 
+ticks: 0, task A in cpu 1 
+ticks: 0, task C in cpu 0 
+ticks: 0, task A in cpu 1 
+ticks: 0, task C in cpu 0 
+ticks: 0, task A in cpu 1 
+ticks: 0, task C in cpu 0 
+ticks: 0, task C in cpu 0 
+ticks: 0, task A in cpu 1 
+ticks: 0, task C in cpu 0 
+ticks: 0, task A in cpu 1 
+ticks: 0, task C in cpu 0 
+ticks: 0, task A in cpu 1 
+ticks: 0, task C in cpu 0 
+ticks: 0, task A in cpu 1 
+ticks: 0, task C in cpu 0 
+ticks: 0, task A in cpu 1 
+ticks: 0, task C in cpu 0 
+ticks: 0, task A in cpu 1 
+ticks: 0, task A in cpu 1 
+ticks: 0, task C in cpu 0 
+ticks: 0, task A in cpu 1 
+ticks: 0, task C in cpu 0 
+ticks: 0, task A in cpu 1 
+ticks: 0, task C in cpu 0 
+ticks: 0, task C in cpu 0 
+ticks: 0, task A in cpu 1 
+ticks: 0, task C in cpu 0 
+ticks: 0, task A in cpu 1 
+ticks: 0, task C in cpu 0 
+ticks: 0, task A in cpu 1 
+task A yield CPU 1
+task C yield CPU 0
+ticks: 1, task A in cpu 1 
+ticks: 1, task C in cpu 0 
+ticks: 1, task A in cpu 1 
+ticks: 1, task C in cpu 0 
+ticks: 1, task A in cpu 1 
+ticks: 1, task C in cpu 0 
+ticks: 1, task A in cpu 1 
+ticks: 1, task C in cpu 0 
+ticks: 1, task A in cpu 1 
+ticks: 1, task C in cpu 0 
+ticks: 1, task A in cpu 1 
+ticks: 1, task C in cpu 0 
+ticks: 1, task A in cpu 1 
+ticks: 1, task C in cpu 0 
+ticks: 1, task A in cpu 1 
+ticks: 1, task C in cpu 0 
+ticks: 1, task A in cpu 1 
+ticks: 1, task C in cpu 0 
+ticks: 1, task A in cpu 1 
+ticks: 1, task C in cpu 0 
+ticks: 1, task A in cpu 1 
+ticks: 1, task C in cpu 0 
+ticks: 1, task C in cpu 0 
+ticks: 1, task A in cpu 1 
+ticks: 1, task C in cpu 0 
+ticks: 1, task A in cpu 1 
+ticks: 1, task A in cpu 1 
+ticks: 1, task C in cpu 0 
+ticks: 1, task C in cpu 0 
+ticks: 1, task A in cpu 1 
+ticks: 1, task A in cpu 1 
+ticks: 1, task C in cpu 0 
+ticks: 1, task A in cpu 1 
+ticks: 1, task C in cpu 0 
+ticks: 1, task A in cpu 1 
+ticks: 1, task C in cpu 0 
+ticks: 1, task A in cpu 1 
+ticks: 1, task C in cpu 0 
+ticks: 1, task A in cpu 1 
+ticks: 1, task C in cpu 0 
+task A yield CPU 1
+task C yield CPU 0
+ticks: 2, task A in cpu 1 
+ticks: 2, task C in cpu 0 
+ticks: 2, task A in cpu 1 
+ticks: 2, task C in cpu 0 
+ticks: 2, task A in cpu 1 
+ticks: 2, task C in cpu 0 
+ticks: 2, task A in cpu 1 
+ticks: 2, task C in cpu 0 
+ticks: 2, task A in cpu 1 
+ticks: 2, task C in cpu 0 
+ticks: 2, task A in cpu 1 
+ticks: 2, task C in cpu 0 
+ticks: 2, task A in cpu 1 
+ticks: 2, task C in cpu 0 
+ticks: 2, task A in cpu 1 
+ticks: 2, task C in cpu 0 
+ticks: 2, task A in cpu 1 
+ticks: 2, task C in cpu 0 
+ticks: 2, task A in cpu 1 
+ticks: 2, task C in cpu 0 
+ticks: 2, task A in cpu 1 
+ticks: 2, task C in cpu 0 
+ticks: 2, task A in cpu 1 
+ticks: 2, task C in cpu 0 
+ticks: 2, task A in cpu 1 
+ticks: 2, task C in cpu 0 
+ticks: 2, task A in cpu 1 
+ticks: 2, task C in cpu 0 
+ticks: 2, task A in cpu 1 
+ticks: 2, task C in cpu 0 
+ticks: 2, task A in cpu 1 
+ticks: 2, task C in cpu 0 
+ticks: 2, task A in cpu 1 
+ticks: 2, task C in cpu 0 
+ticks: 2, task A in cpu 1 
+ticks: 2, task C in cpu 0 
+ticks: 2, task A in cpu 1 
+ticks: 2, task C in cpu 0 
+task A yield CPU 1
+task C yield CPU 0
+ticks: 3, task A in cpu 1 
+Task A in CPU 1 illegal instruction at address 80000790
+Task A exit.
+ticks: 3, task C in cpu 0 
+Task C in CPU 0 illegal instruction at address 80000790
+Task C exit.
+ticks: 4, task B in cpu 1, awake!
+ticks: 4, task B in cpu 1, going to sleep...
+ticks: 8, task B in cpu 1, awake!
+ticks: 8, task B in cpu 1, going to sleep...
+ticks: 12, task B in cpu 1, awake!
+ticks: 12, task B in cpu 1, going to sleep...
+ticks: 16, task B in cpu 1, awake!
+ticks: 16, task B in cpu 1, going to sleep...
+...  (la salida sigue indefinidamente; corte con Ctrl-A x)
