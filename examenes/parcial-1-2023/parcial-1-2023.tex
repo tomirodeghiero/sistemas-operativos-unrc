@@ -1,0 +1,1193 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- Encoding ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands]{babel}
+\usepackage{lmodern}
+
+% --- Layout ---
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{parskip}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em plus 0.2em minus 0.1em}
+
+% --- Tables and graphics ---
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{positioning,shapes.geometric,arrows.meta,fit,backgrounds,calc,decorations.pathreplacing}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{amsmath,amssymb}
+
+% --- Soporte para caracteres Unicode usados en formulas en texto plano ---
+\usepackage{newunicodechar}
+\newunicodechar{→}{\ensuremath{\rightarrow}}
+\newunicodechar{≥}{\ensuremath{\geq}}
+\newunicodechar{≤}{\ensuremath{\leq}}
+\newunicodechar{×}{\ensuremath{\times}}
+\newunicodechar{÷}{\ensuremath{\div}}
+\newunicodechar{≈}{\ensuremath{\approx}}
+\newunicodechar{⌈}{\ensuremath{\lceil}}
+\newunicodechar{⌉}{\ensuremath{\rceil}}
+\newunicodechar{✓}{\ensuremath{\checkmark}}
+
+% --- Code listings ---
+\usepackage{listings}
+\definecolor{codegray}{rgb}{0.96,0.96,0.96}
+\definecolor{codeborder}{rgb}{0.85,0.85,0.85}
+\definecolor{codecomment}{rgb}{0.30,0.55,0.30}
+\definecolor{codekeyword}{rgb}{0.10,0.30,0.70}
+\definecolor{codestring}{rgb}{0.65,0.15,0.10}
+
+\lstdefinestyle{cstyle}{
+    language=C,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+}
+
+\lstdefinestyle{shellstyle}{
+    language=bash,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+    upquote=true,
+}
+
+\lstdefinestyle{textstyle}{
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstset{style=textstyle}
+
+% --- Definition / Idea / Important boxes ---
+\usepackage[most]{tcolorbox}
+\newtcolorbox{idea}[1][]{
+    colback=orange!5!white,
+    colframe=orange!60!black,
+    fonttitle=\bfseries,
+    title=Idea intuitiva,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{importante}[1][]{
+    colback=red!5!white,
+    colframe=red!50!black,
+    fonttitle=\bfseries,
+    title=Importante,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{respuesta}[1][]{
+    colback=green!5!white,
+    colframe=green!40!black,
+    fonttitle=\bfseries,
+    title=Respuesta,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+
+% --- Hyperlinks ---
+\usepackage[colorlinks=true,
+            linkcolor=blue!60!black,
+            urlcolor=blue!50!black,
+            citecolor=blue!60!black]{hyperref}
+
+% --- Color palette ---
+\definecolor{c1}{HTML}{4C72B0}
+\definecolor{c2}{HTML}{DD8452}
+\definecolor{c3}{HTML}{55A868}
+\definecolor{c4}{HTML}{8172B2}
+\definecolor{cred}{HTML}{C44E52}
+\definecolor{cfree}{HTML}{8C8C8C}
+
+% --- Title block ---
+\title{
+    \vspace{-2.5em}
+    \textbf{Examen Parcial 1 --- 2023} \\[0.3em]
+    \large Sistemas Operativos \\
+    \small Licenciatura en Ciencias de la Computación
+}
+\author{
+    Tomás Rodeghiero \\
+    \small UNRC --- Universidad Nacional de Río Cuarto
+}
+\date{2023}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent
+Resolución completa del Parcial 1 del año 2023 de la cátedra de
+Sistemas Operativos (UNRC, Lic.\ en Ciencias de la Computación). El
+parcial consta de diez ejercicios que recorren los temas fundamentales
+del primer cuatrimestre: seguridad y modos de privilegio,
+contraste entre kernel monolítico y microkernel, instrucciones
+privilegiadas, mecánica de las syscalls, secuencia de
+\texttt{fork}/\texttt{exec}/\texttt{wait} en un shell, bloqueo del
+proceso ante una syscall lenta como \texttt{read}, transición entre
+estados (\texttt{wakeup}), \emph{starvation} en distintos algoritmos
+de planificación, \emph{race conditions} en accesos a un saldo
+bancario compartido, y las limitaciones de spinlocks en
+monoprocesador y de la inhibición de interrupciones en
+multiprocesador. Cada ejercicio se desarrolla con la estructura
+\textbf{Enunciado $\to$ Análisis $\to$ Desarrollo $\to$ Respuesta}.
+\end{abstract}
+
+\tableofcontents
+\bigskip
+
+% =====================================================================
+\section{Ejercicio 1 --- Seguridad y modos de privilegio}
+% =====================================================================
+
+\textbf{Enunciado.} Un sistema de multi-programación o multi-tarea
+debe compartir recursos.
+
+\textbf{(a)} ¿Qué problemas de seguridad surgen?
+
+\textbf{(b)} ¿Es posible lograr un sistema seguro con una CPU con un
+solo modo de privilegio?
+
+\subsection*{1.a --- Problemas de seguridad al compartir recursos}
+
+Cuando varios procesos comparten CPU, memoria, dispositivos y
+archivos, surgen riesgos clásicos:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Confidencialidad de la memoria}: sin protección,
+        un proceso podría leer la memoria de otro y obtener datos
+        sensibles (contraseñas, claves, datos privados).
+    \item \textbf{Integridad de la memoria}: un proceso podría
+        \emph{modificar} la memoria de otro (incluido el código del
+        kernel), corrompiéndolo o inyectando código malicioso.
+    \item \textbf{Acceso no autorizado a dispositivos}: lectura
+        directa del disco/red bypaseando los permisos del FS;
+        manipulación del audio o pantalla de otro usuario; etc.
+    \item \textbf{Denegación de servicio (DoS)}: un proceso podría
+        monopolizar la CPU (no ceder voluntariamente), acaparar toda
+        la RAM, llenar el FS, o bloquear dispositivos compartidos.
+    \item \textbf{Acceso no autorizado a archivos}: lectura/escritura
+        de archivos de otros usuarios sin permiso.
+    \item \textbf{Ejecución de instrucciones críticas}: si un proceso
+        pudiera ejecutar instrucciones como ``modificar tabla de
+        páginas'' o ``deshabilitar interrupciones'', podría
+        secuestrar el sistema entero.
+    \item \textbf{Escalada de privilegios}: un proceso de usuario
+        común podría hacerse pasar por root o por otro usuario.
+\end{itemize}
+
+\subsection*{1.b --- ¿Sistema seguro con un solo modo de privilegio?}
+
+\begin{respuesta}
+\textbf{No}, en general. Sin distinción entre \emph{modo usuario} y
+\emph{modo kernel}, cualquier programa puede ejecutar todas las
+instrucciones de la CPU, incluidas las críticas:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Modificar la tabla de páginas $\Rightarrow$ acceder a
+        memoria de otros procesos o del kernel.
+    \item Deshabilitar las interrupciones $\Rightarrow$ tomar la CPU
+        para siempre.
+    \item Tocar los registros de los dispositivos $\Rightarrow$
+        manipular hardware directamente.
+\end{itemize}
+
+Sin un modo privilegiado que el SO use exclusivamente, no hay forma
+de \emph{forzar} que un programa pase por las syscalls y los chequeos
+correspondientes. Por eso \textbf{toda CPU moderna tiene al menos dos
+modos} (user / kernel) y muchas tienen más (x86: 4 rings; ARM: 4
+niveles de excepción; RISC-V: M, S, U).
+
+\textbf{Excepciones marginales}: sistemas embebidos con software
+totalmente confiable y auditado (un controlador empotrado de un
+único programa, p.\ ej.) pueden vivir con un solo modo, pero no son
+SOs multi-usuario en sentido estricto.
+\end{respuesta}
+
+% =====================================================================
+\section{Ejercicio 2 --- ¿Monolítico es más eficiente que microkernel?}
+% =====================================================================
+
+\textbf{Enunciado.} Un diseño monolítico ofrece generalmente mayor
+eficiencia que un microkernel. ¿Es válida esta afirmación? Justificar.
+
+\subsection*{Análisis}
+
+En un \textbf{kernel monolítico} (Linux clásico, Windows NT,
+\texttt{xv6}), todos los subsistemas ---scheduler, gestor de memoria,
+FS, drivers, networking--- están compilados en un único binario y
+corren en \textbf{modo kernel}, en el mismo espacio de direcciones.
+La comunicación entre ellos es por \emph{llamadas a función directa}
+y acceso a estructuras globales (tabla de procesos, tabla de archivos
+abiertos, etc.).
+
+En un \textbf{microkernel} (Mach, MINIX, L4, QNX), el núcleo se
+reduce al mínimo: planificador, IPC, MMU básica. El resto (FS,
+drivers, networking, incluso el gestor de procesos) corre como
+\textbf{procesos servidores en modo usuario}. Toda operación que
+involucre múltiples subsistemas pasa por IPC entre procesos.
+
+\subsection*{Por qué el monolítico es más eficiente}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Sin cambios de modo extra}: en monolítico, la
+        invocación entre subsistemas del kernel es una llamada a
+        función. En microkernel, requiere \textbf{traps adicionales}
+        (uno por cada \texttt{send}/\texttt{receive}).
+    \item \textbf{Sin cambios de contexto extra}: en monolítico, no
+        hay context switch al invocar otro subsistema. En microkernel,
+        sí: el control se transfiere al proceso servidor.
+    \item \textbf{Sin copia de datos entre espacios}: en monolítico,
+        un puntero a un buffer se pasa directamente. En microkernel,
+        muchas veces hay que \emph{copiar} los datos al espacio del
+        servidor (el espacio de direcciones es distinto).
+\end{itemize}
+
+\textbf{Ejemplo numérico}: una syscall \texttt{getpid()} simple
+en un monolítico cuesta $\sim 1$ trap (decenas de nanosegundos). En
+un microkernel típico: $\sim 2$ traps + $2$ context switches +
+copia de mensaje (centenas de nanosegundos, hasta microsegundos en
+implementaciones ingenuas).
+
+\subsection*{Lo que el microkernel ofrece a cambio}
+
+A pesar de la menor eficiencia, los microkernels tienen ventajas:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Modularidad}: cada servicio es un proceso aislado.
+    \item \textbf{Robustez}: un driver que crashea no tira el sistema
+        (el kernel sigue corriendo; se reinicia el servicio).
+    \item \textbf{Seguridad}: cada servicio tiene sus propios
+        privilegios; un bug en un driver no compromete todo.
+    \item \textbf{Portabilidad}: agregar/quitar servicios sin
+        recompilar el kernel.
+\end{itemize}
+
+\begin{respuesta}
+La afirmación es \textbf{válida}: un kernel monolítico es
+generalmente más eficiente que un microkernel para la misma carga,
+porque evita los cambios de modo, los context switches y la copia
+de datos entre espacios de direcciones que requiere el IPC del
+microkernel.
+
+A cambio, el microkernel gana en \emph{modularidad, robustez,
+seguridad y portabilidad}, lo que justifica su uso en escenarios
+donde esos atributos son críticos (sistemas embebidos certificados,
+sistemas de tiempo real, sistemas de alta seguridad).
+\end{respuesta}
+
+% =====================================================================
+\section{Ejercicio 3 --- Instrucciones privilegiadas}
+% =====================================================================
+
+\textbf{Enunciado.} Determinar cuáles de las siguientes instrucciones
+deberían ser privilegiadas.
+
+\subsection*{Criterio general}
+
+Una instrucción debe ser \textbf{privilegiada} si su ejecución por
+parte de un proceso de usuario podría \textbf{comprometer la
+seguridad o estabilidad del sistema}. La regla mnemónica: si la
+instrucción puede afectar a \emph{otros procesos} o al \emph{kernel},
+debe ser privilegiada.
+
+\subsection*{3.a --- Setear el valor del timer}
+
+\begin{respuesta}
+\textbf{Privilegiada}. El timer es el corazón del scheduler. Un
+proceso que pudiera modificarlo podría:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Aumentar su quantum efectivo y monopolizar la CPU.
+    \item Detener el timer y bloquear el sistema entero.
+    \item Falsificar la hora del sistema.
+\end{itemize}
+\end{respuesta}
+
+\subsection*{3.b --- Leer el valor del timer}
+
+\begin{respuesta}
+\textbf{No privilegiada}. Leer la hora actual es una operación
+inofensiva. Los procesos normales necesitan saber la hora para
+muchas operaciones (timestamps de archivos, mediciones de
+rendimiento, etc.). Por eso existen syscalls como
+\texttt{gettimeofday}, \texttt{clock\_gettime}, \texttt{time}: son
+accesibles desde modo usuario sin riesgo.
+\end{respuesta}
+
+\subsection*{3.c --- Ejecutar una instrucción de \texttt{trap}}
+
+\begin{respuesta}
+\textbf{No privilegiada}. La instrucción de trap (\texttt{syscall},
+\texttt{ecall}, \texttt{svc}) es \emph{exactamente} el mecanismo que
+los procesos de usuario usan para invocar al kernel. Si fuera
+privilegiada, ningún programa podría hacer syscalls. Es la entrada
+canónica a modo kernel, controlada por el hardware: el procesador
+salta a una dirección fija definida por el kernel, no a una
+arbitraria.
+\end{respuesta}
+
+\subsection*{3.d --- Deshabilitar interrupciones}
+
+\begin{respuesta}
+\textbf{Privilegiada}. Si un proceso pudiera deshabilitar IRQs:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item El timer no podría interrumpirlo $\Rightarrow$
+        monopolizaría la CPU.
+    \item Los dispositivos de I/O no podrían notificar al kernel.
+    \item No habría preemption $\Rightarrow$ multitarea imposible.
+\end{itemize}
+
+Es probablemente la instrucción más peligrosa fuera del control del
+kernel.
+\end{respuesta}
+
+\subsection*{3.e --- Modificar registros de protección de memoria}
+
+\begin{respuesta}
+\textbf{Privilegiada}. Los registros que controlan la MMU (puntero
+a la tabla de páginas, base/límite de segmentos) definen qué memoria
+ve cada proceso. Modificarlos permitiría:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Acceder a la memoria de otros procesos.
+    \item Acceder al espacio del kernel.
+    \item Saltarse cualquier mecanismo de aislamiento.
+\end{itemize}
+
+Es la base misma de la separación entre procesos.
+\end{respuesta}
+
+\subsection*{3.f --- Acceder a registros de control y estado de dispositivos}
+
+\begin{respuesta}
+\textbf{Privilegiada}. Los registros de los controladores de
+dispositivo (disco, red, GPU, etc.) viven en regiones de memoria
+mapeada por hardware (MMIO) o en el espacio de puertos. El acceso
+directo permitiría:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Leer datos del disco saltándose los permisos del FS.
+    \item Inyectar paquetes en la red sin pasar por el firewall del
+        SO.
+    \item Provocar fallas del hardware.
+\end{itemize}
+
+Por eso solo el kernel (y sus drivers) tocan estos registros; los
+procesos de usuario los acceden indirectamente vía syscalls
+(\texttt{read}, \texttt{write}, \texttt{ioctl}).
+\end{respuesta}
+
+\subsection*{Resumen}
+
+\begin{center}
+\small
+\begin{tabular}{@{}clc@{}}
+\toprule
+\# & Instrucción                                    & ¿Privilegiada? \\
+\midrule
+a) & Setear el valor del timer                      & \textbf{Sí}    \\
+b) & Leer el valor del timer                        & No             \\
+c) & Ejecutar una instrucción de \texttt{trap}      & No             \\
+d) & Deshabilitar interrupciones                    & \textbf{Sí}    \\
+e) & Modificar registros de protección de memoria  & \textbf{Sí}    \\
+f) & Acceder a registros de control de dispositivos & \textbf{Sí}    \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% =====================================================================
+\section{Ejercicio 4 --- Propósito y mecanismo de las syscalls}
+% =====================================================================
+
+\textbf{Enunciado.} ¿Cuál es el propósito de una llamada al sistema
+y cómo se pueden pasar los parámetros?
+
+\subsection*{Propósito}
+
+Una \textbf{llamada al sistema} (syscall) es la interfaz controlada
+por la cual un proceso de usuario solicita un servicio al kernel.
+
+Sirve para que el proceso pueda realizar operaciones que requieren
+\textbf{privilegios} (acceso a archivos, red, dispositivos,
+manipulación de procesos, etc.) sin tener él mismo esos privilegios:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item El proceso prepara los argumentos en sus registros (o en
+        el stack o en memoria).
+    \item Ejecuta la instrucción de \emph{trap}.
+    \item El hardware cambia a modo supervisor y salta a una
+        dirección fija del kernel.
+    \item El kernel valida los argumentos, ejecuta la operación en
+        nombre del proceso y devuelve el resultado.
+    \item El control vuelve al proceso, que ahora está nuevamente
+        en modo usuario.
+\end{itemize}
+
+La syscall es el \textbf{único punto de entrada controlado} al
+kernel. Esto garantiza que (a) los chequeos de permisos siempre se
+hagan, (b) los argumentos sean validados, y (c) no se pueda saltar a
+código arbitrario del kernel.
+
+\subsection*{Cómo se pasan los parámetros}
+
+Hay tres mecanismos clásicos, todos definidos por la \emph{ABI}
+(\emph{Application Binary Interface}) de cada arquitectura:
+
+\subsubsection*{1) En registros (la forma estándar moderna)}
+
+Los argumentos se colocan en registros designados \emph{antes} de la
+instrucción de trap, y el número de syscall en otro registro.
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+Arquitectura & Registros de args. (en orden) & Registro de syscall \# \\
+\midrule
+x86-64 (Linux) & \texttt{rdi, rsi, rdx, r10, r8, r9}  & \texttt{rax} \\
+ARM (AArch64)  & \texttt{x0--x5}                        & \texttt{x8}  \\
+RISC-V         & \texttt{a0--a5}                        & \texttt{a7}  \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Valor de retorno}: usualmente en el mismo registro del
+primer argumento (\texttt{rax}, \texttt{x0}, \texttt{a0}). El
+proceso lee de ahí el resultado cuando reanuda en modo usuario.
+
+\textbf{Ventajas}: rápido (no toca memoria) y simple para syscalls
+con pocos argumentos (hasta 6 normalmente).
+
+\subsubsection*{2) En el stack}
+
+El proceso empuja los argumentos al stack y ejecuta el trap. El
+kernel los lee del stack del usuario.
+
+\textbf{Uso histórico}: x86 32-bit (\texttt{int 0x80}). Más lento y
+requiere validar punteros al stack del usuario.
+
+\subsubsection*{3) Vía una estructura en memoria}
+
+Para syscalls con muchos argumentos o argumentos grandes (e.g.,
+\texttt{ioctl}, \texttt{readv}/\texttt{writev}), se pasa un puntero
+a una estructura en el espacio del proceso, y el kernel la lee
+después de validar el puntero.
+
+\subsection*{Validación de los argumentos}
+
+\begin{importante}
+El kernel \textbf{nunca debe confiar} en los argumentos del proceso.
+Antes de usarlos, valida:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Que los punteros estén en el rango virtual del proceso
+        (no apunten al kernel).
+    \item Que los rangos de tamaño sean razonables (e.g., un
+        \texttt{count} de \texttt{read} no sea negativo o
+        excesivo).
+    \item Que el proceso tenga permiso para la operación (e.g., el
+        FD esté abierto para lectura).
+\end{itemize}
+
+La falta de validación es una de las clases más comunes de bugs en
+kernel.
+\end{importante}
+
+\begin{respuesta}
+\textbf{Propósito}: permitir que un proceso de usuario acceda a
+servicios privilegiados del kernel (FS, red, dispositivos, gestión
+de procesos) sin tener esos privilegios él mismo. La syscall es el
+único punto de entrada controlado al kernel; el hardware (vía la
+instrucción de trap) garantiza que el control salte a una dirección
+fija definida por el SO.
+
+\textbf{Paso de parámetros}: vía registros (lo más común y rápido,
+hasta 6 argumentos), vía stack (histórico) o vía estructura en
+memoria (para argumentos complejos). El número de syscall se coloca
+en un registro convenido por la ABI. El kernel devuelve el
+resultado en el mismo registro del primer argumento.
+\end{respuesta}
+
+% =====================================================================
+\section{Ejercicio 5 --- Shell ejecutando \texttt{cmd1 \& cmd2}}
+% =====================================================================
+
+\textbf{Enunciado.} Describir los pasos y llamadas al sistema que
+hace un shell en un comando de la forma \texttt{cmd1 \& cmd2}.
+
+\subsection*{Análisis: qué significa \texttt{\&}}
+
+En bash y la mayoría de shells de UNIX, el operador \texttt{\&}
+\emph{separa} comandos (similar a \texttt{;}) y marca al comando
+de la izquierda para ejecutarse en \textbf{background}:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{cmd1 \&}: ejecuta cmd1 en background; el shell no
+        espera.
+    \item \texttt{cmd1 \& cmd2}: ejecuta cmd1 en background y luego
+        cmd2 en foreground (con \texttt{wait}).
+\end{itemize}
+
+\begin{importante}
+No confundir con \texttt{cmd1 \&\& cmd2} (con dos ampersands), que
+es \emph{secuencial-condicional}: ejecuta cmd2 solo si cmd1
+terminó con código 0.
+\end{importante}
+
+\subsection*{Secuencia de pasos del shell}
+
+\paragraph{1. Parseo de la línea de comando.}
+El shell tokeniza la línea y reconoce el operador \texttt{\&} como
+separador con semántica de background para cmd1.
+
+\paragraph{2. Ejecución de cmd1 en background.}
+
+\begin{enumerate}[leftmargin=*,nosep,label=2.\arabic*)]
+    \item \texttt{fork()}: el shell crea un proceso hijo
+        $P_1$ (mismo programa, copia del espacio).
+    \item En $P_1$ (hijo): \texttt{exec("cmd1", args)}: reemplaza
+        la imagen del proceso con el binario de cmd1.
+    \item En el shell (padre): \textbf{NO} hace \texttt{wait()}; el
+        shell guarda el PID en su tabla de \emph{jobs}.
+    \item El shell imprime algo como \texttt{[1] 12345} (job number
+        y PID).
+    \item El shell continúa procesando la siguiente parte de la
+        línea (cmd2).
+\end{enumerate}
+
+\paragraph{3. Ejecución de cmd2 en foreground.}
+
+\begin{enumerate}[leftmargin=*,nosep,label=3.\arabic*)]
+    \item \texttt{fork()}: el shell crea otro hijo $P_2$.
+    \item En $P_2$: \texttt{exec("cmd2", args)}.
+    \item En el shell: \texttt{waitpid($P_2$\_pid, \&status, 0)}:
+        bloquea hasta que cmd2 termine.
+    \item Cuando $P_2$ termina, el shell vuelve a mostrar el prompt.
+\end{enumerate}
+
+\paragraph{4. Cuando cmd1 (background) eventualmente termina:}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item El kernel envía \texttt{SIGCHLD} al shell.
+    \item El shell (cuyo handler de \texttt{SIGCHLD} llama a
+        \texttt{waitpid} en modo no bloqueante \texttt{WNOHANG})
+        recoge el exit status y libera al zombie.
+    \item En la próxima impresión del prompt, el shell notifica al
+        usuario: \texttt{[1]+ Done   cmd1}.
+\end{itemize}
+
+\subsection*{Diagrama del flujo}
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small,align=center},
+    box/.style={draw,rounded corners,minimum width=2.2cm,minimum height=0.8cm},
+    sh/.style={box,fill=c1!25},
+    bg/.style={box,fill=c3!25},
+    fg/.style={box,fill=c2!25},
+    arr/.style={->,thick}
+]
+\node[sh] (shell)   at (0,4) {Shell};
+\node[bg] (p1)      at (-3,2) {$P_1$: cmd1 \\ \scriptsize (background)};
+\node[fg] (p2)      at (3,2)  {$P_2$: cmd2 \\ \scriptsize (foreground)};
+\node[sh] (shell2)  at (0,0)  {Shell \\ \scriptsize (vuelve prompt)};
+
+\draw[arr] (shell.west) -- node[above,font=\scriptsize]{\texttt{fork}+\texttt{exec}} (p1.north);
+\draw[arr] (shell.east) -- node[above,font=\scriptsize]{\texttt{fork}+\texttt{exec}} (p2.north);
+\draw[arr,dashed] (p2.south) -- node[right,font=\scriptsize]{\texttt{waitpid}} (shell2.north);
+\draw[arr,dashed,gray] (p1.south) to[bend right=30] node[left,font=\scriptsize]{\texttt{SIGCHLD} luego} (shell2.west);
+\end{tikzpicture}
+\end{center}
+
+\subsection*{Resumen de syscalls usadas}
+
+\begin{center}
+\small
+\begin{tabular}{@{}llp{7cm}@{}}
+\toprule
+Syscall    & Quién la invoca   & Función \\
+\midrule
+\texttt{fork}     & shell                 & crear hijo para cmd1, luego otro para cmd2 \\
+\texttt{exec}     & cada hijo             & reemplazar imagen con el binario del comando \\
+\texttt{waitpid}  & shell (solo para cmd2) & esperar fin de cmd2 (foreground) \\
+\texttt{waitpid} (\texttt{WNOHANG}) & shell en handler de \texttt{SIGCHLD} & recoger exit status de cmd1 cuando termine \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{respuesta}
+El shell ejecuta \texttt{cmd1 \& cmd2} en dos rondas de
+\texttt{fork+exec}: la primera, sin \texttt{wait()} (cmd1 en
+background, el shell guarda el job y sigue); la segunda, con
+\texttt{waitpid} bloqueante (cmd2 en foreground). El zombie de
+cmd1 se cosecha más tarde vía el handler de \texttt{SIGCHLD} o en
+el próximo prompt.
+\end{respuesta}
+
+% =====================================================================
+\section{Ejercicio 6 --- ¿\texttt{read} hace busy-wait?}
+% =====================================================================
+
+\textbf{Enunciado.} En una llamada al sistema \texttt{read(fd,
+buffer, count)} el proceso queda haciendo una espera ocupada hasta
+que el kernel finalice la operación. Justifique la respuesta.
+
+\subsection*{Análisis}
+
+\begin{respuesta}
+\textbf{Falso}. El proceso \textbf{no} hace busy-wait. Pasa al
+estado \texttt{SLEEPING} (bloqueado en una \emph{wait queue}) y
+libera la CPU. Mientras espera, otros procesos pueden ejecutar.
+\end{respuesta}
+
+\textbf{Por qué no es busy-wait}:
+
+El propósito mismo de un SO multitarea es \emph{no desperdiciar CPU}.
+Si \texttt{read} hiciera busy-wait, el proceso quemaría todo su
+quantum girando sin hacer trabajo útil, mientras la CPU podría
+estar ejecutando algún otro proceso productivo. Sería el peor diseño
+posible.
+
+\textbf{Qué hace el kernel realmente}:
+
+\begin{enumerate}[leftmargin=*]
+    \item El proceso ejecuta el trap de \texttt{read}.
+    \item El kernel verifica si los datos ya están en el
+        \emph{buffer cache}:
+        \begin{itemize}[nosep]
+            \item Si SÍ (cache hit): copia al \texttt{buffer} del
+                usuario y retorna inmediatamente.
+            \item Si NO (cache miss): sigue.
+        \end{itemize}
+    \item El kernel envía un comando al controlador del disco para
+        leer el bloque correspondiente.
+    \item El kernel pone al proceso en una \emph{wait queue}
+        asociada a esa operación: \texttt{p->state = SLEEPING},
+        encola en \texttt{wq}.
+    \item El kernel llama al scheduler ($\to$ \texttt{yield}). Otro
+        proceso obtiene la CPU.
+    \item Eventualmente, el dispositivo termina la operación y
+        dispara una IRQ.
+    \item El ISR del driver marca los datos como disponibles y
+        llama a \texttt{wakeup(wq)}, que pasa al proceso a
+        \texttt{RUNNABLE}.
+    \item Cuando el scheduler vuelve a elegirlo, el proceso reanuda
+        dentro de \texttt{read}, copia los datos al \texttt{buffer}
+        de usuario y retorna.
+\end{enumerate}
+
+\begin{idea}
+\textbf{Por qué bloquear en vez de gastar CPU}: la I/O de disco es
+de órdenes de magnitud más lenta que la CPU. Un acceso a un HDD
+toma $\sim 10$\,ms; en ese tiempo la CPU puede ejecutar $\sim 10^7$
+instrucciones útiles. Si el proceso girara en busy-wait, todas esas
+instrucciones se perderían. El bloqueo es la clave de la
+\emph{utilización eficiente} de la CPU.
+\end{idea}
+
+% =====================================================================
+\section{Ejercicio 7 --- ¿\texttt{wakeup} pasa procesos a RUNNING?}
+% =====================================================================
+
+\textbf{Enunciado.} La operación \texttt{wakeup()} pasa procesos
+desde el estado \texttt{SLEEPING} a \texttt{RUNNING}. Justificar.
+
+\subsection*{Análisis}
+
+\begin{respuesta}
+\textbf{Falso}. \texttt{wakeup()} pasa procesos de \texttt{SLEEPING}
+a \texttt{RUNNABLE} (también llamado \texttt{READY}), \textbf{no
+directamente a RUNNING}. Para que un proceso pase a \texttt{RUNNING}
+hace falta que el \textbf{scheduler} lo seleccione de la cola
+\texttt{READY} y le asigne CPU.
+\end{respuesta}
+
+\subsection*{Diagrama de estados de un proceso}
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    state/.style={draw,rounded corners,minimum width=2.4cm,minimum height=1cm,align=center},
+    arr/.style={->,thick}
+]
+\node[state,fill=c1!25] (run)   at (0,0)   {\textbf{RUNNING}};
+\node[state,fill=c2!25] (rdy)   at (-4.5,0) {\textbf{RUNNABLE}};
+\node[state,fill=c3!25] (slp)   at (4.5,0)  {\textbf{SLEEPING}};
+
+\draw[arr] (rdy) -- node[above,font=\scriptsize]{scheduler elige} (run);
+\draw[arr,bend left] (run.south) to[bend right=25] node[below,font=\scriptsize]{quantum / yield} (rdy.south);
+
+\draw[arr] (run) -- node[above,font=\scriptsize]{\texttt{read}, \texttt{wait}, etc.} (slp);
+\draw[arr,bend left,cred] (slp.south) to[bend left=25] node[below,font=\scriptsize]{\textbf{\texttt{wakeup()}}} (rdy.south);
+\end{tikzpicture}
+\end{center}
+
+Lo crítico: \texttt{wakeup()} NO conecta directamente con
+\texttt{RUNNING}. Va a \texttt{RUNNABLE} primero.
+
+\subsection*{Por qué no es directo}
+
+\begin{itemize}[leftmargin=*]
+    \item Puede haber muchos procesos \texttt{RUNNABLE}; solo uno
+        (o tantos como CPUs haya) puede estar \texttt{RUNNING}
+        simultáneamente.
+    \item \texttt{wakeup} puede despertar varios procesos a la vez
+        (todos los que esperaban en la misma \emph{wait queue}).
+        No es posible ponerlos a todos en \texttt{RUNNING} de
+        inmediato.
+    \item La decisión de quién ejecuta es del scheduler, no del
+        que despertó. El scheduler aplica su política (prioridad,
+        RR, MLFQ, etc.) para elegir.
+\end{itemize}
+
+\subsection*{Excepción: \emph{preemption} al despertar}
+
+Algunos kernels (Linux con \texttt{CONFIG\_PREEMPT}) verifican,
+después de \texttt{wakeup}, si el proceso recién despertado tiene
+\emph{mayor prioridad} que el actualmente en ejecución. Si es así,
+disparan inmediatamente un context switch: el despertado entra a
+\texttt{RUNNING} y el actual vuelve a \texttt{RUNNABLE}.
+
+Aún en ese caso, la transición lógica es
+\texttt{SLEEPING} $\to$ \texttt{RUNNABLE} $\to$ \texttt{RUNNING} (y
+la última depende del scheduler, no del wakeup).
+
+% =====================================================================
+\section{Ejercicio 8 --- ¿Qué algoritmos generan starvation?}
+% =====================================================================
+
+\textbf{Enunciado.} ¿Cuáles de los siguientes algoritmos de
+planificación de uso de CPU pueden generar \emph{starvation}
+(\emph{livelocks})?
+
+\begin{enumerate}[leftmargin=*,nosep,label=\alph*)]
+    \item FCFS
+    \item Shortest Job/Burst First
+    \item Round Robin
+    \item Prioridades
+\end{enumerate}
+
+\subsection*{Análisis: qué es starvation}
+
+\textbf{Starvation}: un proceso espera indefinidamente recibir CPU
+mientras otros sí la reciben.
+
+Para que haya starvation hace falta que la política de selección
+\emph{discrimine sistemáticamente} contra algún proceso, sin
+mecanismo de \emph{aging} que mitigue.
+
+\subsection*{8.a --- FCFS}
+
+\begin{respuesta}
+\textbf{No genera starvation}. FCFS es estrictamente por orden de
+llegada. Cada proceso espera, como mucho, los $n - 1$ procesos que
+llegaron antes (suma de sus ráfagas). En tiempo finito todos ejecutan.
+
+\textbf{Aclaración}: FCFS sufre el \emph{convoy effect} (procesos
+cortos esperan detrás de uno largo y aumentan su turnaround
+promedio), pero eso es \emph{ineficiencia}, no \emph{starvation}:
+nadie espera infinitamente.
+\end{respuesta}
+
+\subsection*{8.b --- Shortest Job/Burst First (SJF / SRTF)}
+
+\begin{respuesta}
+\textbf{SÍ puede generar starvation}. SJF siempre elige el proceso
+con la ráfaga más corta. Si llegan continuamente procesos cortos,
+los procesos largos \emph{nunca son seleccionados}: cada vez que
+llegan al frente, hay alguien más corto adelante.
+
+Es el caso paradigmático de starvation en libros de SO. La solución
+estándar es \emph{aging}: aumentar la prioridad efectiva del proceso
+en función del tiempo que lleva esperando.
+\end{respuesta}
+
+\subsection*{8.c --- Round Robin}
+
+\begin{respuesta}
+\textbf{No genera starvation}. RR es estrictamente justo: cada
+proceso obtiene CPU exactamente una vez cada $\leq N \cdot q$
+unidades de tiempo (con $N$ procesos en la cola y quantum $q$).
+Ningún proceso queda postergado: el peor caso de espera está
+acotado.
+\end{respuesta}
+
+\subsection*{8.d --- Prioridades}
+
+\begin{respuesta}
+\textbf{SÍ puede generar starvation}, si no hay aging. Procesos
+de baja prioridad pueden quedar indefinidamente postergados si
+constantemente llegan procesos de mayor prioridad.
+
+La solución estándar (también clásica): \emph{aging}, incrementar la
+prioridad del proceso a medida que envejece en la cola. Garantiza
+que tarde o temprano alcanzará la prioridad necesaria para ejecutar.
+\end{respuesta}
+
+\subsection*{Resumen}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lcl@{}}
+\toprule
+Algoritmo                 & ¿Starvation? & Razón / Mitigación \\
+\midrule
+FCFS                      & No           & Estrictamente por orden de llegada \\
+SJF / SRTF                & \textbf{Sí}  & Procesos largos postergados; \emph{aging} \\
+Round Robin               & No           & Justo por construcción; espera acotada \\
+Prioridades (sin aging)   & \textbf{Sí}  & Baja prioridad postergada; \emph{aging} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{importante}
+\textbf{Starvation vs.\ livelock}. La consigna los menciona juntos
+pero son distintos:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Starvation}: el proceso espera CPU/recurso pero
+        nunca lo obtiene.
+    \item \textbf{Livelock}: los procesos sí ejecutan, pero
+        constantemente se ceden el paso o repiten estados sin
+        progresar.
+\end{itemize}
+
+En algoritmos de planificación, el problema relevante es starvation,
+no livelock (los livelocks típicamente aparecen en protocolos de
+sincronización mal diseñados).
+\end{importante}
+
+% =====================================================================
+\section{Ejercicio 9 --- Race condition en sistema bancario}
+% =====================================================================
+
+\textbf{Enunciado.} Un sistema bancario usa archivos para representar
+el saldo de una cuenta bancaria.
+
+\begin{lstlisting}[style=cstyle]
+deposit(account, amount):
+    m = read(account)
+    write(account, m + amount)
+
+withdraw(account, amount):
+    m = read(account)
+    if m > amount:
+        write(account, m - amount)
+\end{lstlisting}
+
+\textbf{(a)} Determinar si existe race condition en un sistema
+multitarea preemptivo.
+
+\textbf{(b)} Ofrecer una solución usando algún mecanismo de
+sincronización.
+
+\subsection*{9.a --- ¿Hay race condition?}
+
+\begin{respuesta}
+\textbf{Sí, hay race condition} de tipo \emph{lost update}. Ambas
+operaciones son secuencias \textbf{read-modify-write} no atómicas
+sobre el mismo archivo. En un sistema preemptivo, el scheduler
+puede interrumpir entre el \texttt{read} y el \texttt{write} de
+una tarea para correr la otra, produciendo intercalado nocivo.
+\end{respuesta}
+
+\subsection*{Traza concreta del bug}
+
+Saldo inicial \texttt{account} $= 100$.
+
+Sean dos operaciones concurrentes:
+\begin{itemize}[leftmargin=*,nosep]
+    \item $T_1$: \texttt{deposit(account, 30)} (deposita $30$).
+    \item $T_2$: \texttt{withdraw(account, 50)} (retira $50$).
+\end{itemize}
+
+Resultado esperado: $100 + 30 - 50 = 80$.
+
+\begin{center}
+\small
+\begin{tabular}{@{}clll@{}}
+\toprule
+$t$ & $T_1$ (\texttt{deposit 30})                & $T_2$ (\texttt{withdraw 50}) & saldo \\
+\midrule
+$t_1$ & \texttt{m = read(account)} $\to$ 100      &                                   & 100 \\
+$t_2$ & \multicolumn{2}{l}{\textbf{preempt: scheduler cambia a $T_2$}}                & 100 \\
+$t_3$ &                                            & \texttt{m = read(account)} $\to$ 100 & 100 \\
+$t_4$ &                                            & \texttt{if m > 50} (verdadero)        & 100 \\
+$t_5$ &                                            & \texttt{write(account, 50)}            & \textbf{50} \\
+$t_6$ & \multicolumn{2}{l}{\textbf{preempt: scheduler cambia a $T_1$}}                & 50 \\
+$t_7$ & \texttt{write(account, 100 + 30 = 130)}    &                                   & \textbf{130} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Resultado real}: saldo $= 130$. Diferencia con el esperado
+($80$): $\$50$ que aparecieron \textbf{de la nada}. Otra traza
+posible (a la inversa) llevaría a saldo $= 50$, es decir, $\$30$
+\textbf{desaparecen}.
+
+Ambas trazas son posibles y dependen del scheduling. Esto es
+exactamente el patrón clásico de \emph{lost update}: las dos
+operaciones leen el mismo valor inicial y se pisan al escribir.
+
+\subsection*{9.b --- Solución con un mutex (lock por cuenta)}
+
+\begin{lstlisting}[style=cstyle]
+/* Cada cuenta tiene su propio mutex. */
+mutex_t account_lock[N_ACCOUNTS];
+
+void deposit(int account, double amount) {
+    acquire(&account_lock[account]);
+    /* --- region critica --- */
+    double m = read(account);
+    write(account, m + amount);
+    /* --- fin region critica --- */
+    release(&account_lock[account]);
+}
+
+void withdraw(int account, double amount) {
+    acquire(&account_lock[account]);
+    /* --- region critica --- */
+    double m = read(account);
+    if (m > amount) {
+        write(account, m - amount);
+    }
+    /* --- fin region critica --- */
+    release(&account_lock[account]);
+}
+\end{lstlisting}
+
+\textbf{Por qué funciona}: el mutex hace que el bloque
+\texttt{read} + (cómputo) + \texttt{write} sea atómico respecto de
+cualquier otra invocación sobre \emph{la misma cuenta}. Si dos
+threads invocan \texttt{deposit} y \texttt{withdraw} sobre
+\texttt{account}, el segundo en llegar espera hasta que el primero
+libere el lock; entonces lee el saldo \emph{ya actualizado} y opera
+correctamente.
+
+\subsection*{Alternativas más robustas}
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item \textbf{\texttt{flock()} del archivo}: si el saldo está
+        \emph{en un archivo}, \texttt{flock(fd, LOCK\_EX)} bloquea
+        a otros procesos (no solo threads del mismo proceso) que
+        intenten tomarlo. Esencial cuando el saldo es accedido por
+        \emph{procesos distintos}.
+
+    \item \textbf{Transferencia entre cuentas}: si hubiera
+        \texttt{transfer(from, to)}, hay que tomar \emph{dos}
+        locks. Para evitar deadlocks, imponer \textbf{orden global}
+        (tomar primero el lock de la cuenta de menor ID).
+
+    \item \textbf{Transacciones (estilo BD)}: para bancos reales,
+        las operaciones se encapsulan en transacciones
+        \emph{ACID}, gestionadas por un motor de DB. El motor
+        garantiza atomicidad, consistencia, aislamiento y
+        durabilidad.
+\end{enumerate}
+
+\begin{idea}
+\textbf{¿Por qué un lock por cuenta y no un lock global?} Si todos
+los accesos al banco compitieran por el mismo mutex, dos retiros de
+cuentas distintas se serializarían innecesariamente. Con un lock
+por cuenta, dos operaciones sobre cuentas distintas \emph{pueden
+ejecutarse en paralelo}, mejorando el throughput.
+\end{idea}
+
+% =====================================================================
+\section{Ejercicio 10 --- Spinlocks en uniproc y deshabilitar IRQs en multiproc}
+% =====================================================================
+
+\textbf{Enunciado.} Explicar por qué los spinlocks no son apropiados
+en sistemas uni-procesadores y por qué deshabilitar interrupciones
+no alcanza en multi-procesadores.
+
+\subsection*{Parte 1: spinlocks en uniprocesador}
+
+\textbf{Recordatorio.} Un spinlock implementa exclusión mutua con
+busy-wait:
+
+\begin{lstlisting}[style=cstyle]
+void acquire(lock_t *l) {
+    while (atomic_swap(l, 1) == 1)
+        ; /* spin */
+}
+void release(lock_t *l) {
+    *l = 0;
+}
+\end{lstlisting}
+
+\textbf{Problema en uniprocesador}: hay \emph{un solo flujo} de
+ejecución a la vez. Considerá el siguiente escenario:
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item Thread $A$ toma el lock $l$ y entra a la sección crítica.
+    \item El timer interrumpe; el scheduler conmuta a thread $B$.
+    \item $B$ ejecuta \texttt{acquire(l)}. Como $l = 1$, entra al
+        \texttt{while} y \emph{gira}.
+    \item $B$ \textbf{quema todo su quantum} girando sin hacer nada
+        útil. La CPU está ocupada $100\%$ pero el progreso es nulo.
+\end{enumerate}
+
+\textbf{El lock no se libera hasta que $A$ vuelva a ejecutar}, lo
+cual no sucederá mientras $B$ esté en la CPU. Recién al expirar el
+quantum de $B$, el scheduler puede planificar a $A$, que termina
+la SC y libera el lock.
+
+\textbf{Caso peor}: si $B$ tiene MAYOR prioridad que $A$ y el
+scheduler nunca lo desaloja, \emph{$A$ no vuelve a ejecutar nunca}.
+$B$ gira para siempre. Es una forma de \textbf{inversión de
+prioridad} que produce livelock efectivo.
+
+\textbf{Conclusión}: en uniprocesador conviene usar \emph{sleep
+locks} (\texttt{pthread\_mutex\_t}, semáforos): cuando un thread no
+puede tomar el lock, se \textbf{bloquea} (estado \texttt{SLEEPING}),
+liberando la CPU para que otros (incluido el dueño del lock) puedan
+ejecutar.
+
+\subsection*{Parte 2: deshabilitar IRQs en multiprocesador}
+
+\textbf{Razonamiento clásico} en uniprocesador: si deshabilito las
+IRQs, ningún timer ni IRQ de dispositivo puede interrumpirme; nadie
+me toma la CPU; por lo tanto puedo ejecutar la SC sin que nadie más
+acceda al recurso compartido. \textbf{Esto funciona en uniproc.}
+
+\textbf{Problema en multiprocesador}: la instrucción \texttt{cli} (o
+equivalente) deshabilita interrupciones \textbf{sólo en la CPU
+local}.
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small,align=center},
+    cpu/.style={draw,rounded corners,minimum width=3.6cm,minimum height=1.4cm}
+]
+\node[cpu,fill=c1!25] (A) at (0,0) {CPU $A$ \\ \scriptsize IRQs deshabilitadas \\ \scriptsize en SC};
+\node[cpu,fill=c2!25] (B) at (5,0) {CPU $B$ \\ \scriptsize IRQs habilitadas \\ \scriptsize ejecutando en paralelo};
+\node[draw,minimum width=8cm,minimum height=0.8cm,fill=c3!20] (mem) at (2.5,-2) {Memoria compartida (resource $r$)};
+
+\draw[->,thick] (A.south) -- (mem);
+\draw[->,thick,cred] (B.south) -- (mem);
+\node[font=\scriptsize,cred] at (3.5,-1.2) {¡acceso simultáneo!};
+\end{tikzpicture}
+\end{center}
+
+CPU $A$ con sus IRQs deshabilitadas entra a la SC tranquila. Pero
+CPU $B$ \emph{sigue ejecutando} en paralelo, con sus IRQs
+habilitadas, y puede tocar la misma estructura sin que nada se lo
+impida. \textbf{La exclusión mutua se rompe.}
+
+\textbf{Conclusión}: deshabilitar IRQs es necesario solo para
+prevenir la \emph{preemption local}, pero no provee \emph{exclusión
+entre CPUs}. En multiprocesador hace falta:
+
+\begin{enumerate}[leftmargin=*]
+    \item Una instrucción \textbf{atómica} (\texttt{xchg},
+        \texttt{cmpxchg}, LL/SC) para coordinar entre las CPUs.
+    \item Un \textbf{spinlock} construido sobre esa instrucción
+        atómica.
+    \item Opcionalmente, deshabilitar IRQs locales \emph{además}
+        (por ejemplo, si el lock puede ser tomado desde un handler
+        de interrupción de la misma CPU; combinación
+        \texttt{spin\_lock\_irqsave} de Linux).
+\end{enumerate}
+
+\subsection*{Síntesis}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{4.5cm}p{4.2cm}p{4.2cm}@{}}
+\toprule
+& \textbf{Uniprocesador} & \textbf{Multiprocesador} \\
+\midrule
+Deshabilitar IRQs & Suficiente para EM (pero solo para regiones cortas) & \textbf{Insuficiente}: otras CPUs siguen activas \\
+Spinlock & \textbf{Mal uso}: gasta CPU sin progreso & Apropiado para SC cortas \\
+Sleep lock (mutex) & Apropiado: bloquea sin gastar CPU & Apropiado para SC largas \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{respuesta}
+\textbf{Spinlocks en uniproc:} mal idea. Si un thread tiene el lock
+y otro lo intenta tomar, el segundo \emph{gira} consumiendo todo
+su quantum sin progresar; mientras gira, el dueño del lock no puede
+ejecutarse para liberar. Es desperdicio puro. En uniproc se usan
+\emph{sleep locks}.
+
+\textbf{Deshabilitar IRQs en multiproc:} insuficiente. Solo afecta a
+la CPU local; las demás CPUs siguen ejecutando en paralelo y pueden
+acceder a la misma memoria. Se requieren instrucciones \emph{atómicas}
+(test-and-set, CAS, LL/SC) y spinlocks construidos sobre ellas.
+\end{respuesta}
+
+% =====================================================================
+\section*{Resumen del parcial}
+\addcontentsline{toc}{section}{Resumen del parcial}
+% =====================================================================
+
+\begin{center}
+\footnotesize
+\begin{tabular}{@{}clp{9cm}@{}}
+\toprule
+\# & Tema & Respuesta sintética \\
+\midrule
+1  & Seguridad y privilegios     & (a) problemas: confidencialidad, integridad, DoS, acceso a dispositivos, escalada. (b) No: se necesitan al menos 2 modos \\
+2  & Monolítico vs microkernel   & V: monolítico más rápido por evitar IPC; microkernel gana en modularidad, robustez y seguridad \\
+3  & Instrucciones privilegiadas & a:Sí, b:No, c:No, d:Sí, e:Sí, f:Sí \\
+4  & Propósito de syscalls       & Acceder a servicios privilegiados controlados; params en registros (ABI), stack o estructura \\
+5  & Shell \texttt{cmd1 \& cmd2} & \texttt{fork}+\texttt{exec} para cmd1 sin \texttt{wait}; \texttt{fork}+\texttt{exec}+\texttt{waitpid} para cmd2; \texttt{SIGCHLD} para cmd1 al terminar \\
+6  & \texttt{read} y busy-wait   & F: el proceso pasa a SLEEPING; el SO planifica otros mientras espera la I/O \\
+7  & \texttt{wakeup} y RUNNING   & F: \texttt{wakeup} pasa SLEEPING $\to$ RUNNABLE; el scheduler lo lleva a RUNNING \\
+8  & Algoritmos y starvation     & FCFS y RR no; SJF y prioridades sí (mitigable con aging) \\
+9  & Race condition bancaria     & (a) Sí, \emph{lost update} clásico; (b) mutex por cuenta sobre el bloque read-modify-write \\
+10 & Spinlocks y deshabilitar IRQs & Spinlock en uniproc desperdicia CPU; deshabilitar IRQs en multiproc solo afecta la CPU local. Se necesitan instrucciones atómicas \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\end{document}

@@ -24,6 +24,18 @@
 \usepackage{subcaption}
 \usepackage{amsmath,amssymb}
 
+% --- Soporte para caracteres Unicode usados en fórmulas en texto plano ---
+\usepackage{newunicodechar}
+\newunicodechar{→}{\ensuremath{\rightarrow}}
+\newunicodechar{≥}{\ensuremath{\geq}}
+\newunicodechar{≤}{\ensuremath{\leq}}
+\newunicodechar{×}{\ensuremath{\times}}
+\newunicodechar{÷}{\ensuremath{\div}}
+\newunicodechar{≈}{\ensuremath{\approx}}
+\newunicodechar{⌈}{\ensuremath{\lceil}}
+\newunicodechar{⌉}{\ensuremath{\rceil}}
+\newunicodechar{✓}{\ensuremath{\checkmark}}
+
 % --- Code listings ---
 \usepackage{listings}
 \definecolor{codegray}{rgb}{0.96,0.96,0.96}
@@ -153,19 +165,20 @@
 Este documento presenta la resolución integral del Práctico 5 de la
 materia Sistemas Operativos (UNRC, 2026), centrado en la
 \emph{gestión de la memoria} y la \emph{memoria virtual}. Se resuelven
-nueve ejercicios que cubren: inspección del consumo de memoria con
-\texttt{top}, \texttt{free}, \texttt{smem} y \texttt{swapon};
-\emph{buddy system}; análisis del layout lógico de un proceso C;
-arquitecturas con paginado (tabla de páginas, formato de \emph{pte},
-páginas grandes vs.\ multinivel); memoria compartida entre procesos;
-mapeo de archivos en memoria (\texttt{mmap}); y la API de \emph{shared
-memory} de UNIX (\texttt{shmget}, \texttt{shmat}, \texttt{shmdt},
-\texttt{shmctl}). Cada ejercicio se justifica con los capítulos
-\emph{Gestión de la memoria} y \emph{Memoria virtual} de las Notas del
-curso (Marcelo Arroyo) y con los resúmenes teóricos
-\texttt{resumen-teorico-gestion-memoria} y
-\texttt{resumen-teorico-memoria-virtual} disponibles en
-\texttt{materiales/}.
+los \textbf{diez ejercicios} de la consigna oficial, que cubren:
+inspección del consumo de memoria con \texttt{top}, \texttt{free},
+\texttt{smem} y \texttt{swapon}; \emph{buddy system}; análisis del
+layout lógico de un proceso C; arquitecturas con paginado (tabla de
+páginas, formato de \emph{pte}, traducción de direcciones por la MMU);
+el contraste entre páginas grandes ($4$\,MB) y páginas chicas con
+tabla multinivel ($4$\,KB); el crecimiento dinámico del stack y las
+condiciones para impedir colisiones con el heap; memoria compartida
+entre procesos; mapeo de archivos en memoria (\texttt{mmap}); y la
+API de \emph{shared memory} de UNIX (\texttt{shmget}, \texttt{shmat},
+\texttt{shmdt}, \texttt{shmctl}). Cada ejercicio se justifica con los
+capítulos \emph{Gestión de la memoria} y \emph{Memoria virtual} de
+las Notas del curso (Marcelo Arroyo) y con los resúmenes teóricos
+disponibles en \texttt{materiales/}.
 \end{abstract}
 
 \tableofcontents
@@ -698,36 +711,18 @@ Con páginas de $1\,\text{KB} = 2^{10}$ bytes:
 \textit{número de páginas} = \frac{2^{16}}{2^{10}} = 2^{6} = \boxed{64\ \text{páginas}.}
 \]
 
-\subsection{4.c --- Representación de la tabla de páginas y de la \emph{pte}}
+\subsection{4.c --- Representación de la tabla y formato de \emph{pte}}
 
-Una dirección lógica de $16$\,bits se divide en:
+La tabla de páginas es un arreglo lineal indexado por número de
+página virtual (\texttt{vpn}); en cada celda hay una \emph{page table
+entry} (\texttt{pte}) que dice dónde está alojada esa página en
+memoria física y con qué permisos puede accederse. Como el espacio
+lógico tiene $2^{6} = 64$ páginas, la tabla tiene exactamente $64$
+entradas.
 
-\begin{center}
-\begin{tikzpicture}[
-    every node/.style={font=\ttfamily\small},
-    cell/.style={draw,minimum height=0.7cm,align=center}
-]
-\node[cell,minimum width=2.2cm,fill=mem1!20] (vpn) at (0,0) {vpn};
-\node[cell,minimum width=4.0cm,fill=mem2!20,right=0pt of vpn] (off) {offset};
-\node[font=\scriptsize] at ($(vpn.north)+(0,0.25)$) {6 bits};
-\node[font=\scriptsize] at ($(off.north)+(0,0.25)$) {10 bits};
-\node[font=\scriptsize] at ($(vpn.north west)+(0.05,-0.05)$) {15};
-\node[font=\scriptsize] at ($(vpn.north east)+(-0.1,-0.05)$) {10};
-\node[font=\scriptsize] at ($(off.north west)+(0.05,-0.05)$) {9};
-\node[font=\scriptsize] at ($(off.north east)+(-0.05,-0.05)$) {0};
-\end{tikzpicture}
-\end{center}
-
-\begin{itemize}[leftmargin=*,nosep]
-    \item \texttt{vpn} ($6$ bits): índice en la tabla de páginas
-        ($2^{6} = 64$ entradas).
-    \item \texttt{offset} ($10$ bits): desplazamiento dentro de la
-        página de $1\,\text{KB}$.
-\end{itemize}
-
-\paragraph{Formato propuesto de \emph{pte}.} Cada entrada describe
-dónde está la página física y con qué permisos. Un diseño compacto de
-$16$\,bits sería:
+\paragraph{Formato propuesto de \emph{pte}.} Cada entrada describe la
+ubicación física de la página y sus permisos. Un diseño compacto que
+cabe en $16$\,bits es:
 
 \begin{center}
 \begin{tikzpicture}[
@@ -776,7 +771,48 @@ memoria, formato \emph{pte} de RV-32):
 $= 1024$\,bits $= 128$\,bytes, lo que cabe holgadamente en una sola
 página de $1$\,KB.
 
-\subsection{4.d --- Tabla de páginas de un proceso concreto}
+\subsection{4.d --- Cómo interpreta la MMU una dirección lógica}
+
+Cada dirección lógica de $16$\,bits que emite el procesador se parte
+en dos campos: los bits altos seleccionan la entrada de la tabla de
+páginas (\texttt{vpn}) y los bits bajos son el desplazamiento dentro
+de la página (\texttt{offset}). Como las páginas miden $2^{10} = 1024$
+bytes, el offset ocupa $10$ bits y los $16 - 10 = 6$ bits restantes
+forman el \texttt{vpn}.
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    cell/.style={draw,minimum height=0.7cm,align=center}
+]
+\node[cell,minimum width=2.2cm,fill=mem1!20] (vpn) at (0,0) {vpn};
+\node[cell,minimum width=4.0cm,fill=mem2!20,right=0pt of vpn] (off) {offset};
+\node[font=\scriptsize] at ($(vpn.north)+(0,0.25)$) {6 bits};
+\node[font=\scriptsize] at ($(off.north)+(0,0.25)$) {10 bits};
+\node[font=\scriptsize] at ($(vpn.north west)+(0.05,-0.05)$) {15};
+\node[font=\scriptsize] at ($(vpn.north east)+(-0.1,-0.05)$) {10};
+\node[font=\scriptsize] at ($(off.north west)+(0.05,-0.05)$) {9};
+\node[font=\scriptsize] at ($(off.north east)+(-0.05,-0.05)$) {0};
+\end{tikzpicture}
+\end{center}
+
+\paragraph{Procedimiento de traducción.} Para cada referencia a
+memoria con dirección lógica $\textit{va}$:
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item Separar $\textit{va}$ en $(\textit{vpn},\textit{offset})$
+        con los $6$ bits altos y $10$ bits bajos.
+    \item Consultar la entrada $\textit{vpn}$ de la tabla de páginas.
+    \item Si $V=0$ o el tipo de acceso (R/W/X) viola los permisos de
+        la entrada, lanzar un \emph{page fault}.
+    \item En caso contrario, la dirección física es
+        \[
+        \textit{pa} = \texttt{pagetable}[\textit{vpn}].\texttt{ppn}
+                      \times 1024 + \textit{offset}.
+        \]
+\end{enumerate}
+
+\subsection{4.e --- Tabla de páginas de un proceso concreto}
 
 El proceso tiene:
 
@@ -849,165 +885,466 @@ exactamente el mecanismo descripto en el resumen teórico de gestión
 de memoria.
 \end{idea}
 
+\subsection{4.f --- ¿A qué página física apunta \texttt{0x041F}? ¿Es código o datos?}
+
+\textbf{Procedimiento.} Descomponer la dirección lógica
+\texttt{0x041F} en (\texttt{vpn}, \texttt{offset}) con $6$ bits altos
+y $10$ bits bajos:
+
+\texttt{0x041F} = $0000\,0100\,0001\,1111_2$
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{vpn} = $000001_2$ = \texttt{0x01} = \textbf{1}
+        (6 bits altos)
+    \item \texttt{offset} = $00\,0001\,1111_2$ = \texttt{0x01F} =
+        \textbf{31} (10 bits bajos)
+\end{itemize}
+
+\textbf{Consulta a la tabla.} La página lógica $1$ es la
+\emph{segunda página de código} (la primera es la página $0$). Según
+la tabla del inciso 4.e, su \texttt{ppn} es \texttt{0x12}.
+
+\textbf{Cálculo de la dirección física.}
+
+\quad pa = ppn × tamaño\_página + offset \\
+\quad pa = \texttt{0x12} × $1024$ + $31$ \\
+\quad pa = $18 \times 1024 + 31$ = $18\,432 + 31$ = $18\,463$ = \texttt{0x481F}
+
+\begin{importante}
+\textbf{Respuesta.} La dirección lógica \texttt{0x041F} es una
+\textbf{referencia a código} (vpn = $1$ cae en el área \texttt{.text}),
+y mapea al \texttt{ppn} \texttt{0x12}, dirección física \texttt{0x481F}.
+\end{importante}
+
+\subsection{4.g --- Una dirección lógica que refiera a la página de stack}
+
+La página de stack es la \texttt{vpn} $= 4$. Como cada página mide
+$1024$ bytes = $\texttt{0x400}$, el rango de direcciones lógicas que
+caen en esa página es:
+
+\quad vpn × 1024 ≤ dirección < (vpn + 1) × 1024 \\
+\quad $4 \times 1024 = 4096 =$ \texttt{0x1000} \\
+\quad $5 \times 1024 = 5120 =$ \texttt{0x1400}
+
+\textbf{Cualquier dirección} en $[\texttt{0x1000}, \texttt{0x1400})$
+referencia a la página de stack. Ejemplos válidos:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{0x1000} (primer byte de la página de stack)
+    \item \texttt{0x1200} (offset $512$ dentro de la página)
+    \item \texttt{0x13FF} (último byte de la página, el ``tope'' del
+        stack)
+\end{itemize}
+
+\subsection{4.h --- Una dirección inválida}
+
+Una dirección inválida es cualquiera cuya \texttt{vpn} caiga en una
+entrada con $V=0$ en la tabla. Hay dos zonas:
+
+\begin{itemize}[leftmargin=*]
+    \item La \textbf{página de guarda} (\texttt{vpn} = $3$, rango
+        $[\texttt{0x0C00}, \texttt{0x1000})$). Cualquier acceso aquí
+        dispara \emph{stack overflow}.
+    \item Las páginas \textbf{no asignadas} (\texttt{vpn} de $5$ a
+        $63$, rango $[\texttt{0x1400}, \texttt{0xFFFF}]$).
+\end{itemize}
+
+Ejemplo concreto: \textbf{\texttt{0x0C00}} es la primera dirección de
+la página de guarda y, al referenciarla, el hardware genera un
+\emph{page fault} (porque $V=0$). Otro ejemplo: \textbf{\texttt{0x4000}}
+está en la \texttt{vpn} = $16$ y tampoco está asignada.
+
 % =====================================================================
-\section{Ejercicio 5 --- Tablas de páginas para 4 GB en 32 bits}
+\section{Ejercicio 5 --- 32 bits, páginas de 4 MB}
 % =====================================================================
 
 \textbf{Enunciado.} En un SO sobre una arquitectura de $32$\,bits con
-paginado, determinar la cantidad de \emph{ptes} y la memoria total
-necesaria para cubrir $4$\,GB de espacio de direcciones, con
-(a) páginas de $4$\,KB y (b) páginas de $4$\,MB.
+paginado y espacio de direcciones lógico y físico de $32$ bits
+($4$\,GB $= 2^{32}$), con páginas de tamaño $4$\,MB:
 
-Se asume el tamaño habitual de cada \emph{pte}: $32$\,bits
-$=4$\,bytes (espacio para el \texttt{ppn} más los flags). El cálculo
-general es
-\[
-\#\text{ptes} = \frac{2^{32}}{\text{tamaño página}}, \qquad
-\text{memoria de la tabla} = \#\text{ptes} \times 4\,\text{bytes}.
-\]
+\begin{itemize}[leftmargin=*,nosep]
+    \item[(a)] Determinar la cantidad de páginas físicas (ptes
+        requeridas en la tabla).
+    \item[(b)] Determinar cómo la MMU interpreta una dirección lógica
+        de $32$ bits.
+    \item[(c)] Mostrar una tabla de páginas de ejemplo para un proceso
+        con espacio de direcciones lógico $[0, 3\text{\,GB}]$ con
+        $2$ páginas de código, $1$ de datos, y stack en las dos
+        últimas páginas del espacio.
+    \item[(d)] Dar una dirección lógica que se mapee al área de código
+        y otra al área del stack.
+\end{itemize}
 
-\subsection{5.a --- Páginas de 4 KB}
+Asumimos el tamaño habitual de cada \emph{pte}: $32$ bits $= 4$ bytes
+(\texttt{ppn} + bits de flags).
 
-\begin{align*}
-\#\text{ptes} &= \frac{2^{32}}{2^{12}} = 2^{20} = 1\,048\,576 \\
-\text{memoria de la tabla} &= 2^{20} \times 4\,\text{B} = 2^{22}\,\text{B} = 4\,\text{MB}.
-\end{align*}
+\subsection{5.a --- Cantidad de ptes con páginas de 4 MB}
 
-Una tabla \emph{plana} de $4$\,MB \textbf{por proceso} es enorme y
-exigiría un bloque contiguo de RAM grande para alojarla. Por eso los
-SO modernos representan la tabla como un \textbf{árbol de varios
-niveles} (por ejemplo, 2 niveles en RV-32, 4 niveles en x86-64): sólo
-se reservan los nodos correspondientes a regiones del espacio de
-direcciones efectivamente usadas, y los enormes huecos no consumen
-memoria.
+Con páginas de $4\,\text{MB} = 2^{22}$ bytes y espacio direccionable
+de $2^{32}$ bytes:
 
-\subsection{5.b --- Páginas de 4 MB}
+\quad \#ptes = $2^{32}$ ÷ $2^{22}$ = $2^{10}$ = \textbf{1024 entradas}
 
-\begin{align*}
-\#\text{ptes} &= \frac{2^{32}}{2^{22}} = 2^{10} = 1024 \\
-\text{memoria de la tabla} &= 2^{10} \times 4\,\text{B} = 2^{12}\,\text{B} = 4\,\text{KB}.
-\end{align*}
+Y el tamaño de la tabla en memoria:
 
+\quad memoria\_tabla = $1024$ × $4$\,bytes = $4096$\,bytes = \textbf{4 KB}
+
+\begin{idea}
 Una tabla de sólo $4$\,KB cabe en una sola página, lo que simplifica
-muchísimo la administración. El costo es la \textbf{fragmentación
-interna}: cualquier asignación de memoria, por pequeña que sea, ocupa
-$4$\,MB completos.
+muchísimo la administración. La contracara es la \textbf{fragmentación
+interna}: cualquier asignación, por pequeña que sea, consume $4$\,MB
+completos.
+\end{idea}
 
-\subsection*{Resumen comparativo}
+\subsection{5.b --- Interpretación de la dirección lógica}
+
+La MMU divide la dirección lógica de $32$ bits en dos campos: los
+bits altos para el índice de la \texttt{vpn} y los bits bajos para el
+\texttt{offset} dentro de la página. Como cada página mide
+$2^{22}$ bytes, el offset ocupa $22$ bits, y los $32 - 22 = 10$ bits
+restantes son la \texttt{vpn}.
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    cell/.style={draw,minimum height=0.7cm,align=center}
+]
+\node[cell,minimum width=2.6cm,fill=mem1!20] (vpn) at (0,0) {vpn};
+\node[cell,minimum width=6.4cm,fill=mem2!20,right=0pt of vpn] (off) {offset};
+\node[font=\scriptsize] at ($(vpn.north)+(0,0.25)$) {10 bits};
+\node[font=\scriptsize] at ($(off.north)+(0,0.25)$) {22 bits};
+\node[font=\scriptsize] at ($(vpn.north west)+(0.05,-0.05)$) {31};
+\node[font=\scriptsize] at ($(vpn.north east)+(-0.1,-0.05)$) {22};
+\node[font=\scriptsize] at ($(off.north west)+(0.05,-0.05)$) {21};
+\node[font=\scriptsize] at ($(off.north east)+(-0.05,-0.05)$) {0};
+\end{tikzpicture}
+\end{center}
+
+Pasos de traducción:
+\begin{enumerate}[leftmargin=*,nosep]
+    \item Extraer los $10$ bits altos como \texttt{vpn}.
+    \item Acceder a la entrada \texttt{vpn} de la tabla de páginas.
+    \item Verificar $V=1$ y los permisos.
+    \item Concatenar el \texttt{ppn} de la \emph{pte} con los $22$
+        bits del offset → dirección física de $32$ bits.
+\end{enumerate}
+
+\subsection{5.c --- Tabla de páginas del proceso}
+
+El espacio lógico $[0, 3\text{\,GB}]$ corresponde a las primeras
+$3\text{\,GB} \div 4\text{\,MB} = 768$ páginas (vpn $0$ a $767$). El
+proceso usa:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Código}: $2$ páginas, vpn $0$ y $1$
+        ($[\texttt{0x00000000}, \texttt{0x00800000})$).
+    \item \textbf{Datos}: $1$ página, vpn $2$
+        ($[\texttt{0x00800000}, \texttt{0x00C00000})$).
+    \item \textbf{Stack}: las dos últimas páginas del rango lógico,
+        vpn $766$ y $767$ ($[\texttt{0xBF800000}, \texttt{0xC0000000})$).
+\end{itemize}
 
 \begin{center}
 \small
-\begin{tabular}{@{}lcccc@{}}
+\begin{tabular}{@{}cclcccccp{4.5cm}@{}}
 \toprule
-Caso & Tamaño de página & \#ptes & Memoria de la tabla & Comentario \\
+vpn & decimal & ppn & V & R & W & X & U & Comentario \\
 \midrule
-(a) & $4$\,KB   & $2^{20} = 1.048.576$ & $4$\,MB & menor frag.\ interna; tabla enorme \\
-(b) & $4$\,MB   & $2^{10} = 1.024$     & $4$\,KB & tabla chica; gran frag.\ interna \\
+\texttt{0x000} & 0   & \texttt{0x123} & 1 & 1 & 0 & 1 & 1 & código (1.\textsuperscript{a} pág.) \\
+\texttt{0x001} & 1   & \texttt{0x456} & 1 & 1 & 0 & 1 & 1 & código (2.\textsuperscript{a} pág.) \\
+\texttt{0x002} & 2   & \texttt{0x789} & 1 & 1 & 1 & 0 & 1 & datos \\
+\texttt{0x003}--\texttt{0x2FD} & 3--765   & --- & 0 & 0 & 0 & 0 & 0 & sin asignar \\
+\texttt{0x2FE} & 766 & \texttt{0xABC} & 1 & 1 & 1 & 0 & 1 & stack (1.\textsuperscript{a} pág.) \\
+\texttt{0x2FF} & 767 & \texttt{0xDEF} & 1 & 1 & 1 & 0 & 1 & stack (2.\textsuperscript{a} pág.) \\
+\texttt{0x300}--\texttt{0x3FF} & 768--1023 & --- & 0 & 0 & 0 & 0 & 0 & fuera del rango del proceso \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-\begin{importante}
-Hay un compromiso fundamental: \textbf{páginas más chicas} dan menor
-fragmentación interna pero tablas mucho más grandes; \textbf{páginas
-más grandes} (\emph{huge pages}) reducen el tamaño de la tabla y la
-presión sobre el TLB, pero malgastan memoria si los pedidos son
-pequeños. Los SO modernos combinan ambos: páginas de $4$\,KB por
-default, con la opción de usar páginas de $2$\,MB / $1$\,GB
-(\emph{huge pages}) en regiones específicas.
-\end{importante}
+Los \texttt{ppn} \texttt{0x123}, \texttt{0x456}, \texttt{0x789},
+\texttt{0xABC} y \texttt{0xDEF} son arbitrarios; los elige el SO según
+los frames libres en memoria física.
+
+\begin{idea}
+\textbf{Sólo 5 de 1024 entradas tienen V=1}: las demás \texttt{ptes}
+existen en memoria pero están marcadas como inválidas. Una referencia
+a cualquier dirección lógica entre los \texttt{0xC00000} de fin del
+área de datos y los \texttt{0xBF800000} del comienzo del stack provoca
+un \emph{page fault}.
+\end{idea}
+
+\subsection{5.d --- Direcciones lógicas de ejemplo}
+
+\textbf{Una dirección del área de código.} La \texttt{vpn} = $0$
+cubre $[\texttt{0x00000000}, \texttt{0x00400000})$. Por ejemplo,
+\textbf{\texttt{0x00001234}} cae en la primera página de código (vpn
+$0$, offset $\texttt{0x1234}$).
+
+\textbf{Una dirección del área de stack.} La \texttt{vpn} = $767$
+cubre $[\texttt{0xBFC00000}, \texttt{0xC0000000})$, que es la
+\emph{última} página del rango $[0, 3\text{\,GB})$. Por ejemplo,
+\textbf{\texttt{0xBFFFFF00}} cae en esa página (offset
+$\texttt{0x3FFF00}$ dentro de los $4$\,MB).
+
+\textbf{Verificación numérica del cálculo del stack:}
+
+\quad $767 \times 2^{22}$ = $767 \times 4\,194\,304$ = $3\,217\,031\,168$ = \texttt{0xBFC00000} ✓ \\
+\quad $768 \times 2^{22}$ = $3\,221\,225\,472$ = \texttt{0xC0000000} (límite superior $= 3$\,GB) ✓
 
 % =====================================================================
-\section{Ejercicio 6 --- Representación de la tabla de páginas de un proceso}
+\section{Ejercicio 6 --- 32 bits, páginas de 4 KB (tabla multinivel)}
 % =====================================================================
 
-\textbf{Enunciado.} Representar la tabla de páginas de un proceso.
+\textbf{Enunciado.} Repetir el ejercicio anterior pero con páginas de
+$4$\,KB:
 
-Se toma el proceso del Ejercicio 4d (el ejercicio del práctico no fija
-un proceso particular, así que se reutiliza ese ejemplo para
-concretar). La representación enfatiza la traducción de una dirección
-lógica a una dirección física a través de la \emph{pte} indexada.
+\begin{itemize}[leftmargin=*,nosep]
+    \item[(a)] Dar una representación de \textbf{árbol} de la tabla de
+        páginas para el proceso.
+    \item[(b)] Dar una dirección inválida entre el stack y el área de
+        datos.
+\end{itemize}
+
+\subsection{Análisis previo: estructura multinivel}
+
+Con páginas de $4\,\text{KB} = 2^{12}$ bytes y espacio de $2^{32}$, el
+total de páginas virtuales es $2^{20} = 1\,048\,576$. Una tabla
+\emph{plana} ocuparía $2^{20} \times 4 = 4$\,MB por proceso. La
+solución estándar es una \textbf{tabla de dos niveles} (estilo x86 de
+$32$ bits):
 
 \begin{center}
 \begin{tikzpicture}[
-    scale=0.85,transform shape,
     every node/.style={font=\ttfamily\small},
-    cell/.style={draw,minimum height=0.65cm,align=center},
-    page/.style={draw,minimum width=1.6cm,minimum height=0.65cm,align=center}
+    cell/.style={draw,minimum height=0.7cm,align=center}
 ]
-
-% Logical addr
-\node[font=\bfseries\small] at (-1.3,4.8) {dirección lógica};
-\node[cell,minimum width=1.0cm,fill=mem1!20] (vpn) at (-2.1,3.6) {vpn};
-\node[cell,minimum width=2.0cm,fill=mem2!20,right=0pt of vpn] (off) {offset};
-\node[font=\scriptsize] at ($(vpn.north)+(0,0.25)$) {6 b};
-\node[font=\scriptsize] at ($(off.north)+(0,0.25)$) {10 b};
-
-% Page table
-\node[font=\bfseries\small] at (3.5,4.8) {tabla de páginas};
-\node[cell,minimum width=1.2cm,fill=mem1!10] (e0p) at (3.0,3.6) {\texttt{0x07}};
-\node[cell,minimum width=2.0cm,fill=mem3!20,right=0pt of e0p] (e0f) {V=1 R=1 X=1};
-\node[anchor=east] at (e0p.west) {0};
-
-\node[cell,minimum width=1.2cm,fill=mem1!10] (e1p) at (3.0,2.9) {\texttt{0x12}};
-\node[cell,minimum width=2.0cm,fill=mem3!20,right=0pt of e1p] (e1f) {V=1 R=1 X=1};
-\node[anchor=east] at (e1p.west) {1};
-
-\node[cell,minimum width=1.2cm,fill=mem1!10] (e2p) at (3.0,2.2) {\texttt{0x1A}};
-\node[cell,minimum width=2.0cm,fill=mem3!20,right=0pt of e2p] (e2f) {V=1 R=1 W=1};
-\node[anchor=east] at (e2p.west) {2};
-
-\node[cell,minimum width=1.2cm,fill=memused!20] (e3p) at (3.0,1.5) {---};
-\node[cell,minimum width=2.0cm,fill=memused!20,right=0pt of e3p] (e3f) {V=0 (guarda)};
-\node[anchor=east] at (e3p.west) {3};
-
-\node[cell,minimum width=1.2cm,fill=mem1!10] (e4p) at (3.0,0.8) {\texttt{0x2F}};
-\node[cell,minimum width=2.0cm,fill=mem3!20,right=0pt of e4p] (e4f) {V=1 R=1 W=1};
-\node[anchor=east] at (e4p.west) {4};
-
-\node[cell,minimum width=3.2cm] (edots) at (3.6,0.1) {\ldots};
-\node[anchor=east] at (edots.west) {5--63};
-
-% Physical memory
-\node[font=\bfseries\small] at (9.5,4.3) {memoria física};
-\node[page,fill=mem1!20] (f07) at (9.5,3.6) {frame \texttt{0x07}};
-\node[page,fill=mem1!20] (f12) at (9.5,2.9) {frame \texttt{0x12}};
-\node[page,fill=mem2!20] (f1A) at (9.5,2.2) {frame \texttt{0x1A}};
-\node[page,fill=mem3!20] (f2F) at (9.5,0.8) {frame \texttt{0x2F}};
-
-% Arrows
-\draw[-Latex,thick] (vpn.south) -- ++(0,-0.4) -| (e0p.west);
-\draw[-Latex,thick] (e0f.east) -- (f07.west);
-\draw[-Latex,thick] (e1f.east) -- (f12.west);
-\draw[-Latex,thick] (e2f.east) -- (f1A.west);
-\draw[-Latex,thick] (e4f.east) -- (f2F.west);
+\node[cell,minimum width=2.0cm,fill=mem1!20] (pdx) at (0,0) {pde idx};
+\node[cell,minimum width=2.0cm,fill=mem2!20,right=0pt of pdx] (ptx) {pte idx};
+\node[cell,minimum width=4.0cm,fill=mem3!20,right=0pt of ptx] (off) {offset};
+\node[font=\scriptsize] at ($(pdx.north)+(0,0.25)$) {10 bits};
+\node[font=\scriptsize] at ($(ptx.north)+(0,0.25)$) {10 bits};
+\node[font=\scriptsize] at ($(off.north)+(0,0.25)$) {12 bits};
+\node[font=\scriptsize] at ($(pdx.north west)+(0.05,-0.05)$) {31};
+\node[font=\scriptsize] at ($(pdx.north east)+(-0.1,-0.05)$) {22};
+\node[font=\scriptsize] at ($(ptx.north west)+(0.05,-0.05)$) {21};
+\node[font=\scriptsize] at ($(ptx.north east)+(-0.05,-0.05)$) {12};
+\node[font=\scriptsize] at ($(off.north west)+(0.05,-0.05)$) {11};
+\node[font=\scriptsize] at ($(off.north east)+(-0.05,-0.05)$) {0};
 \end{tikzpicture}
 \end{center}
 
-\paragraph{Traducción de una dirección lógica.}
-Dada la dirección lógica $\textit{va}$, se separa en
-$(\textit{vpn}, \textit{offset})$ con los $6$ bits altos y $10$ bits
-bajos. Se accede a la entrada $\textit{vpn}$ de la tabla. Si $V=1$ y
-los permisos cuadran con el tipo de acceso, la dirección física
-queda
-\[
-\textit{pa} = \texttt{pagetable}[\textit{vpn}].\texttt{ppn}
-              \times 1024 + \textit{offset}.
-\]
-Si $V=0$ o se viola algún permiso, el hardware lanza un \emph{page
-fault}.
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Page Directory} (PDE): $1024$ entradas, cada una
+        apunta a una tabla de páginas de segundo nivel (o $V=0$).
+    \item \textbf{Page Table} (PTE): cada una con $1024$ entradas,
+        cubre $4$\,MB del espacio lógico.
+    \item \textbf{Offset}: $12$ bits dentro de la página de $4$\,KB.
+\end{itemize}
 
-\paragraph{Ejemplo numérico.} La instrucción referencia la dirección
-lógica \texttt{0x0814} (en el área de datos). Se descompone como
-$\textit{vpn} = 2$ y $\textit{offset} = \texttt{0x014} = 20$. La
-\emph{pte} 2 tiene $\texttt{ppn} = \texttt{0x1A}$ y $V=1$, $R=1$,
-$W=1$. La dirección física es
-\[
-\texttt{0x1A} \times 1024 + 20 = 26\,624 + 20 = 26\,644 = \texttt{0x6814}.
-\]
+\begin{idea}
+La ventaja crucial: si una entrada del Page Directory tiene $V=0$, la
+tabla de páginas de segundo nivel \textbf{ni siquiera se reserva en
+memoria}. Para procesos con grandes huecos en su espacio de
+direcciones, esto ahorra megabytes de RAM.
+\end{idea}
+
+\subsection{Ubicación de las páginas del proceso}
+
+El proceso del ejercicio tiene:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Código}: vpn $0$ y $1$.
+    \item \textbf{Datos}: vpn $2$.
+    \item \textbf{Stack}: las dos últimas páginas del rango
+        $[0, 3\text{\,GB})$, es decir, vpn $786\,430$ y $786\,431$.
+\end{itemize}
+
+\textbf{Mapeo a los dos niveles}: cada PDE cubre $1024$ páginas (4\,MB).
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Código y datos (vpn $0$, $1$, $2$): \textbf{PDE[0]}, PTE[0],
+        PTE[1], PTE[2].
+    \item Stack (vpn $786\,430$ = $767 \times 1024 + 1022$ y
+        vpn $786\,431$ = $767 \times 1024 + 1023$): \textbf{PDE[767]},
+        PTE[1022], PTE[1023].
+\end{itemize}
+
+\subsection{6.a --- Árbol de la tabla de páginas}
+
+\begin{center}
+\begin{tikzpicture}[
+    scale=0.92, transform shape,
+    every node/.style={font=\ttfamily\small},
+    rootbox/.style={draw,fill=mem1!20,minimum width=3.0cm,minimum height=0.6cm,align=center},
+    tablebox/.style={draw,fill=mem2!10,minimum width=2.6cm,minimum height=0.6cm,align=center},
+    pagebox/.style={draw,fill=mem3!20,minimum width=2.0cm,minimum height=0.55cm,align=center,font=\ttfamily\scriptsize},
+    inv/.style={draw,fill=memused!15,minimum width=2.0cm,minimum height=0.55cm,align=center,font=\scriptsize}
+]
+
+\node[rootbox] (pd) at (0,4) {Page Directory \\ ($1024$ entradas)};
+
+\node[tablebox] (pde0) at (-3.6,2.2) {PDE[0] $\to$ \texttt{PT0}};
+\node[font=\small] (pdedots) at (0,2.2) {PDE[1..766] $V=0$};
+\node[tablebox] (pde767) at (3.6,2.2) {PDE[767] $\to$ \texttt{PT767}};
+\node[font=\small] (pdedots2) at (6.9,2.2) {PDE[768..1023] $V=0$};
+
+\node[pagebox] (pt0_0)  at (-5.0,0.4) {PT0[0] $\to$ F0 (code)};
+\node[pagebox] (pt0_1)  at (-5.0,-0.2) {PT0[1] $\to$ F1 (code)};
+\node[pagebox] (pt0_2)  at (-5.0,-0.8) {PT0[2] $\to$ F2 (data)};
+\node[inv]     (pt0_inv) at (-5.0,-1.5) {PT0[3..1023] $V=0$};
+
+\node[inv]     (pt767_inv) at (3.6,0.4) {PT767[0..1021] $V=0$};
+\node[pagebox] (pt767_1022) at (3.6,-0.2) {PT767[1022] $\to$ F3 (stack)};
+\node[pagebox] (pt767_1023) at (3.6,-0.8) {PT767[1023] $\to$ F4 (stack)};
+
+\draw[-Latex,thick] (pd.south) -- (pde0.north);
+\draw[-Latex,thick] (pd.south) -- (pde767.north);
+\draw[-Latex,thick] (pde0.south) -- (pt0_0.north);
+\draw[-Latex,thick] (pde0.south) -- (pt0_1.north);
+\draw[-Latex,thick] (pde0.south) -- (pt0_2.north);
+\draw[-Latex,thick] (pde767.south) -- (pt767_1022.north);
+\draw[-Latex,thick] (pde767.south) -- (pt767_1023.north);
+
+\end{tikzpicture}
+\end{center}
+
+\textbf{Ahorro concreto.} En el peor caso (tabla plana) harían falta
+$4$\,MB por proceso. Aquí solo se asignan en RAM:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item $1$ Page Directory de $4$\,KB.
+    \item $2$ Page Tables ($\texttt{PT0}$ y $\texttt{PT767}$) de $4$\,KB
+        cada una.
+\end{itemize}
+
+\textbf{Total: $12$\,KB} en lugar de $4$\,MB. Las $766 + 256 = 1022$
+PDEs marcadas con $V=0$ no tienen ninguna tabla asociada.
+
+\subsection{6.b --- Una dirección inválida entre stack y datos}
+
+El gap inválido va desde el final de los datos hasta el comienzo del
+stack:
+
+\quad fin\_datos = $3 \times 4$\,KB = \texttt{0x00003000} \\
+\quad inicio\_stack = vpn $786\,430$ × $4$\,KB = \texttt{0xBFFFE000}
+
+Cualquier dirección en $[\texttt{0x00003000}, \texttt{0xBFFFE000})$ es
+inválida porque su PDE o su PTE están en $V=0$. Ejemplos concretos:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{\texttt{0x00100000}} (1\,MB): vpn = $256$, PDE = $0$,
+        PTE = $256$ → \texttt{PT0[256]} tiene $V=0$. Page fault.
+    \item \textbf{\texttt{0x40000000}} (1\,GB): vpn = $262\,144$,
+        PDE = $256$ → \texttt{PD[256]} tiene $V=0$. No se evalúa ni
+        siquiera la PTE: page fault directo en el primer nivel.
+    \item \textbf{\texttt{0x80000000}} (2\,GB): PDE = $512$, $V=0$ →
+        page fault.
+\end{itemize}
+
+\textbf{Respuesta.} La dirección \textbf{\texttt{0x40000000}} (1\,GB)
+es un ejemplo claro: cae en el gigantesco hueco entre datos y stack,
+su PDE = $256$ no existe (no se reservó tabla de segundo nivel) y
+cualquier acceso genera \emph{page fault} inmediato.
 
 % =====================================================================
-\section{Ejercicio 7 --- Memoria compartida entre dos procesos}
+\section{Ejercicio 7 --- Crecimiento del stack bajo demanda}
+% =====================================================================
+
+\textbf{Enunciado.} Suponiendo que el SO asigna páginas adicionales
+para el stack bajo demanda (al ocurrir page faults), ¿qué condición
+debería usarse para limitar la asignación de páginas y evitar
+sobreescribir el área de datos?
+
+\subsection{Análisis}
+
+El stack arranca con muy pocas páginas asignadas y crece ``hacia
+abajo'' (direcciones decrecientes) a medida que el programa hace
+llamadas a funciones y reserva variables locales. El esquema típico
+para implementarlo es:
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item El SO reserva las primeras páginas del stack en su extremo
+        superior (por ejemplo, vpn $786\,431$ del proceso anterior).
+    \item Cuando el programa accede a una dirección inmediatamente por
+        debajo, el hardware levanta un \emph{page fault} porque esa
+        \texttt{pte} tiene $V=0$.
+    \item El kernel inspecciona la dirección que falló. Si está
+        ``cerca'' del stack actual y dentro de un rango razonable,
+        \textbf{asigna una nueva página} y reanuda la ejecución.
+\end{enumerate}
+
+\subsection{Condición de límite}
+
+La condición debe asegurar que el stack \textbf{no invada} la región
+del heap/datos, ni de las librerías compartidas, ni de los segmentos
+mapeados. La regla estándar combina dos predicados:
+
+\textbf{(1) Límite duro de tamaño del stack (\texttt{RLIMIT\_STACK}).}
+El sistema mantiene un máximo configurable (en Linux por defecto
+$8$\,MB, ajustable con \texttt{ulimit -s}). Si el stack ya consumió
+esa cantidad de páginas, se rechaza el crecimiento adicional.
+
+\quad if (tamaño\_actual\_stack + página ≥ \texttt{RLIMIT\_STACK}) → SIGSEGV
+
+\textbf{(2) Distancia hasta la siguiente región mapeada.} Aun dentro
+del límite duro, hay que verificar que la nueva página no se solape
+con el final del heap, datos, o cualquier VMA inferior. El kernel
+recorre el árbol de VMAs (\emph{Virtual Memory Areas}) del proceso y
+verifica:
+
+\quad if (dir\_nueva\_página ≤ vma\_inferior.\_end + \texttt{página\_guarda}) → SIGSEGV
+
+Donde \texttt{página\_guarda} es típicamente una página adicional
+mantenida inválida ($V=0$) entre el stack y el resto del espacio
+lógico, justamente para detectar \emph{stack overflow} antes de que
+se corrompa nada.
+
+\subsection{Implementación concreta en Linux}
+
+En Linux, el VMA del stack tiene la flag \texttt{VM\_GROWSDOWN}.
+Cuando ocurre un page fault en una dirección \textit{adv} cercana
+(unos pocos KB por debajo) al inicio actual del stack, el kernel
+ejecuta algo así:
+
+\begin{lstlisting}[style=cstyle]
+if (es_pagina_del_stack(adv)) {
+    if (adv < stack_actual - GAP_RAZONABLE) {
+        return SIGSEGV;   // salto demasiado grande: probable bug
+    }
+    if (stack_actual - adv + tamaño_stack >= RLIMIT_STACK) {
+        return SIGSEGV;   // se alcanzo el limite duro
+    }
+    if (adv <= vma_inferior_extremo + PAGE_SIZE) {
+        return SIGSEGV;   // chocaria con heap/datos
+    }
+    // todo OK: asignar nueva pagina y reanudar
+    expand_stack(adv);
+    return RETRY;
+}
+\end{lstlisting}
+
+\begin{importante}
+\textbf{Condición resumida.} La nueva página puede asignarse al stack
+si y sólo si:
+
+\quad nueva\_dir ≥ extremo\_superior\_del\_heap + página\_guarda \\
+\quad Y tamaño\_actual\_stack < \texttt{RLIMIT\_STACK} \\
+\quad Y nueva\_dir está ``cerca'' del stack actual (heurística contra
+saltos absurdos que indican un bug, no un uso legítimo)
+
+Si alguna de las tres falla, el kernel envía \texttt{SIGSEGV} al
+proceso y, por defecto, lo termina.
+\end{importante}
+
+\textbf{Por qué importa la página de guarda.} Sin ella, el stack
+podría ``tocar'' la última página del heap y entonces dos accesos
+sucesivos del programa terminarían pisando memoria que no le
+corresponde, sin que el hardware avise. La página de guarda
+$V=0$ entre las dos regiones asegura un \emph{page fault}
+\emph{antes} de la corrupción.
+
+% =====================================================================
+\section{Ejercicio 8 --- Memoria compartida entre dos procesos}
 % =====================================================================
 
 \textbf{Enunciado.} Dos procesos comparten un área de memoria de $2$
@@ -1142,7 +1479,7 @@ compartida, \texttt{futex}, etc.).
 \end{importante}
 
 % =====================================================================
-\section{Ejercicio 8 --- mmap de un archivo}
+\section{Ejercicio 9 --- mmap de un archivo}
 % =====================================================================
 
 \textbf{Enunciado.} Compilar y ejecutar (en Linux) el archivo
@@ -1341,7 +1678,7 @@ persistidas correctamente.
 \end{importante}
 
 % =====================================================================
-\section{Ejercicio 9 --- Memoria compartida IPC con shmwriter y shmreader}
+\section{Ejercicio 10 --- Memoria compartida IPC con shmwriter y shmreader}
 % =====================================================================
 
 \textbf{Enunciado.} Compilar y ejecutar (en ese orden)
@@ -1437,7 +1774,7 @@ Data read from memory: Hola desde shmwriter
 \emph{diferentes} ($\texttt{0x7fbc\ldots}$ vs $\texttt{0x7f01\ldots}$),
 pero los datos coinciden: ambos procesos están viendo los mismos
 \emph{frames} físicos a través de \texttt{vpn} distintos. Es
-exactamente el escenario del Ejercicio 7.
+exactamente el escenario del Ejercicio 8.
 
 \subsection{9.a --- Volver a correr \texttt{shmreader}}
 
@@ -1591,8 +1928,15 @@ maquinaria que el sistema operativo usa para gestionar la memoria:
         system} ilustra los compromisos entre fragmentación interna y
         externa; el cálculo de la tabla de páginas en arquitecturas de
         $16$ y $32$ bits muestra por qué hacen falta tablas multinivel
-        y/o \emph{huge pages} en sistemas reales.
-    \item Los \textbf{Ejercicios 7, 8 y 9} aplicaron la maquinaria al
+        y/o \emph{huge pages} en sistemas reales. La comparación
+        directa entre páginas de $4$\,MB (Ej.\ 5) y $4$\,KB con árbol
+        multinivel (Ej.\ 6) sobre el mismo proceso vuelve concreto el
+        compromiso entre tamaño de tabla y fragmentación interna.
+    \item El \textbf{Ejercicio 7} explica cómo el SO hace crecer el
+        stack bajo demanda y qué condiciones impiden que el stack
+        invada el heap o los datos, materializando la idea de la
+        \emph{página de guarda} y del límite duro \texttt{RLIMIT\_STACK}.
+    \item Los \textbf{Ejercicios 8, 9 y 10} aplicaron la maquinaria al
         problema de \emph{compartir memoria entre procesos} y mapear
         archivos en memoria. Los detalles relevantes (bit \texttt{D}
         para persistencia de \texttt{mmap}; ciclo de vida del

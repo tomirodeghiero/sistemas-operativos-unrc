@@ -1,0 +1,702 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- Encoding ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands]{babel}
+\usepackage{lmodern}
+
+% --- Layout ---
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{parskip}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em plus 0.2em minus 0.1em}
+\setlength{\emergencystretch}{3em}
+
+% --- Tablas y gráficos ---
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+
+% --- Soporte para caracteres Unicode en texto ---
+\usepackage{newunicodechar}
+\newunicodechar{→}{\ensuremath{\rightarrow}}
+\newunicodechar{←}{\ensuremath{\leftarrow}}
+\newunicodechar{≥}{\ensuremath{\geq}}
+\newunicodechar{≤}{\ensuremath{\leq}}
+\newunicodechar{×}{\ensuremath{\times}}
+
+% --- Code listings ---
+\usepackage{listings}
+\definecolor{codegray}{rgb}{0.96,0.96,0.96}
+\definecolor{codeborder}{rgb}{0.85,0.85,0.85}
+\definecolor{codecomment}{rgb}{0.30,0.55,0.30}
+\definecolor{codekeyword}{rgb}{0.10,0.30,0.70}
+\definecolor{codestring}{rgb}{0.65,0.15,0.10}
+
+\lstdefinestyle{cstyle}{
+    language=C,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+}
+
+\lstdefinestyle{shellstyle}{
+    language=bash,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstdefinestyle{textstyle}{
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    columns=fullflexible,
+    aboveskip=1em,
+    belowskip=1em,
+}
+
+\usepackage[hidelinks]{hyperref}
+
+\title{
+    \vspace{-2.5em}
+    \textbf{Taller 6} \\[0.3em]
+    \large Procesos de usuario en EDOS
+}
+\author{
+    Tomás Rodeghiero \\
+    \small Sistemas Operativos --- Universidad Nacional de Río Cuarto
+}
+\date{2026}
+
+\begin{document}
+
+\maketitle
+
+En este taller trabajé sobre el paso \texttt{08-process} de EDOS, que es donde el
+kernel pasa a poder cargar y correr programas de usuario. En este informe voy
+resolviendo los nueve ejercicios de la consigna: primero el booteo y la
+ejecución del \texttt{init}, después el análisis del allocator de páginas, el
+layout de memoria del kernel, la creación de procesos, cómo se compila y enlaza
+el código de usuario, el camino desde el scheduler hasta la primera instrucción
+del proceso, y por último las dos partes con código propio (provocar un page
+fault y agregar el syscall \texttt{time}). Todo lo probé en QEMU
+(\texttt{qemu-system-riscv32}) y voy pegando las salidas que me sirvieron para
+verificar cada punto.
+
+\tableofcontents
+\bigskip
+
+% =====================================================================
+\section{Booteo de EDOS y ejecución del init}
+% =====================================================================
+
+Compilé el paso \texttt{08-process} tal cual viene y lo lancé en QEMU con:
+
+\begin{lstlisting}[style=shellstyle]
+qemu-system-riscv32 -machine virt -bios none -nographic \
+                    -smp 1 -kernel kernel
+\end{lstlisting}
+
+La salida del booteo, ya con paginación habilitada y el primer proceso de
+usuario corriendo, es la siguiente (ver \texttt{entrega/salida-original.txt}):
+
+\begin{lstlisting}[style=textstyle]
+Initializing kernel block allocator...
+free pages=32759, free_list=80009000, kend=80009000, mem_end=88000000
+ktext_start: 80000000
+kdata_start: 80003000
+mapping user code va=00000000 to pa=8002e000
+Running scheduler on CPU 0
+EDOS init process: pid=1!
+Init going to sleep for 4 ticks...
+pid 1 going to sleep.
+Task pid=1 awake.
+init awake! Finishing...
+Freeing task init resources...
+\end{lstlisting}
+
+Lo que pasa, leyendo el log de arriba para abajo:
+
+\begin{itemize}[leftmargin=1.4em]
+    \item \texttt{kernel\_main()} en CPU 0 llama a \texttt{init\_kalloc()}
+    (\texttt{kalloc.c}). El log \texttt{free pages=32759} coincide con
+    $(128\,\text{MiB} - \texttt{kend}) / 4\,\text{KiB}$ y confirma que la free
+    list quedó cargada.
+    \item \texttt{init\_vm()} arma el page table del kernel (\texttt{vm.c},
+    \texttt{arch.c}). \texttt{map\_kernel\_memory()} imprime
+    \texttt{ktext\_start} y \texttt{kdata\_start}.
+    \item \texttt{create\_process("init")} en \texttt{task.c} crea la tarea de
+    usuario, carga el binario \texttt{init} desde efs y mapea la página del
+    código en va=0 → pa=0x8002e000.
+    \item El scheduler arranca, selecciona el \texttt{init}, entra a
+    \texttt{start\_process()} y vuelve a modo usuario.
+    \item \texttt{main()} del init imprime \texttt{"EDOS init process: pid=1!"}
+    usando los syscalls \texttt{getpid()} y \texttt{console\_puts()}.
+    \item Después llama \texttt{sleep(4)}: el syscall pone al proceso en
+    \texttt{WAITING} sobre la condición \texttt{\&ticks}; el log
+    \texttt{"pid 1 going to sleep."} sale desde el handler \texttt{sys\_sleep}
+    en el kernel.
+    \item Cuatro ticks después, \texttt{inc\_ticks()} en \texttt{task.c}
+    despierta al proceso (\texttt{"Task pid=1 awake."}) y el init imprime
+    \texttt{"init awake!"} y retorna de \texttt{main()}, lo que ejecuta
+    \texttt{exit()} en \texttt{edoslib.c}.
+    \item El scheduler ve la tarea \texttt{ZOMBIE} y \texttt{free\_resources()}
+    la libera.
+\end{itemize}
+
+% =====================================================================
+\section{Funcionamiento del physical pages allocator}
+% =====================================================================
+
+El allocator vive en \texttt{kalloc.c}/\texttt{kalloc.h} y administra el rango de
+RAM \texttt{[\_\_kernel\_end, \_\_mem\_end)}, o sea desde donde termina la imagen
+del kernel hasta el tope de los 128 MiB de QEMU. La estructura central es una
+free list simplemente enlazada cuyos nodos viven dentro de las propias páginas
+libres:
+
+\begin{lstlisting}[style=cstyle]
+struct link { struct link *next; };
+static struct link *free_list = NULL;
+static unsigned int free_pages = 0;
+\end{lstlisting}
+
+Funciones expuestas (\texttt{kalloc.h}):
+
+\begin{lstlisting}[style=cstyle]
+void  init_kalloc(void);
+void* alloc_page(void);
+void  free_page(void* pa);
+\end{lstlisting}
+
+\begin{itemize}[leftmargin=1.4em]
+    \item \texttt{init\_kalloc()}: recorre la RAM desde
+    \texttt{\_\_mem\_end - PAGE\_SIZE} hacia abajo en pasos de
+    \texttt{PAGE\_SIZE} hasta \texttt{\_\_kernel\_end} y llama
+    \texttt{free\_page(p)} en cada una. Eso es lo que arma la free list y fija
+    \texttt{free\_pages} = cantidad de páginas libres. En el log inicial apareció
+    \texttt{free\_pages=32759}, que son los 128 MiB menos lo que ya estaba
+    reservado para texto, datos y stacks del kernel.
+    \item \texttt{alloc\_page()}: si la lista está vacía retorna 0. Si no, saca la
+    cabeza, hace \texttt{memset(n, 0, PAGE\_SIZE)} y la devuelve. El memset
+    cumple dos roles: evita filtrar datos del kernel a la página y deja la zona
+    en cero, lo que es cómodo para usarla, por ejemplo, como nodo de page table o
+    como página de stack.
+    \item \texttt{free\_page(pa)}: valida que el puntero esté alineado a 4 KiB
+    (\texttt{page\_aligned}) y dentro del rango
+    \texttt{(\_\_kernel\_end, \_\_mem\_end)}. Si alguna falla, \texttt{panic}. Si
+    pasa, encadena la página en la cabeza de \texttt{free\_list} e incrementa
+    \texttt{free\_pages}.
+\end{itemize}
+
+Es un allocator extremadamente simple: O(1) en alloc y free, sin fragmentación
+externa (todas las páginas son del mismo tamaño), sin metadata aparte del puntero
+embebido en la página libre. La única crítica es que no está protegido por un
+spinlock; en este paso solo una CPU lo toca, pero en pasos siguientes habría que
+serializarlo.
+
+% =====================================================================
+\section{Layout del espacio de direcciones del kernel}
+% =====================================================================
+
+\texttt{map\_kernel\_memory()} en \texttt{arch.c} configura mapeos 1:1 (va = pa)
+para todo lo que el kernel necesita ver con paginación encendida. Las regiones,
+leídas en orden del código:
+
+\begin{lstlisting}[style=cstyle]
+map_region(pgtbl, UART,        UART,        PAGE_SIZE,    R|W);
+map_region(pgtbl, VIRTIO0,     VIRTIO0,     PAGE_SIZE,    R|W);
+map_region(pgtbl, PLIC,        PLIC,        PLIC_SIZE,    R|W);
+map_region(pgtbl, ktext_start, ktext_start, ktext_size,   R|X);
+map_region(pgtbl, kdata_start, kdata_start, kdata_size,   R|W);
+\end{lstlisting}
+
+con \texttt{UART = 0x10000000}, \texttt{VIRTIO0 = 0x10001000},
+\texttt{PLIC = 0x0c000000}, \texttt{PLIC\_SIZE = 0x400000},
+\texttt{ktext\_start = \_\_kernel\_start = 0x80000000},
+\texttt{ktext\_size = \_\_text\_end - \_\_kernel\_start} y
+\texttt{kdata\_size = \_\_mem\_end - \_\_text\_end}. Diagrama del layout
+resultante:
+
+\begin{lstlisting}[style=textstyle]
+Direcciones logicas del kernel (1:1 con fisicas)
+
++---------------------------+ 0x00000000
+|                           |
+|      no mapeado           |
+|                           |
++---------------------------+ 0x0c000000
+|   PLIC (R/W)              |   4 MiB (PLIC_SIZE)
++---------------------------+ 0x0c400000
+|                           |
+|      no mapeado           |
+|                           |
++---------------------------+ 0x10000000
+|   UART (R/W)              |   1 pagina (4 KiB)
++---------------------------+ 0x10001000
+|   VIRTIO0 (R/W)           |   1 pagina
++---------------------------+ 0x10002000
+|                           |
+|      no mapeado           |
+|                           |
++---------------------------+ 0x80000000   __kernel_start
+|   kernel .text  (R/X)     |
++---------------------------+ __text_end  (en mi corrida 0x80003000)
+|   .rodata, .data, .bss,   |
+|   stacks por CPU y resto  |
+|   de la RAM (R/W)         |
++---------------------------+ 0x88000000   __mem_end (128 MiB)
+\end{lstlisting}
+
+Notas:
+
+\begin{itemize}[leftmargin=1.4em]
+    \item Los MMIO se mapean como R/W para que el kernel pueda escribir en UART,
+    VIRTIO y PLIC. Nunca llevan \texttt{PAGE\_X}.
+    \item La separación \texttt{ktext} (R/X) vs \texttt{kdata} (R/W) impide que el
+    kernel ejecute datos por error.
+    \item Como los mapeos son 1:1, una ``dirección lógica'' del kernel se
+    interpreta igual con paginación encendida o apagada, lo que simplifica
+    \texttt{enable\_paging()} (basta cargar \texttt{satp} con el page table;
+    ningún símbolo cambia de dirección).
+    \item Cada page table del proceso copia este page table del kernel como base y
+    le agrega los mapeos U-mode en \texttt{[0, PROC\_MAX\_VA)}, cosa que se ve en
+    \texttt{exec()} (\texttt{task.c}).
+\end{itemize}
+
+% =====================================================================
+\section{Pasos de create\_process() en task.c}
+% =====================================================================
+
+\texttt{create\_process(path)} es el camino completo ``de la nada a una tarea de
+usuario RUNNABLE''. En orden:
+
+\begin{enumerate}[leftmargin=1.6em]
+    \item \texttt{create\_task(path, start\_process)}:
+    \begin{itemize}[leftmargin=1.2em]
+        \item Busca el primer slot \texttt{UNUSED} en \texttt{tasks[]} (con lock).
+        \item Inicializa el contexto en cero
+        (\texttt{memset(\&task->ctx, 0, ...)}).
+        \item Pone \texttt{task->ctx.ra = start\_process}. Cuando el scheduler
+        haga \texttt{context\_switch} hacia este task por primera vez,
+        \texttt{ret} saltará a \texttt{start\_process()}.
+        \item Reserva la kstack con \texttt{alloc\_page()} y deja
+        \texttt{task->ctx.sp = kstack + PAGE\_SIZE} (tope de la pila kernel).
+        \item Asigna \texttt{tid}, deja \texttt{pgtbl=kernel\_pgtbl}
+        provisoriamente, \texttt{pid=0}, \texttt{state=CREATED}.
+    \end{itemize}
+    \item Asignación de pid: \texttt{t->pid = ++last\_pid}. Así el init queda con
+    pid 1 (es lo que imprime el \texttt{getpid} en el ejercicio 1).
+    \item \texttt{exec(t, path, 0)}: es el corazón de la creación del proceso.
+    \begin{enumerate}[label=\alph*),leftmargin=1.4em]
+        \item Aloca \texttt{new\_pgtbl} con \texttt{alloc\_page()} y copia encima
+        el \texttt{kernel\_pgtbl} (\texttt{memcpy}). De esa forma todo proceso
+        ``ve'' los mapeos del kernel para cuando entre en modo supervisor por un
+        trap.
+        \item \texttt{load\_program(new\_pgtbl, path)}:
+        \begin{itemize}[leftmargin=1.2em]
+            \item \texttt{efs\_file(path)} devuelve el \texttt{struct file} con el
+            binario.
+            \item Para cada \texttt{PAGE\_SIZE} del binario aloca una página física
+            con \texttt{alloc\_page}, copia los bytes y mapea va → pa con flags
+            \texttt{PAGE\_R|W|X|U} (visible y ejecutable desde U-mode). La salida
+            del ej.\ 1 muestra esto: \texttt{"mapping user code va=00000000 to
+            pa=8002e000"}.
+        \end{itemize}
+        \item Aloca la página del user-stack y la mapea en
+        \texttt{PROC\_MAX\_VA - PAGE\_SIZE} con \texttt{PAGE\_R|W|U}. Así el stack
+        usuario queda al tope del espacio de proceso.
+        \item \texttt{setup\_main\_args(task, ustack + PAGE\_SIZE, args)}: empuja
+        las cadenas y arma el array \texttt{char* argv[]}. Deja \texttt{argc} y
+        \texttt{argv} en \texttt{a0}/\texttt{a1} del trap frame (a través de
+        \texttt{put\_argument}).
+        \item Inicializa el trap frame: \texttt{tf->sp = sp} (top del user-stack
+        recién armado), \texttt{tf->pc = 0}. Esa \texttt{pc=0} corresponde al
+        entry point \texttt{start()} del usuario (ver ej.\ 5).
+        \item Si el task ya era un proceso (re-exec), libera la memoria del page
+        table anterior con \texttt{unmap\_region(..., true)} y \texttt{free\_page}
+        del page table viejo.
+        \item \texttt{task->pgtbl = new\_pgtbl}.
+        \item \texttt{task->ctx.sp = (size\_t) tf}. Acá está el truco: cuando el
+        scheduler haga \texttt{context\_switch}, el \texttt{sp} del task quedará
+        apuntando al trap frame en su kstack, y \texttt{u\_trap\_ret} va a leer
+        todos los registros de ahí.
+    \end{enumerate}
+    \item \texttt{t->state = RUNNABLE}. Recién ahora el scheduler puede elegir la
+    tarea. La siguiente vez que el scheduler corra en alguna CPU, va a tomar este
+    slot y \texttt{context\_switch} hacia él.
+\end{enumerate}
+
+Si algo falla, \texttt{exec()} libera lo allocateado y \texttt{create\_process}
+retorna false. En el caso del init, \texttt{kernel\_main()} no chequea el
+retorno: si fallara, EDOS quedaría sin procesos y solo correría el scheduler
+ocioso.
+
+% =====================================================================
+\section{user.ld, entry point y mkefs.sh}
+% =====================================================================
+
+\subsection*{(a) Linker script user.ld}
+
+\begin{lstlisting}[style=cstyle]
+ENTRY(start)
+
+SECTIONS {
+    . = 0;
+    .text :   { KEEP(*(.text.start)); *(.text .text.*); }
+    .rodata : ALIGN(4) { *(.rodata .rodata.*); }
+    .data :   ALIGN(4) { *(.data .data.*); }
+    .bss :    ALIGN(4) { *(.bss .bss.* .sbss .sbss.*); }
+}
+\end{lstlisting}
+
+El linker arranca la imagen en virtual address 0 (es lo que espera
+\texttt{exec()} cuando hace \texttt{tf->pc = 0}). El \texttt{KEEP} de
+\texttt{.text.start} fuerza que la primera función ubicada en \texttt{.text} sea
+la marcada con el atributo correspondiente; en este proyecto eso lo logra la
+posición física de \texttt{start()} como primer símbolo de \texttt{edoslib.c}
+enlazado primero por el Makefile del user (\texttt{edoslib.o usys.o init.c} en
+ese orden). El resultado es que la primera instrucción del \texttt{.text}
+efectivo es la del \texttt{start()}.
+
+\subsection*{(b) Entry point}
+
+\texttt{ENTRY(start)} le dice al linker que el símbolo \texttt{start} es el punto
+de entrada, pero como el kernel ignora la cabecera ELF (el Makefile hace
+\texttt{objcopy -O binary init init.bin} y solo eso queda embebido en
+\texttt{efsfiles.c}), lo único que importa es que \texttt{start()} caiga en va=0.
+La función vive en \texttt{edoslib.c}:
+
+\begin{lstlisting}[style=cstyle]
+void start(void) {
+    exit(main());
+}
+\end{lstlisting}
+
+O sea: cuando \texttt{exec()} arme el trap frame con \texttt{tf->pc = 0} y
+\texttt{sret} devuelva el control a U-mode, la CPU ejecuta \texttt{start()},
+\texttt{start} llama al \texttt{main()} del programa, y cuando \texttt{main}
+retorna, \texttt{exit()} (syscall 0) le pasa el código de salida al kernel.
+
+\subsection*{(c) Qué hace mkefs.sh}
+
+El script (lo invoca el Makefile del user con \texttt{"./mkefs.sh init README"})
+arma \texttt{efsfiles.c} de la siguiente forma:
+
+\begin{enumerate}[leftmargin=1.6em]
+    \item Crea un archivo temporal con un header y un \texttt{\#include "efs.h"}.
+    \item Por cada nombre de archivo recibido, si existe
+    \texttt{<nombre>.bin} (caso de los programas) usa \texttt{xxd -i
+    <nombre>.bin} para volcar el binario como arreglo C; si no usa \texttt{xxd -i
+    <nombre>} (caso del archivo de datos README). \texttt{xxd -i} genera dos
+    símbolos: el arreglo de bytes \texttt{<nombre>\_bin} (o \texttt{<nombre>}) y la
+    longitud \texttt{<nombre>\_bin\_len}.
+    \item Con \texttt{sed}, reemplaza \texttt{unsigned int} por
+    \texttt{const unsigned int} en las longitudes, para que el linker las ponga en
+    \texttt{.rodata}.
+    \item Después abre la tabla \texttt{struct file efs\_files\_table[] = \{} y,
+    por cada archivo, emite una fila\\
+    \texttt{\{"<nombre>", EFS\_FILE\_PROGRAM, <nombre>\_bin, <nombre>\_bin\_len\}}
+    o\\
+    \texttt{\{"<nombre>", EFS\_FILE\_DATA, <nombre>, <nombre>\_len\}}
+    según haya \texttt{.bin} o no.
+    \item Cierra la tabla con un centinela \texttt{\{0, 0, 0, 0\}} y mueve el
+    \texttt{efsfiles.c} al directorio del kernel.
+\end{enumerate}
+
+En tiempo de compilación del kernel, \texttt{efs\_file(name)} (\texttt{efs.c})
+recorre esa tabla por \texttt{strcmp} y le devuelve a \texttt{load\_program()} un
+puntero al binario y su largo. Así el kernel no necesita lectura de disco: el
+filesystem está en RAM, embebido en su \texttt{.rodata}.
+
+% =====================================================================
+\section{Del scheduler a la primera instrucción del usuario}
+% =====================================================================
+
+Recorrido completo de la primera vez que el init es elegido:
+
+\begin{enumerate}[leftmargin=1.6em]
+    \item \texttt{scheduler()} (\texttt{task.c}) corre en CPU 0. Recorre
+    \texttt{tasks[]}, toma el lock, encuentra el slot del init en estado
+    \texttt{RUNNABLE}, lo pasa a \texttt{RUNNING}, asigna
+    \texttt{next\_task->ticks = QUANTUM}, deja
+    \texttt{cpus\_state[cpu].task = next\_task} y llama:
+    \begin{lstlisting}[style=cstyle]
+context_switch(&cpus_state[cpu].ctx, &next_task->ctx);
+    \end{lstlisting}
+    \item \texttt{context\_switch} (\texttt{arch.s}) guarda \texttt{ra} y
+    \texttt{s0-s11} del scheduler en su propia pila (la pila del scheduler de esa
+    CPU) y carga desde \texttt{next\_task->ctx}:
+    \begin{lstlisting}[style=textstyle]
+sp <- next_task->ctx.sp  (== kstack + PAGE_SIZE)
+ra <- next_task->ctx.ra  (== start_process)
+    \end{lstlisting}
+    Finalmente \texttt{ret} salta a \texttt{start\_process}.
+    \item \texttt{start\_process()} (\texttt{task.c}):
+    \begin{lstlisting}[style=cstyle]
+release(&task->lock);
+return_to_user_mode();
+    \end{lstlisting}
+    Libera el lock que tenía el scheduler y va al retorno a usuario.
+    \item \texttt{return\_to\_user\_mode()} (\texttt{trap.c}):
+    \begin{lstlisting}[style=cstyle]
+disable_interrupts();
+set_u_trap_handler();         // stvec <- u_trap
+set_kstack(kstack+PAGE_SIZE); // sscratch <- kstack top
+set_u_previous_mode();        // sstatus.SPP=0, SPIE=1
+set_page_table(task->pgtbl);  // satp <- pa2satp(pgtbl)
+u_trap_ret(task_trap_frame_address(task));
+    \end{lstlisting}
+    El \texttt{task\_trap\_frame\_address} es exactamente el lugar de la kstack
+    donde \texttt{exec()} dejó armado el trap frame inicial.
+    \item \texttt{u\_trap\_ret} (\texttt{trap.s}):
+    \begin{lstlisting}[style=textstyle]
+mv  sp, a0           # sp apunta al trap frame
+lw  a0, 30*4(sp)
+csrw sepc, a0        # sepc <- tf->pc (== 0)
+lw  ra .. s11        # restaura los 29 registros guardados
+lw  sp, 29*4(sp)     # sp <- tf->sp (top del user-stack)
+sret
+    \end{lstlisting}
+    \item \texttt{sret} pasa a U-mode (porque \texttt{sstatus.SPP=0}), habilita
+    interrupciones (\texttt{SPIE=1}) y carga \texttt{pc <- sepc = 0}. Como el
+    \texttt{pgtbl} del proceso mapea va=0 al código del init, la primera
+    instrucción ejecutada en U-mode es la primera del \texttt{.text} del
+    \texttt{init.bin}, que es la primera instrucción de \texttt{start()} (gracias
+    a \texttt{user.ld} y al orden de linkeo del \texttt{user/Makefile}).
+    \item \texttt{start()} ejecuta \texttt{exit(main())}. Como \texttt{exit()}
+    está en \texttt{usys.s} (con \texttt{ecall}), la primera vez que el proceso
+    necesite interactuar con el kernel cae en \texttt{u\_trap} por SYSCALL y se
+    desencadena el camino del ej.\ 8.
+\end{enumerate}
+
+% =====================================================================
+\section{Provocar un page fault en init.c}
+% =====================================================================
+
+Cambié \texttt{init.c} (ver \texttt{entrega/init-ejercicio7.c}) para que el
+proceso intente escribir en una dirección no mapeada del espacio del proceso:
+
+\begin{lstlisting}[style=cstyle]
+int main(void) {
+    printf("EDOS init process: pid=%d!\n", getpid());
+
+    printf("Intentando escribir en una direccion no mapeada "
+           "(0xdeadbeef)...\n");
+    volatile int *bad = (int *) 0xdeadbeef;
+    *bad = 0x42;
+
+    console_puts("Esta linea no deberia ejecutarse.\n");
+    return 0;
+}
+\end{lstlisting}
+
+Por qué dispara la falta:
+
+\begin{itemize}[leftmargin=1.4em]
+    \item El proceso solo tiene mapeadas (con \texttt{PAGE\_U}) las páginas de
+    \texttt{[0, tamaño del programa)} y la página del stack en
+    \texttt{[PROC\_MAX\_VA - PAGE\_SIZE, PROC\_MAX\_VA)}, donde
+    \texttt{PROC\_MAX\_VA} es \texttt{0x80000000}.
+    \item \texttt{0xdeadbeef} está fuera de \texttt{PROC\_MAX\_VA}. Incluso si
+    fuera menor, no está mapeada para U-mode.
+    \item El store dispara una excepción \texttt{STORE\_PAGE\_FAULT}
+    (\texttt{scause=0x0F}). El handler \texttt{u\_trap} llama a
+    \texttt{user\_trap()}, que cae en la rama de ``page fault. Killing task...''
+    y deja al task con \texttt{killed=true}. En la salida del scheduler aparece,
+    después, \texttt{free\_resources}.
+\end{itemize}
+
+Verificación (extracto de \texttt{entrega/salida-ejercicio7.txt}):
+
+\begin{lstlisting}[style=textstyle]
+EDOS init process: pid=1!
+Intentando escribir en una direccion no mapeada (0xdeadbeef)...
+Task init in CPU 0 page fault. Killing task...
+Freeing task init resources...
+\end{lstlisting}
+
+La línea ``Esta linea no deberia ejecutarse'' no aparece, como esperaba.
+
+% =====================================================================
+\section{Camino completo del syscall getpid()}
+% =====================================================================
+
+Paso a paso, desde el \texttt{call()} en el código de usuario hasta el
+\texttt{ret} en el wrapper:
+
+\begin{enumerate}[leftmargin=1.6em]
+    \item Código de usuario (\texttt{init.c}):
+    \texttt{"printf(... getpid() ...)"} se resuelve al símbolo externo
+    \texttt{getpid} declarado en \texttt{edoslib.h}.
+    \item Stub assembler (\texttt{user/usys.s}):
+    \begin{lstlisting}[style=cstyle]
+getpid:
+    li a7, 1     # SYS_GETPID
+    ecall
+    ret
+    \end{lstlisting}
+    Carga el número de syscall en \texttt{a7} y ejecuta \texttt{ecall}. La ABI de
+    RISC-V deja eventuales argumentos en \texttt{a0..a6}; \texttt{getpid()} no
+    tiene.
+    \item \texttt{ecall} genera una excepción con \texttt{scause = 0x8}
+    (ENVIRONMENT CALL FROM U-MODE) y \texttt{sepc = pc} del \texttt{ecall}.
+    \item \texttt{u\_trap} (\texttt{trap.s}): swap \texttt{sp <-> sscratch} (pasa a
+    usar la kstack del proceso), reserva \texttt{31*4} bytes para el
+    \texttt{struct trap\_frame} y guarda \texttt{ra, gp, t0-t6, a0-a7, s0-s11},
+    el \texttt{sp} del usuario (leído de \texttt{sscratch}) y \texttt{sepc} (en
+    \texttt{tf->pc}). Después \texttt{call user\_trap()}.
+    \item \texttt{user\_trap} (\texttt{trap.c}):
+    \begin{itemize}[leftmargin=1.2em]
+        \item \texttt{set\_page\_table(kernel\_pgtbl)}: pasa al page table del
+        kernel mientras corre el handler.
+        \item \texttt{set\_k\_trap\_handler()}: por si dentro del syscall ocurre
+        otro trap (en S-mode).
+        \item \texttt{case SYSCALL}:
+        \begin{lstlisting}[style=cstyle]
+enable_interrupts();
+syscall(task);
+skip_trap_instruction(task_trap_frame_address(task));
+        \end{lstlisting}
+        \texttt{skip\_trap\_instruction} hace \texttt{tf->pc += 4}, que es lo que
+        dejará el \texttt{sepc} tras \texttt{u\_trap\_ret} apuntando a la
+        instrucción siguiente al \texttt{ecall}.
+    \end{itemize}
+    \item \texttt{syscall()} (\texttt{syscall.c}):
+    \begin{itemize}[leftmargin=1.2em]
+        \item \texttt{n = syscall\_number(tf) = tf->a7 = 1}.
+        \item Dispatcher: \texttt{syscalls\_table[1] = sys\_getpid}.
+        \item \texttt{sys\_getpid(task)} retorna \texttt{task->pid} (el pid del
+        proceso).
+        \item \texttt{syscall\_put\_result(tf, result)} deja el valor en
+        \texttt{tf->a0}.
+    \end{itemize}
+    \item \texttt{user\_trap} termina llamando a
+    \texttt{return\_to\_user\_mode()} al final (y un \texttt{panic} de
+    seguridad por si esa función retornara), así que el flujo no vuelve por
+    donde vino sino que rearma el retorno a usuario.
+    \item \texttt{return\_to\_user\_mode()} rearma el entorno
+    (\texttt{set\_u\_trap\_handler}, \texttt{set\_kstack},
+    \texttt{set\_u\_previous\_mode}, \texttt{set\_page\_table} al \texttt{pgtbl}
+    del proceso) y llama a \texttt{u\_trap\_ret()} pasándole la dirección del
+    trap frame (\texttt{task\_trap\_\allowbreak frame\_\allowbreak address}).
+    \item \texttt{u\_trap\_ret} (\texttt{trap.s}) restaura todos los registros
+    (incluyendo \texttt{a0} con el resultado del syscall), pone
+    \texttt{sepc <- tf->pc} (que ya quedó apuntando a la instrucción siguiente al
+    \texttt{ecall}), y \texttt{sret} pasa de nuevo a U-mode.
+    \item La CPU ejecuta la instrucción siguiente al \texttt{ecall}, que es el
+    \texttt{ret} de \texttt{getpid}. \texttt{a0} ya tiene el pid, así que el
+    llamador del usuario recibe el valor de retorno como una función C común.
+\end{enumerate}
+
+% =====================================================================
+\section{Agregar el syscall time()}
+% =====================================================================
+
+Decidí implementar \texttt{time()} devolviendo el contador global de ticks del
+kernel (\texttt{volatile unsigned int ticks} en \texttt{task.c}). Es lo natural:
+ese \texttt{ticks} lo incrementa \texttt{inc\_ticks()} en cada timer interrupt y
+ya hay una función \texttt{get\_ticks()} que lo lee tomando el
+\texttt{ticks\_lock}.
+
+Cambios realizados (todos en \texttt{entrega/}):
+
+\textbf{1) syscall.h}
+\begin{lstlisting}[style=cstyle]
+#define SYS_TIME    6
+#define SYSCALLS    7
+\end{lstlisting}
+
+\textbf{2) syscall.c} --- agregué \texttt{sys\_time} y lo sumé al final de
+\texttt{syscalls\_table[]} (que ahora tiene 7 entradas, igual a
+\texttt{SYSCALLS}):
+\begin{lstlisting}[style=cstyle]
+int sys_time(struct task *task) {
+    (void) task;
+    return (int) get_ticks();
+}
+\end{lstlisting}
+
+\textbf{3) user/edoslib.h}
+\begin{lstlisting}[style=cstyle]
+extern int time(void);
+\end{lstlisting}
+
+\textbf{4) user/usys.s}
+\begin{lstlisting}[style=cstyle]
+.global time
+time:
+    li a7, 6     # SYS_TIME
+    ecall
+    ret
+\end{lstlisting}
+
+\textbf{5) user/init.c} --- modifiqué \texttt{main()} para imprimir el valor de
+\texttt{time()} varias veces, durmiendo 2 ticks entre llamadas:
+\begin{lstlisting}[style=cstyle]
+for (int i = 0; i < 5; i++) {
+    printf("init: time = %d ticks\n", time());
+    sleep(2);
+}
+printf("init: time final = %d ticks. Finishing...\n", time());
+\end{lstlisting}
+
+El uso de \texttt{get\_ticks()} (con su spinlock \texttt{ticks\_lock}) en lugar de
+leer \texttt{ticks} directamente evita una race con \texttt{inc\_ticks()} en el
+caso multi-CPU. Devuelvo \texttt{int} para mantener la firma compatible con el
+dispatcher (\texttt{typedef int (*syscall\_f)(struct task *)}).
+
+Verificación (extracto de \texttt{entrega/salida-ejercicio9.txt}):
+
+\begin{lstlisting}[style=textstyle]
+EDOS init process: pid=1!
+init: time = 0 ticks
+pid 1 going to sleep.
+Task pid=1 awake.
+init: time = 2 ticks
+pid 1 going to sleep.
+Task pid=1 awake.
+init: time = 4 ticks
+pid 1 going to sleep.
+Task pid=1 awake.
+init: time = 6 ticks
+pid 1 going to sleep.
+Task pid=1 awake.
+init: time = 8 ticks
+pid 1 going to sleep.
+Task pid=1 awake.
+init: time final = 10 ticks. Finishing...
+Freeing task init resources...
+\end{lstlisting}
+
+El contador sube de a 2 entre cada print porque entre llamada y llamada el
+proceso duerme 2 ticks; el último \texttt{time()} lee 10 porque hubo 5
+iteraciones de \texttt{sleep(2)} además del primer print. Eso valida que el
+syscall está bien numerado, el stub pasa por la tabla de syscalls y el resultado
+viaja de \texttt{a0} hasta el llamador en user.
+
+\end{document}

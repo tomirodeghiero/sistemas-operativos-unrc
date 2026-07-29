@@ -1,0 +1,1877 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- Encoding ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands]{babel}
+\usepackage{lmodern}
+
+% --- Layout ---
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{parskip}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em plus 0.2em minus 0.1em}
+
+% --- Tables and graphics ---
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{positioning,shapes.geometric,arrows.meta,fit,backgrounds,calc,decorations.pathreplacing}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{amsmath,amssymb}
+
+% --- Soporte para caracteres Unicode usados en fórmulas en texto plano ---
+\usepackage{newunicodechar}
+\newunicodechar{→}{\ensuremath{\rightarrow}}
+\newunicodechar{≥}{\ensuremath{\geq}}
+\newunicodechar{≤}{\ensuremath{\leq}}
+\newunicodechar{×}{\ensuremath{\times}}
+\newunicodechar{÷}{\ensuremath{\div}}
+\newunicodechar{≈}{\ensuremath{\approx}}
+\newunicodechar{⌈}{\ensuremath{\lceil}}
+\newunicodechar{⌉}{\ensuremath{\rceil}}
+\newunicodechar{✓}{\ensuremath{\checkmark}}
+
+% --- Code listings ---
+\usepackage{listings}
+\definecolor{codegray}{rgb}{0.96,0.96,0.96}
+\definecolor{codeborder}{rgb}{0.85,0.85,0.85}
+\definecolor{codecomment}{rgb}{0.30,0.55,0.30}
+\definecolor{codekeyword}{rgb}{0.10,0.30,0.70}
+\definecolor{codestring}{rgb}{0.65,0.15,0.10}
+
+\lstdefinestyle{cstyle}{
+    language=C,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+}
+
+\lstdefinestyle{shellstyle}{
+    language=bash,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+    upquote=true,
+}
+
+\lstdefinestyle{textstyle}{
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstset{style=textstyle}
+
+% --- Definition / Idea / Important boxes ---
+\usepackage[most]{tcolorbox}
+\newtcolorbox{definicion}[1][]{
+    colback=blue!5!white,
+    colframe=blue!50!black,
+    fonttitle=\bfseries,
+    title=Definición,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{idea}[1][]{
+    colback=orange!5!white,
+    colframe=orange!60!black,
+    fonttitle=\bfseries,
+    title=Idea intuitiva,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{importante}[1][]{
+    colback=red!5!white,
+    colframe=red!50!black,
+    fonttitle=\bfseries,
+    title=Importante,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+
+% --- Hyperlinks ---
+\usepackage[colorlinks=true,
+            linkcolor=blue!60!black,
+            urlcolor=blue!50!black,
+            citecolor=blue!60!black]{hyperref}
+
+% --- Color palette ---
+\definecolor{io1}{HTML}{4C72B0}
+\definecolor{io2}{HTML}{DD8452}
+\definecolor{io3}{HTML}{55A868}
+\definecolor{io4}{HTML}{8172B2}
+\definecolor{ioused}{HTML}{C44E52}
+\definecolor{iofree}{HTML}{8C8C8C}
+\definecolor{ioshared}{HTML}{4FC3C7}
+\definecolor{iofile}{HTML}{F4A261}
+
+% --- Title block ---
+\title{
+    \vspace{-2.5em}
+    \textbf{Práctico 6} \\[0.3em]
+    \large Entrada/salida, filesystem y usuarios
+}
+\author{
+    Tomás Rodeghiero \\
+    \small Sistemas Operativos --- Universidad Nacional de Río Cuarto
+}
+\date{2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent
+Este documento presenta la resolución integral del Práctico 6 de la
+materia Sistemas Operativos (UNRC, 2026), centrado en
+\emph{entrada/salida}, \emph{sistemas de archivos} y
+\emph{usuarios/control de acceso}. Se resuelven los \textbf{diez
+ejercicios} de la consigna oficial, divididos en dos bloques. El
+\textbf{bloque A} recorre los conceptos de E/S y filesystem: dispositivos
+de bloque y carácter en \texttt{/dev}, uso de \texttt{dd} y de los
+dispositivos especiales \texttt{/dev/zero} y \texttt{/dev/urandom}, el
+flujo de compilación y carga de un módulo del kernel (RTC), la
+representación de un directorio en FAT vs.\ inodos, y la API
+\texttt{stat}/\texttt{readdir} para navegar el filesystem desde C. El
+\textbf{bloque B} aborda usuarios y permisos: listado de usuarios y
+grupos en Linux y macOS, semántica de permisos UGO/octal (con énfasis
+en el bit de ejecución sobre directorios), los UIDs real y efectivo, y
+el funcionamiento del bit \texttt{SUID} a través de un ejemplo
+ejecutable paso a paso. Cada ejercicio se justifica con la teoría del
+capítulo \emph{Entrada/salida y sistemas de archivos} de las Notas del
+curso (Marcelo Arroyo).
+\end{abstract}
+
+\tableofcontents
+\bigskip
+
+% =====================================================================
+\section{Introducción}
+% =====================================================================
+
+El subsistema de \emph{entrada/salida} es la capa del SO que abstrae el
+hardware heterogéneo de los dispositivos y lo presenta como una
+\textbf{API uniforme} para los procesos. La filosofía clásica de UNIX
+---``todo es un archivo''--- llevó esta idea hasta sus últimas
+consecuencias: discos, teclados, ratones, audio, red, dispositivos
+especiales (\texttt{/dev/zero}, \texttt{/dev/urandom},
+\texttt{/dev/null}) y hasta el propio kernel (\texttt{/proc},
+\texttt{/sys}) se acceden con las mismas syscalls
+(\texttt{open}/\texttt{read}/\texttt{write}/\texttt{close}/\texttt{ioctl}).
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\small},
+    layer/.style={draw,minimum width=10cm,minimum height=0.8cm,align=center}
+]
+\node[layer,fill=io1!20]                       (api)   at (0, 3.6) {\textbf{API de usuario} (\texttt{read}, \texttt{write}, \texttt{open}, \texttt{ioctl}, \texttt{mmap})};
+\node[layer,fill=io2!20,below=0.05cm of api]   (kio)   {\textbf{Kernel I/O subsystem} (buffering, caching, spooling, scheduling)};
+\node[layer,fill=io3!20,below=0.05cm of kio]   (drv)   {\textbf{Drivers} (uno por familia de dispositivo)};
+\node[layer,fill=io4!20,below=0.05cm of drv]   (hw)    {\textbf{Hardware} (controladores, registros, DMA, IRQs)};
+\end{tikzpicture}
+\end{center}
+
+\textbf{Modos de transferencia.} El SO puede mover datos entre la
+memoria y un dispositivo de tres formas:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Programmed I/O (PIO)}: la CPU mueve cada byte
+        leyendo/escribiendo registros del controlador. Es simple pero
+        gasta toda la CPU del proceso.
+    \item \textbf{Interrupt-driven I/O}: la CPU le pide al controlador
+        que haga la operación y se va a hacer otra cosa. Cuando el
+        controlador termina, dispara una \emph{IRQ}.
+    \item \textbf{DMA} (\emph{Direct Memory Access}): un controlador
+        independiente mueve datos entre el dispositivo y la RAM sin
+        intervención de la CPU. La CPU solo participa al inicio
+        (configurar la transferencia) y al final (recibir la IRQ de
+        terminación).
+\end{itemize}
+
+\begin{importante}
+DMA \textbf{no} libera completamente a la CPU. La CPU sigue siendo
+quien arranca la transferencia (escribe en los registros del DMA
+controller) y quien atiende la IRQ cuando termina. Lo que se ahorra es
+el ciclo byte-a-byte intermedio, que es donde está el grueso del
+trabajo en E/S de bloque.
+\end{importante}
+
+\textbf{Tipos de dispositivos.}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Dispositivos de bloque}: leen y escriben en
+        \emph{bloques} de tamaño fijo (típicamente $512$\,B o
+        $4$\,KiB). Permiten acceso aleatorio (\texttt{lseek}).
+        Discos, SSDs, particiones. Aparecen con la letra \texttt{b}
+        en \texttt{ls -l}.
+    \item \textbf{Dispositivos de carácter}: leen y escriben byte a
+        byte, normalmente sin posibilidad de \texttt{seek}. Teclados,
+        seriales, terminales, \texttt{/dev/null}, \texttt{/dev/zero},
+        \texttt{/dev/urandom}. Aparecen con \texttt{c}.
+    \item \textbf{Dispositivos de red}: no aparecen en \texttt{/dev};
+        se acceden con la API de sockets, que es un modelo distinto
+        (\texttt{socket}, \texttt{bind}, \texttt{connect}, \ldots).
+\end{itemize}
+
+% =====================================================================
+\part*{Bloque A --- Entrada/salida y filesystem}
+\addcontentsline{toc}{section}{Bloque A --- Entrada/salida y filesystem}
+% =====================================================================
+
+% =====================================================================
+\section{Ejercicio 1 --- Regex para dispositivos de bloque en \texttt{/dev}}
+% =====================================================================
+
+\textbf{Enunciado.} Dar la expresión regular en el comando
+\verb|ls -l /dev | grep "regexp here"| para que liste \emph{sólo} los
+dispositivos de bloques.
+
+\subsection*{Análisis}
+
+\texttt{ls -l} imprime una línea por entrada con el formato
+
+\begin{lstlisting}[style=textstyle]
+<tipo><permisos> <links> <user> <group> <maj>,<min> <fecha> <nombre>
+\end{lstlisting}
+
+El \textbf{primer carácter} de cada línea indica el tipo del archivo:
+
+\begin{center}
+\small
+\begin{tabular}{@{}clp{8.5cm}@{}}
+\toprule
+Letra & Tipo & Descripción \\
+\midrule
+\texttt{-} & regular         & archivo común (texto, binario, etc.) \\
+\texttt{d} & directorio       & contiene entradas (nombre $\to$ inodo) \\
+\texttt{l} & symlink          & contiene una ruta hacia otro archivo \\
+\texttt{b} & block device     & dispositivo accedido en bloques (discos) \\
+\texttt{c} & character device & dispositivo accedido byte a byte (tty, urandom) \\
+\texttt{p} & FIFO / pipe      & cola con nombre creada con \texttt{mkfifo} \\
+\texttt{s} & socket           & socket de dominio UNIX \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Por lo tanto, listar los \emph{dispositivos de bloque} se reduce a
+filtrar líneas cuyo primer carácter sea \texttt{b}. La expresión
+correcta es \verb|^b|: el \verb|^| ancla el match al \textbf{principio
+de la línea}.
+
+\subsection*{Solución}
+
+\begin{lstlisting}[style=shellstyle]
+ls -l /dev | grep "^b"
+\end{lstlisting}
+
+\textbf{Salida típica en Linux.}
+
+\begin{lstlisting}[style=textstyle]
+brw-rw----  1 root disk    8,   0 ... sda
+brw-rw----  1 root disk    8,   1 ... sda1
+brw-rw----  1 root disk    8,   2 ... sda2
+brw-rw----  1 root cdrom  11,   0 ... sr0
+brw-rw----  1 root disk    7,   0 ... loop0
+\end{lstlisting}
+
+\textbf{Salida típica en macOS.}
+
+\begin{lstlisting}[style=textstyle]
+brw-r-----  1 root operator   1,   0 ... disk0
+brw-r-----  1 root operator   1,   1 ... disk0s1
+brw-r-----  1 root operator   1,   2 ... disk0s2
+\end{lstlisting}
+
+\begin{idea}
+La línea \texttt{total N} que \texttt{ls -l} imprime al principio del
+listado empieza con \texttt{t}, así que \verb|^b| ya la descarta. Si
+se omitiera el ancla \verb|^| y se usara solo \verb|"b"|, también
+matchearían líneas cuyo nombre contiene una \texttt{b} (\texttt{sda1}
+no, pero un dispositivo llamado \texttt{cuab0} por ejemplo sí), lo que
+introduciría falsos positivos. El \verb|^| evita exactamente eso.
+\end{idea}
+
+\textbf{Conclusión.} La expresión regular pedida es \texttt{"\textasciicircum b"}.
+
+% =====================================================================
+\section{Ejercicio 2 --- Archivo de 64 MB lleno de ceros con \texttt{dd}}
+% =====================================================================
+
+\textbf{Enunciado.} Crear un archivo de $64$\,MB inicializado en cero,
+usando \texttt{dd} y leyendo del dispositivo \texttt{/dev/zero}.
+
+\subsection*{Análisis}
+
+\texttt{dd} (\emph{disk dump / data definition}) copia bytes de
+entrada en bytes de salida con tamaño y cantidad de bloques
+configurables:
+
+\begin{lstlisting}[style=shellstyle]
+dd if=<entrada> of=<salida> bs=<tamano_bloque> count=<nro_bloques>
+\end{lstlisting}
+
+El total escrito es exactamente \texttt{bs × count}. \texttt{/dev/zero}
+es un dispositivo de \emph{carácter} especial que provee bytes nulos
+($\texttt{0x00}$) infinitos: cada \texttt{read} sobre él retorna
+buffers llenos de ceros, sin tocar el disco.
+
+Para escribir $64$\,MB tenemos varias combinaciones equivalentes:
+
+\quad $64 \text{\,MB} = 64 × 2^{20}$ bytes = $67\,108\,864$ bytes
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+\texttt{bs} & \texttt{count} & total \\
+\midrule
+\texttt{1M}    & $64$         & $64$\,MB \\
+\texttt{4K}    & $16\,384$    & $64$\,MB \\
+\texttt{1024}  & $65\,536$    & $64$\,MB \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{idea}
+\textbf{Cuánto importa elegir \texttt{bs}}: bloques más grandes
+significan menos syscalls (una por bloque). En la práctica, copiar
+$64$\,MB con \texttt{bs=1} (un byte por vez) tarda decenas de
+segundos, mientras que con \texttt{bs=1M} tarda fracciones de segundo.
+La carga de trabajo no es la transferencia: son las llamadas al
+sistema y los cambios de contexto.
+\end{idea}
+
+\subsection*{Solución}
+
+La forma idiomática:
+
+\begin{lstlisting}[style=shellstyle]
+dd if=/dev/zero of=zero64.img bs=1M count=64
+\end{lstlisting}
+
+\textbf{Salida esperada.}
+
+\begin{lstlisting}[style=textstyle]
+64+0 records in
+64+0 records out
+67108864 bytes (67 MB, 64 MiB) copied, 0.046 s, 1.5 GB/s
+\end{lstlisting}
+
+\textbf{Verificación.}
+
+\begin{lstlisting}[style=shellstyle]
+$ ls -lh zero64.img
+-rw-r--r-- 1 tomi tomi 64M ... zero64.img
+
+$ wc -c zero64.img
+67108864 zero64.img
+\end{lstlisting}
+
+\begin{importante}
+\textbf{Alternativa moderna} para crear un archivo de $64$\,MB de
+ceros: \verb|truncate -s 64M zero64.img|. La diferencia es que
+\texttt{truncate} crea un \emph{sparse file}: el archivo aparenta tener
+$64$\,MB pero no consume bloques en disco hasta que se escriben datos
+no nulos. Con \texttt{dd} se escriben efectivamente $64$\,MB de ceros
+físicos al disco.
+\end{importante}
+
+\textbf{Conclusión.} El comando solicitado es
+
+\verb|dd if=/dev/zero of=zero64.img bs=1M count=64|.
+
+% =====================================================================
+\section{Ejercicio 3 --- Contraseña base64 desde \texttt{/dev/urandom}}
+% =====================================================================
+
+\textbf{Enunciado.} Escribir un comando que genere una contraseña de
+$16$ caracteres codificada en base64 desde \texttt{/dev/urandom},
+usando \texttt{head} y \texttt{base64}.
+
+\subsection*{Análisis}
+
+\textbf{Sobre \texttt{/dev/urandom}}: es un dispositivo de carácter
+que entrega bytes pseudoaleatorios del PRNG del kernel. A diferencia
+de \texttt{/dev/random}, \emph{no se bloquea} cuando el ``pool'' de
+entropía se considera bajo; en sistemas modernos esto está
+considerado seguro para cualquier uso criptográfico de propósito
+general.
+
+\textbf{Sobre base64}: codifica $3$ bytes de entrada en $4$
+caracteres ASCII del alfabeto
+$\{$A--Z, a--z, 0--9, +, /$\}$. La relación es:
+
+\quad chars\_base64 = ⌈ bytes\_entrada × $4 \div 3$ ⌉
+
+Despejando el camino inverso, para obtener \textbf{exactamente $16$
+caracteres} sin padding ($=$):
+
+\quad bytes\_entrada = $16 × 3 \div 4 = 12$
+
+\subsection*{Solución}
+
+\begin{lstlisting}[style=shellstyle]
+head -c 12 /dev/urandom | base64
+\end{lstlisting}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{head -c 12 /dev/urandom}: lee exactamente $12$ bytes
+        binarios del PRNG.
+    \item Pipe a \texttt{base64}: codifica esos $12$ bytes en $16$
+        caracteres ASCII.
+\end{itemize}
+
+\textbf{Ejemplos de salida.}
+
+\begin{lstlisting}[style=textstyle]
+$ head -c 12 /dev/urandom | base64
+xK9q+Tb2/PfL3aRm
+
+$ head -c 12 /dev/urandom | base64
+hM7Bn5RpQ2Lk8VxC
+
+$ head -c 12 /dev/urandom | base64
+9j+kP/2nXqRtB4vL
+\end{lstlisting}
+
+\begin{idea}
+Cada ejecución produce una contraseña distinta (es lo que se espera de
+un generador aleatorio). Con $12$ bytes aleatorios bien distribuidos
+hay $2^{12 \times 8} = 2^{96}$ posibilidades, mucho más que suficiente
+para resistir cualquier ataque por fuerza bruta.
+\end{idea}
+
+\begin{importante}
+\textbf{Para uso real} conviene asegurarse de eliminar el newline
+final que \texttt{base64} agrega:
+
+\begin{lstlisting}[style=shellstyle]
+head -c 12 /dev/urandom | base64 | tr -d '\n'
+\end{lstlisting}
+
+\noindent Y para garantizar exactamente $16$ caracteres sin importar
+padding:
+
+\begin{lstlisting}[style=shellstyle]
+head -c 16 /dev/urandom | base64 | head -c 16
+\end{lstlisting}
+\end{importante}
+
+\textbf{Conclusión.} El comando pedido es
+
+\verb|head -c 12 /dev/urandom | base64|.
+
+% =====================================================================
+\section{Ejercicio 4 --- Compilar y cargar el módulo RTC}
+% =====================================================================
+
+\textbf{Enunciado.} Compilar el módulo (device driver) Linux RTC
+(\emph{Real Time Clock}) siguiendo las instrucciones del README. El
+ejercicio se realiza sobre un sistema Linux con headers del kernel
+instalados.
+
+\subsection*{Análisis: qué es el RTC y por qué se accede como driver}
+
+El \textbf{Real Time Clock} es un chip alimentado por batería que
+mantiene la hora aunque la computadora esté apagada. En arquitectura
+PC suele estar integrado al chipset (el clásico \texttt{MC146818}
+emulado por los SO modernos). El kernel lo expone como dispositivo de
+carácter en \texttt{/dev/rtc0}.
+
+El RTC ofrece tres servicios al SO:
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item Lectura/escritura de la hora actual.
+    \item Programación de \emph{alarmas} (interrupciones a futuro).
+    \item Generación de \emph{interrupciones periódicas} (típicamente
+        de $2$\,Hz a $8192$\,Hz), útiles para ticks de scheduler en
+        sistemas embebidos.
+\end{enumerate}
+
+\subsection*{Anatomía mínima de un módulo del kernel}
+
+Un módulo del kernel es código que se compila aparte del kernel
+principal y se carga/descarga dinámicamente, sin reiniciar. El
+esqueleto mínimo en C es:
+
+\begin{lstlisting}[style=cstyle]
+/* hello_rtc.c -- esqueleto de un modulo */
+#include <linux/module.h>
+#include <linux/kernel.h>
+#include <linux/init.h>
+
+static int __init hello_rtc_init(void) {
+    printk(KERN_INFO "hello_rtc: modulo cargado\n");
+    return 0;     /* 0 = exito, !=0 = falla la carga */
+}
+
+static void __exit hello_rtc_exit(void) {
+    printk(KERN_INFO "hello_rtc: modulo descargado\n");
+}
+
+module_init(hello_rtc_init);
+module_exit(hello_rtc_exit);
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Curso SO UNRC");
+MODULE_DESCRIPTION("Demo modulo RTC");
+\end{lstlisting}
+
+\textbf{Diferencias con un programa de usuario:}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item No hay \texttt{main()}: el ``punto de entrada'' es la función
+        registrada con \texttt{module\_init}, que se llama cuando el
+        módulo se carga.
+    \item No se incluye \texttt{<stdio.h>}: en el kernel \texttt{printf}
+        se reemplaza por \texttt{printk}.
+    \item Hay un macro \texttt{KERN\_INFO} (y otros como
+        \texttt{KERN\_WARNING}, \texttt{KERN\_ERR}) que marca el nivel
+        de log del mensaje.
+    \item El módulo se compila con un \texttt{Makefile} especial que
+        usa el sistema de \emph{Kbuild} del kernel.
+\end{itemize}
+
+\subsection*{Makefile para compilar el módulo}
+
+\begin{lstlisting}[style=textstyle]
+# Makefile
+obj-m += hello_rtc.o
+
+KDIR := /lib/modules/$(shell uname -r)/build
+
+all:
+	$(MAKE) -C $(KDIR) M=$(PWD) modules
+
+clean:
+	$(MAKE) -C $(KDIR) M=$(PWD) clean
+\end{lstlisting}
+
+\begin{importante}
+La línea \texttt{KDIR := /lib/modules/\$(shell uname -r)/build} pide
+los \emph{headers} y scripts del kernel que se está ejecutando.
+Necesita el paquete \texttt{linux-headers-\$(uname -r)} (Debian/Ubuntu)
+o \texttt{kernel-devel} (Fedora/RHEL) instalado.
+\end{importante}
+
+\subsection*{Flujo de compilación, carga y prueba}
+
+\begin{lstlisting}[style=shellstyle]
+# 1) Compilar
+$ make
+make -C /lib/modules/6.5.0-15-generic/build M=/home/user/rtc modules
+make[1]: Entering directory '/usr/src/linux-headers-6.5.0-15-generic'
+  CC [M]  /home/user/rtc/hello_rtc.o
+  MODPOST /home/user/rtc/Module.symvers
+  CC [M]  /home/user/rtc/hello_rtc.mod.o
+  LD [M]  /home/user/rtc/hello_rtc.ko
+
+# 2) Cargar el modulo
+$ sudo insmod hello_rtc.ko
+
+# 3) Verificar que esta cargado
+$ lsmod | grep hello_rtc
+hello_rtc   16384  0
+
+# 4) Ver el mensaje del modulo en el log del kernel
+$ sudo dmesg | tail -n 2
+[12345.678] hello_rtc: modulo cargado
+
+# 5) Descargar
+$ sudo rmmod hello_rtc
+
+$ sudo dmesg | tail -n 1
+[12346.789] hello_rtc: modulo descargado
+\end{lstlisting}
+
+\subsection*{Leer la hora del RTC desde el espacio de usuario}
+
+Una vez cargado el driver del RTC (en general viene en el kernel por
+defecto), se puede leer la hora con un programa de usuario que abra
+\texttt{/dev/rtc0} y use \texttt{ioctl} con el comando
+\texttt{RTC\_RD\_TIME}:
+
+\begin{lstlisting}[style=cstyle]
+/* read_rtc.c */
+#include <stdio.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
+#include <linux/rtc.h>
+
+int main(void) {
+    int fd = open("/dev/rtc0", O_RDONLY);
+    if (fd < 0) { perror("open /dev/rtc0"); return 1; }
+
+    struct rtc_time t;
+    if (ioctl(fd, RTC_RD_TIME, &t) < 0) {
+        perror("ioctl RTC_RD_TIME");
+        close(fd);
+        return 1;
+    }
+
+    printf("Hora del RTC: %04d-%02d-%02d %02d:%02d:%02d\n",
+           t.tm_year + 1900, t.tm_mon + 1, t.tm_mday,
+           t.tm_hour, t.tm_min, t.tm_sec);
+
+    close(fd);
+    return 0;
+}
+\end{lstlisting}
+
+\begin{lstlisting}[style=shellstyle]
+$ gcc -Wall -o read_rtc read_rtc.c
+$ sudo ./read_rtc       # /dev/rtc0 generalmente requiere root
+Hora del RTC: 2026-03-15 14:23:47
+\end{lstlisting}
+
+\subsection*{Conclusión}
+
+El ejercicio ilustra el patrón estándar para extender el kernel con un
+\textbf{driver de dispositivo} como módulo cargable:
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item Código C usando la API del kernel (\texttt{printk},
+        \texttt{module\_init/exit}, etc.).
+    \item Makefile que delega en Kbuild
+        (\texttt{make -C /lib/modules/.../build M=\$PWD modules}).
+    \item Carga/descarga con \texttt{insmod}/\texttt{rmmod}.
+    \item Inspección con \texttt{lsmod}, \texttt{dmesg},
+        \texttt{/proc/modules}.
+\end{enumerate}
+
+El RTC, en particular, es accedido desde el espacio de usuario
+mediante \texttt{ioctl} sobre \texttt{/dev/rtc0}, ejemplo paradigmático
+de cómo el SO ofrece una interfaz uniforme (un archivo) para un
+dispositivo que internamente requiere comandos específicos.
+
+% =====================================================================
+\section{Ejercicio 5 --- Filesystem \texttt{/docs/os-book.pdf}: FAT vs.\ inodos}
+% =====================================================================
+
+\textbf{Enunciado.} Describir un sistema de archivos con la estructura
+
+\begin{lstlisting}[style=textstyle]
+\
+|-- docs
+       |
+       +-- os-book.pdf      (2 bloques de datos)
+\end{lstlisting}
+
+\noindent usando \textbf{(a)} una representación tipo FAT y
+\textbf{(b)} una representación basada en \emph{inodos}.
+
+\subsection*{Análisis comparativo}
+
+Las dos familias de filesystem responden de forma distinta a la
+pregunta ``dado el nombre de un archivo, ¿cómo encuentro sus
+bloques?''.
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item En \textbf{FAT}, la entrada de directorio guarda el
+        \emph{primer cluster} del archivo. Para los demás, se consulta
+        una \textbf{tabla centralizada} (la FAT) que es esencialmente
+        una lista enlazada: la entrada \texttt{FAT[i]} dice cuál es el
+        próximo cluster del archivo que comenzó en $i$, o un valor
+        especial $\texttt{EOC}$ si $i$ es el último.
+    \item En \textbf{inodos} (estilo UFS/ext2/\ldots), la entrada de
+        directorio guarda sólo el número de \emph{inodo}. El inodo es
+        un descriptor con toda la metadata del archivo (tamaño,
+        permisos, owner, fechas) y \textbf{punteros directos} a sus
+        bloques. La estructura está \emph{descentralizada}: cada
+        archivo lleva su propia lista.
+\end{itemize}
+
+\subsection*{5.a --- Representación tipo FAT}
+
+Una partición FAT tiene cuatro áreas principales: \emph{boot sector},
+\emph{tabla FAT} (a veces duplicada), \emph{directorio raíz} y
+\emph{área de datos} (clusters numerados a partir de $2$, porque $0$ y
+$1$ están reservados).
+
+\paragraph{Entradas de directorio.} Cada entrada es de tamaño fijo
+(usualmente $32$ bytes) y contiene:
+
+\begin{center}
+\small
+\begin{tabular}{@{}lp{8.5cm}@{}}
+\toprule
+Campo & Significado \\
+\midrule
+\texttt{name}        & nombre $8 + 3$ chars (FAT16) o de tamaño variable (FAT32 con LFN) \\
+\texttt{attr}        & directorio, archivo, oculto, sólo lectura, \ldots \\
+\texttt{first\_clu}  & primer cluster del archivo en el área de datos \\
+\texttt{size}        & tamaño en bytes (sólo para archivos regulares) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Layout concreto del ejemplo.} Supongamos:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Cluster $3$: contenido del directorio \texttt{docs}.
+    \item Cluster $5$: primer bloque del PDF.
+    \item Cluster $6$: segundo bloque del PDF.
+\end{itemize}
+
+\textbf{Directorio raíz} (área especial en FAT16, o cluster fijo en
+FAT32). Una sola entrada:
+
+\begin{center}
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+name & attr & first\_clu & size \\
+\midrule
+\texttt{DOCS} & DIR & $3$ & $0$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Contenido del cluster $3$} (directorio \texttt{docs}):
+
+\begin{center}
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+name & attr & first\_clu & size \\
+\midrule
+\texttt{.}            & DIR & $3$ & $0$       \\
+\texttt{..}           & DIR & $0$ (raíz)  & $0$       \\
+\texttt{OS-BOOK PDF}  & --- & $5$ & $2 \times $bs \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Tabla FAT.} Cada entrada \texttt{FAT[i]} dice quién sigue al
+cluster $i$:
+
+\begin{center}
+\small
+\begin{tabular}{@{}cl@{}}
+\toprule
+i & FAT[i] \\
+\midrule
+$0$ & reservado (marcador) \\
+$1$ & reservado \\
+$2$ & libre ($0$) \\
+$3$ (raíz de \texttt{docs}) & \texttt{EOC} \\
+$4$ & libre \\
+$5$ (\texttt{os-book.pdf} parte $1$) & $6$ \\
+$6$ (\texttt{os-book.pdf} parte $2$) & \texttt{EOC} \\
+$\geq 7$ & libre \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{idea}
+Para leer \texttt{/docs/os-book.pdf} el SO recorre:
+
+\begin{enumerate}[leftmargin=*,nosep,label=(\arabic*)]
+    \item Raíz: encuentra entrada \texttt{DOCS}, \texttt{first\_clu = 3}.
+    \item Va al cluster $3$, encuentra entrada
+        \texttt{OS-BOOK.PDF}, \texttt{first\_clu = 5}.
+    \item Lee el cluster $5$.
+    \item Consulta \texttt{FAT[5]} = $6$ $\to$ lee el cluster $6$.
+    \item Consulta \texttt{FAT[6]} = \texttt{EOC} $\to$ termina.
+\end{enumerate}
+\end{idea}
+
+\subsection*{Diagrama del layout FAT}
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\footnotesize},
+    sec/.style={draw,minimum width=3.2cm,minimum height=0.7cm,align=center},
+    cl/.style={draw,minimum width=1.8cm,minimum height=0.6cm,align=center}
+]
+
+\node[font=\bfseries\small] at (0,5.5) {Disco};
+\node[sec,fill=io1!20] (boot) at (0,4.7) {boot sector};
+\node[sec,fill=io2!20,below=0pt of boot] (fat) {tabla FAT};
+\node[sec,fill=io3!20,below=0pt of fat] (rd) {root dir};
+\node[sec,fill=ioshared!30,below=0pt of rd] (data) {\ldots área de datos\ldots};
+
+\node[font=\bfseries\small] at (5,5.5) {Clusters};
+\node[cl,fill=iofree!30] (c2) at (5,5) {2 (libre)};
+\node[cl,fill=io3!20,below=0pt of c2] (c3) {3: dir docs};
+\node[cl,fill=iofree!30,below=0pt of c3] (c4) {4 (libre)};
+\node[cl,fill=iofile!50,below=0pt of c4] (c5) {5: pdf p1};
+\node[cl,fill=iofile!50,below=0pt of c5] (c6) {6: pdf p2};
+\node[cl,fill=iofree!30,below=0pt of c6] (c7) {\ldots};
+
+\node[font=\bfseries\small] at (10,5.5) {FAT[i]};
+\node[cl,fill=io2!10] (f2) at (10,5) {2 $\to$ 0};
+\node[cl,fill=io2!10,below=0pt of f2] (f3) {3 $\to$ EOC};
+\node[cl,fill=io2!10,below=0pt of f3] (f4) {4 $\to$ 0};
+\node[cl,fill=io2!10,below=0pt of f4] (f5) {5 $\to$ 6};
+\node[cl,fill=io2!10,below=0pt of f5] (f6) {6 $\to$ EOC};
+\node[cl,fill=io2!10,below=0pt of f6] (f7) {\ldots};
+
+\draw[-Latex] (c5.east) to[bend left=15] (c6.east);
+\draw[-Latex,dashed,thick,red!60!black] (f5.west) -- (c5.east);
+\draw[-Latex,dashed,thick,red!60!black] (f6.west) -- (c6.east);
+
+\end{tikzpicture}
+\end{center}
+
+\subsection*{5.b --- Representación con inodos}
+
+En un FS basado en inodos cada archivo o directorio tiene \emph{un}
+inodo numerado de forma única dentro del FS. El inodo guarda toda la
+metadata y los punteros a bloques de datos. Las entradas de directorio
+sólo asocian nombres con números de inodo.
+
+\paragraph{Estructura típica de un inodo} (estilo UFS clásico):
+
+\begin{center}
+\small
+\begin{tabular}{@{}lp{8cm}@{}}
+\toprule
+Campo & Significado \\
+\midrule
+\texttt{i\_mode}                 & tipo (regular, dir, link, \ldots) y permisos \\
+\texttt{i\_uid}, \texttt{i\_gid} & owner y grupo \\
+\texttt{i\_size}                 & tamaño en bytes \\
+\texttt{i\_atime, mtime, ctime}  & timestamps de acceso, modificación, cambio de inodo \\
+\texttt{i\_blocks}               & bloques físicos usados \\
+\texttt{i\_direct[0..11]}        & punteros directos a bloques de datos \\
+\texttt{i\_indirect1}            & puntero indirecto simple \\
+\texttt{i\_indirect2}            & puntero indirecto doble \\
+\texttt{i\_indirect3}            & puntero indirecto triple \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Asignación de inodos al ejemplo.}
+
+\begin{center}
+\small
+\begin{tabular}{@{}clp{6.5cm}@{}}
+\toprule
+\# inodo & Quién es & Apunta a (bloques de datos) \\
+\midrule
+$1$ & \texttt{/} (raíz, directorio)        & $B_{root}$ \\
+$2$ & \texttt{/docs} (directorio)           & $B_{docs}$ \\
+$3$ & \texttt{/docs/os-book.pdf} (regular) & \texttt{direct[0]=$B_{pdf1}$}, \texttt{direct[1]=$B_{pdf2}$} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Contenido de los bloques de directorio} (cada entrada =
+nombre $\to$ inodo):
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item $B_{root}$:
+        $\{\;\texttt{.} \to 1,\;\; \texttt{..} \to 1,\;\; \texttt{docs} \to 2\;\}$
+    \item $B_{docs}$:
+        $\{\;\texttt{.} \to 2,\;\; \texttt{..} \to 1,\;\; \texttt{os-book.pdf} \to 3\;\}$
+    \item $B_{pdf1}$, $B_{pdf2}$: bytes binarios del PDF.
+\end{itemize}
+
+\textbf{Notas.}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item La raíz tiene siempre el mismo número de inodo (en ext2/3/4
+        el $\#2$, no el $\#1$, que se usa para tracking de bloques
+        dañados; el $\#1$ usado aquí es ilustrativo).
+    \item \texttt{..} de la raíz apunta a la raíz misma.
+    \item \texttt{i\_size} del inodo $3$ es $\leq 2 × \text{bs}$ (no
+        necesariamente exactamente $2$ bloques: el archivo puede
+        terminar a mitad del segundo).
+\end{itemize}
+
+\subsection*{Diagrama del layout con inodos}
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\footnotesize},
+    inode/.style={draw,minimum width=3.6cm,minimum height=0.55cm,align=center},
+    block/.style={draw,minimum width=3.6cm,minimum height=0.55cm,align=center}
+]
+
+\node[font=\bfseries\small] at (0,5.5) {Tabla de inodos};
+\node[inode,fill=io1!20] (i1) at (0,4.8) {\#1: DIR, $B_{root}$};
+\node[inode,fill=io1!20,below=0pt of i1] (i2) {\#2: DIR, $B_{docs}$};
+\node[inode,fill=io2!20,below=0pt of i2] (i3) {\#3: REG, $B_{pdf1}$, $B_{pdf2}$};
+
+\node[font=\bfseries\small] at (6,5.5) {Bloques de datos};
+\node[block,fill=io3!15] (br) at (6,4.8) {$B_{root}$: \{., .., docs\}};
+\node[block,fill=io3!15,below=0pt of br] (bd) {$B_{docs}$: \{., .., os-book.pdf\}};
+\node[block,fill=iofile!50,below=0pt of bd] (bp1) {$B_{pdf1}$: bytes PDF (1/2)};
+\node[block,fill=iofile!50,below=0pt of bp1] (bp2) {$B_{pdf2}$: bytes PDF (2/2)};
+
+\draw[-Latex] (i1.east) -- (br.west);
+\draw[-Latex] (i2.east) -- (bd.west);
+\draw[-Latex] (i3.east) -- (bp1.west);
+\draw[-Latex] (i3.east) to[bend right=15] (bp2.west);
+
+\end{tikzpicture}
+\end{center}
+
+\subsection*{Conclusión: contraste FAT vs.\ inodos}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+ & \textbf{FAT} & \textbf{Inodos} \\
+\midrule
+Metadata del archivo & en la entrada de directorio  & en el inodo \\
+Lista de bloques     & FAT centralizada (lista enlazada) & punteros en el inodo \\
+\emph{Hard links} (varios nombres) & \textbf{No} soportado & Sí: varias entradas $\to$ mismo inodo \\
+Acceso aleatorio rápido & no (recorrer FAT)        & sí (punteros directos / indirectos) \\
+Robustez ante FAT corrupta & toda la partición se pierde & sólo se afecta un archivo \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Resumen.} La diferencia esencial es \emph{dónde} se guarda la
+información de qué bloques pertenecen a qué archivo. En FAT, toda la
+información de pertenencia está en una sola tabla compartida. En
+inodos, cada archivo lleva su propia ``tabla'' (los punteros del
+inodo), y los directorios se reducen a una asociación de nombres con
+números de inodo.
+
+% =====================================================================
+\section{Ejercicio 6 --- Mostrar tipo y tamaño con \texttt{stat()}}
+% =====================================================================
+
+\textbf{Enunciado.} El siguiente programa lee el directorio corriente
+e imprime el nombre y el inodo de cada entrada. Extenderlo para
+mostrar también el \textbf{tipo} (regular, directorio, link, \ldots)
+y el \textbf{tamaño} de cada archivo, usando \texttt{stat()} sobre
+\texttt{st\_mode} y \texttt{st\_size}.
+
+\subsection*{Análisis: por qué necesitamos \texttt{stat()}}
+
+\texttt{readdir()} devuelve una \texttt{struct dirent} con el
+\emph{nombre} y el \emph{número de inodo} de la entrada, pero \textbf{no}
+con la metadata completa (tipo, tamaño, permisos, fechas). Esa
+información vive en el inodo, no en la entrada de directorio.
+
+Para obtenerla hay que invocar \texttt{stat()} (o sus variantes
+\texttt{lstat}, \texttt{fstat}), que consulta el inodo del archivo y
+llena una \texttt{struct stat} con todos los campos:
+
+\begin{lstlisting}[style=cstyle]
+struct stat {
+    dev_t     st_dev;       /* dispositivo */
+    ino_t     st_ino;       /* numero de inodo */
+    mode_t    st_mode;      /* tipo + permisos */
+    nlink_t   st_nlink;     /* cantidad de hard links */
+    uid_t     st_uid;       /* owner */
+    gid_t     st_gid;       /* grupo */
+    off_t     st_size;      /* tamano en bytes */
+    blksize_t st_blksize;   /* tamano del bloque */
+    blkcnt_t  st_blocks;    /* bloques fisicos asignados */
+    time_t    st_atime, st_mtime, st_ctime;
+    /* ... */
+};
+\end{lstlisting}
+
+\textbf{Tipo del archivo en \texttt{st\_mode}.} El campo combina dos
+informaciones: tipo y permisos. El tipo se extrae con macros
+\texttt{S\_IS<Tipo>(m)} provistas por \texttt{<sys/stat.h>}:
+
+\begin{center}
+\small
+\begin{tabular}{@{}lp{8cm}@{}}
+\toprule
+Macro              & Devuelve no-cero si\ldots \\
+\midrule
+\texttt{S\_ISREG(m)}  & el archivo es \textbf{regular} \\
+\texttt{S\_ISDIR(m)}  & el archivo es un \textbf{directorio} \\
+\texttt{S\_ISLNK(m)}  & el archivo es un \textbf{symlink} \\
+\texttt{S\_ISCHR(m)}  & el archivo es un \textbf{character device} \\
+\texttt{S\_ISBLK(m)}  & el archivo es un \textbf{block device} \\
+\texttt{S\_ISFIFO(m)} & el archivo es una \textbf{FIFO / pipe con nombre} \\
+\texttt{S\_ISSOCK(m)} & el archivo es un \textbf{socket de UNIX} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{importante}
+\textbf{\texttt{stat} vs \texttt{lstat}.} Si la entrada de directorio
+es un \textbf{symlink}, \texttt{stat()} sigue el link y reporta los
+datos del \emph{archivo apuntado}, no del link mismo. Para obtener los
+datos del link en sí, hay que usar \texttt{lstat()}. En este programa
+conviene \texttt{lstat()} para no confundir symlinks con sus targets.
+\end{importante}
+
+\subsection*{Solución}
+
+\begin{lstlisting}[style=cstyle]
+#include <stdio.h>
+#include <string.h>
+#include <dirent.h>
+#include <sys/stat.h>
+
+static const char *file_type(mode_t m) {
+    if (S_ISREG(m))  return "REG ";
+    if (S_ISDIR(m))  return "DIR ";
+    if (S_ISLNK(m))  return "LNK ";
+    if (S_ISCHR(m))  return "CHR ";
+    if (S_ISBLK(m))  return "BLK ";
+    if (S_ISFIFO(m)) return "FIFO";
+    if (S_ISSOCK(m)) return "SOCK";
+    return "?   ";
+}
+
+int main(void) {
+    DIR *dir = opendir(".");
+    if (!dir) { perror("opendir"); return 1; }
+
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL) {
+        struct stat st;
+        if (lstat(entry->d_name, &st) < 0) {
+            perror(entry->d_name);
+            continue;
+        }
+        printf("%-25s  inode=%-10lu  type=%s  size=%lld bytes\n",
+               entry->d_name,
+               (unsigned long)entry->d_ino,
+               file_type(st.st_mode),
+               (long long)st.st_size);
+    }
+    closedir(dir);
+    return 0;
+}
+\end{lstlisting}
+
+\subsection*{Salida típica}
+
+Ejecutándolo en un directorio con un poco de variedad:
+
+\begin{lstlisting}[style=textstyle]
+$ gcc -Wall -o lsdir lsdir.c
+$ ./lsdir
+.                          inode=14385       type=DIR   size=4096 bytes
+..                         inode=14112       type=DIR   size=4096 bytes
+lsdir.c                    inode=14502       type=REG   size=812 bytes
+lsdir                      inode=14503       type=REG   size=16400 bytes
+notas.txt                  inode=14504       type=REG   size=125 bytes
+backup -> notas.txt        inode=14505       type=LNK   size=10 bytes
+\end{lstlisting}
+
+\subsection*{Lectura de los resultados}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Directorios} (\texttt{.}, \texttt{..}): el campo
+        \texttt{size} es el tamaño \emph{del bloque de directorio} (en
+        ext4 típicamente $4096$\,B), NO la suma del contenido. Para
+        saber cuánto pesan los archivos de adentro hay que recorrer
+        el directorio recursivamente (lo que hace \texttt{du}).
+    \item \textbf{Archivos regulares}: \texttt{size} es el tamaño en
+        bytes del contenido.
+    \item \textbf{Symlinks}: \texttt{size} con \texttt{lstat} es la
+        \emph{longitud del target string} (en este caso $10$, los
+        chars de \texttt{"notas.txt"}). Con \texttt{stat}, en cambio,
+        habría dado $125$, el tamaño del archivo apuntado.
+\end{itemize}
+
+\textbf{Conclusión.} Las dos pistas claves para resolver el ejercicio
+fueron: (1) usar \texttt{stat}/\texttt{lstat} para obtener metadata
+adicional sobre cada entrada de directorio, y (2) decodificar
+\texttt{st\_mode} con las macros \texttt{S\_IS<Tipo>(m)} para mapear el
+bitfield a una etiqueta legible.
+
+% =====================================================================
+\part*{Bloque B --- Usuarios y control de acceso}
+\addcontentsline{toc}{section}{Bloque B --- Usuarios y control de acceso}
+% =====================================================================
+
+% =====================================================================
+\section{Ejercicio 7 --- Listar usuarios y grupos del sistema}
+% =====================================================================
+
+\textbf{Enunciado.} Listar los usuarios y grupos del sistema. En macOS,
+usar el comando \texttt{dscl} (\emph{directory services command-line}).
+
+\subsection*{Análisis}
+
+Un sistema UNIX mantiene la información de cuentas en dos archivos
+históricos:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{/etc/passwd}: una línea por usuario, $7$ campos
+        separados por \texttt{:}.
+    \item \texttt{/etc/group}: una línea por grupo, $4$ campos.
+\end{itemize}
+
+En sistemas modernos puede no usarse este archivo directamente (por
+ejemplo, cuando hay LDAP, Active Directory u Open Directory en macOS),
+pero la API portable sigue siendo la misma: \texttt{getpwent},
+\texttt{getgrent} en C, o \texttt{getent} en shell.
+
+\subsection*{Linux}
+
+\textbf{Usuarios.}
+
+\begin{lstlisting}[style=shellstyle]
+$ cat /etc/passwd | head -n 4
+root:x:0:0:root:/root:/bin/bash
+daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
+bin:x:2:2:bin:/bin:/usr/sbin/nologin
+sys:x:3:3:sys:/dev:/usr/sbin/nologin
+
+# Forma portable: consulta la base de datos del sistema
+$ getent passwd | wc -l
+38
+\end{lstlisting}
+
+\textbf{Formato de \texttt{/etc/passwd}.}
+
+\begin{center}
+\small
+\begin{tabular}{@{}clp{8cm}@{}}
+\toprule
+\# & Campo & Significado \\
+\midrule
+$1$ & \texttt{name}   & login del usuario \\
+$2$ & \texttt{passwd} & contraseña (\texttt{x} significa ``en \texttt{/etc/shadow}'') \\
+$3$ & \texttt{uid}    & identificador numérico \\
+$4$ & \texttt{gid}    & grupo primario \\
+$5$ & \texttt{gecos}  & información extendida (nombre real, etc.) \\
+$6$ & \texttt{home}   & directorio personal \\
+$7$ & \texttt{shell}  & shell de login (\texttt{/bin/bash}, \texttt{/usr/sbin/nologin}, \ldots) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Grupos.}
+
+\begin{lstlisting}[style=shellstyle]
+$ cat /etc/group | head -n 4
+root:x:0:
+daemon:x:1:
+bin:x:2:
+sys:x:3:
+
+$ getent group sudo
+sudo:x:27:tomi,otra_persona
+\end{lstlisting}
+
+\textbf{Formato de \texttt{/etc/group}.} \texttt{name : passwd : gid :
+members\_separados\_por\_coma}.
+
+\subsection*{macOS}
+
+macOS no usa \texttt{/etc/passwd} para usuarios reales (sólo para
+algunas cuentas del sistema). La fuente de verdad es \textbf{Open
+Directory}, accesible vía \texttt{dscl}:
+
+\begin{lstlisting}[style=shellstyle]
+# Listar todos los usuarios
+$ dscl . -list /Users
+_amavisd
+_appleevents
+_appowner
+...
+root
+tomi
+
+# Filtrar solo los "humanos" (los del sistema empiezan con _)
+$ dscl . -list /Users | grep -v '^_'
+daemon
+nobody
+root
+tomi
+
+# Listar todos los grupos
+$ dscl . -list /Groups | head
+_amavisd
+_appleevents
+...
+
+# Detalle de un usuario
+$ dscl . -read /Users/tomi
+NFSHomeDirectory: /Users/tomi
+PrimaryGroupID: 20
+RealName: Tomas Rodeghiero
+RecordName: tomi
+UniqueID: 501
+UserShell: /bin/zsh
+\end{lstlisting}
+
+\begin{idea}
+\textbf{Convención macOS}: los usuarios y grupos del \emph{sistema}
+(no destinados a humanos) empiezan con \texttt{\_}. Filtrar con
+\texttt{grep -v '\textasciicircum\_'} muestra sólo cuentas regulares.
+\end{idea}
+
+\textbf{Conclusión.} En Linux la forma portable es
+\texttt{getent passwd}/\texttt{getent group} (consulta cualquier
+backend configurado en \texttt{/etc/nsswitch.conf}); en macOS, el
+comando equivalente es \texttt{dscl . -list /Users} y
+\texttt{dscl . -list /Groups}.
+
+% =====================================================================
+\section{Ejercicio 8 --- Permisos UGO y octal sobre archivos y directorios}
+% =====================================================================
+
+\textbf{Enunciado.} Crear un directorio dentro del directorio de
+trabajo. Analizar los permisos asignados, qué significa el bit de
+ejecución sobre un directorio, crear un archivo dentro con
+\texttt{touch}, manipular sus permisos con UGO y octal, y observar el
+efecto.
+
+\subsection*{Análisis: permisos en UNIX}
+
+Cada archivo tiene una tripla de permisos:
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+Categoría & Letra & Quién \\
+\midrule
+Owner    & \texttt{u} & el dueño del archivo \\
+Group    & \texttt{g} & los miembros del grupo del archivo \\
+Other    & \texttt{o} & cualquier otro usuario \\
+All      & \texttt{a} & \texttt{u + g + o} (atajo) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Y tres bits por cada categoría:
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+Bit & Sobre archivo & Sobre directorio \\
+\midrule
+\texttt{r} ($4$) & leer contenido            & listar nombres (\texttt{ls}) \\
+\texttt{w} ($2$) & modificar contenido       & crear/borrar/renombrar entradas \\
+\texttt{x} ($1$) & ejecutar como programa    & atravesar (\texttt{cd}, acceder a entradas por nombre) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{8.a --- Permisos por defecto y el bit \texttt{x} en directorios}
+
+\begin{lstlisting}[style=shellstyle]
+$ mkdir mydir
+$ ls -ld mydir
+drwxr-xr-x  2 tomi staff  64 ... mydir
+\end{lstlisting}
+
+\textbf{Lectura de \texttt{drwxr-xr-x}.}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lllll@{}}
+\toprule
+Posición & \texttt{d} & \texttt{rwx} & \texttt{r-x} & \texttt{r-x} \\
+Significado & directorio & owner: lee, escribe, atraviesa & group: lee, atraviesa & other: lee, atraviesa \\
+Octal & --- & $7$ & $5$ & $5$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Es decir, $755$. ¿Por qué $755$ y no $777$? Por el \emph{umask},
+una máscara de bits que el shell aplica al permiso ``base''
+($777$ para directorios). El umask típico es $022$:
+
+\quad permiso\_final = $0777$ \texttt{AND NOT} umask = $0777$ \texttt{AND NOT} $022$ = $755$
+
+\paragraph{¿Qué significa el bit \texttt{x} en un directorio?}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Con} \texttt{x}: se puede ``entrar'' al directorio
+        con \texttt{cd}, abrir archivos por su nombre y atravesarlo
+        como parte de una ruta más larga.
+    \item \textbf{Sin} \texttt{x}: aun teniendo \texttt{r} se pueden
+        \emph{listar nombres} (\texttt{ls mydir}) pero \emph{no acceder
+        al contenido} (\texttt{ls -l} falla porque necesita leer el
+        inodo de cada entrada, lo cual requiere atravesar).
+    \item \textbf{Con \texttt{r} y sin \texttt{x}}: ver nombres pero
+        no acceder.
+    \item \textbf{Con \texttt{x} y sin \texttt{r}}: acceder a archivos
+        cuyos nombres se conozcan de antemano, pero no listar.
+\end{itemize}
+
+\begin{idea}
+La pareja \texttt{r}/\texttt{x} sobre directorios es notoria por
+confundir: \texttt{r} es ``ver la guía telefónica'' (listar entradas)
+y \texttt{x} es ``llamar a un número conocido'' (acceder a un
+archivo). Son ortogonales.
+\end{idea}
+
+\subsection*{8.b --- Crear un archivo con \texttt{touch} y mirar permisos}
+
+\begin{lstlisting}[style=shellstyle]
+$ cd mydir
+$ touch test.txt
+$ ls -l test.txt
+-rw-r--r--  1 tomi staff  0 ... test.txt
+\end{lstlisting}
+
+Permisos = $644$.
+
+\quad permiso\_final = $0666$ \texttt{AND NOT} $022$ = $0644$
+
+(Para archivos regulares la base es $666$, no $777$: \textbf{los
+archivos no nacen con \texttt{x}}; hay que ponerlo explícitamente con
+\texttt{chmod +x}.)
+
+\subsection*{8.c --- Quitar el permiso de lectura}
+
+\textbf{Sintaxis UGO} (modificación simbólica relativa):
+
+\begin{lstlisting}[style=shellstyle]
+$ chmod a-r test.txt        # 'a' = u+g+o, '-r' quita el bit r
+$ ls -l test.txt
+--w-------  1 tomi staff  0 ... test.txt
+\end{lstlisting}
+
+\textbf{Sintaxis octal} (especificación absoluta):
+
+\begin{lstlisting}[style=shellstyle]
+$ chmod 200 test.txt        # 200 = u=w, g=---, o=---
+$ ls -l test.txt
+--w-------  1 tomi staff  0 ... test.txt
+\end{lstlisting}
+
+Las dos son equivalentes. UGO es más explícita en \emph{qué cambia};
+octal es más explícita en \emph{cómo queda al final}.
+
+\begin{center}
+\small
+\begin{tabular}{@{}cccc@{}}
+\toprule
+Octal & Binario & UGO & Permiso \\
+\midrule
+$7$ & $111$ & \texttt{rwx} & lee + escribe + ejecuta \\
+$6$ & $110$ & \texttt{rw-} & lee + escribe \\
+$5$ & $101$ & \texttt{r-x} & lee + ejecuta \\
+$4$ & $100$ & \texttt{r--} & lee \\
+$3$ & $011$ & \texttt{-wx} & escribe + ejecuta \\
+$2$ & $010$ & \texttt{-w-} & escribe \\
+$1$ & $001$ & \texttt{--x} & ejecuta \\
+$0$ & $000$ & \texttt{---} & nada \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{8.d --- Intentar editar el archivo}
+
+Con $200$ el dueño tiene sólo \texttt{w}. Veamos qué pasa:
+
+\begin{lstlisting}[style=shellstyle]
+# Leer falla
+$ cat test.txt
+cat: test.txt: Permission denied
+
+# Editar con vim/nano: depende del editor
+$ vim test.txt
+"test.txt" Permission denied
+Press ENTER or type command to continue
+
+# Sobrescribir con redireccion: FUNCIONA, porque solo necesita 'w'
+$ echo "hola" > test.txt
+
+# Append: tambien funciona (solo 'w', no 'r')
+$ echo "otra linea" >> test.txt
+\end{lstlisting}
+
+\begin{importante}
+\textbf{Editar con un editor no es lo mismo que escribir.} Los
+editores como \texttt{vim}, \texttt{nano} o \texttt{emacs} necesitan
+\emph{leer} el contenido actual antes de mostrarlo. Sin \texttt{r},
+fallan al abrirlo. Pero el shell puede sobrescribir un archivo con
+\texttt{>} usando solo el bit \texttt{w}. Es una distinción importante:
+``no poder editar'' es más restrictivo que ``no poder leer''.
+\end{importante}
+
+\subsection*{8.e --- Restaurar la lectura sólo al dueño}
+
+\textbf{UGO:}
+
+\begin{lstlisting}[style=shellstyle]
+$ chmod u+r test.txt        # agrega r solo al owner
+$ ls -l test.txt
+-rw-------  1 tomi staff  ...
+\end{lstlisting}
+
+\textbf{Octal equivalente:}
+
+\begin{lstlisting}[style=shellstyle]
+$ chmod 600 test.txt
+\end{lstlisting}
+
+\subsection*{8.f --- Volver a editar}
+
+Con $600$ el dueño tiene \texttt{rw}, así que cualquier editor abre el
+archivo sin problemas:
+
+\begin{lstlisting}[style=shellstyle]
+$ vim test.txt    # abre normalmente, edita, guarda
+\end{lstlisting}
+
+\textbf{Conclusión.} Los puntos clave del ejercicio:
+
+\begin{enumerate}[leftmargin=*]
+    \item Los permisos por defecto los fija el \texttt{umask}
+        (típicamente $022$): $755$ para directorios, $644$ para
+        archivos.
+    \item El bit \texttt{x} en un directorio es ``permiso para
+        atravesar'', no ``permiso para ejecutar''.
+    \item UGO y octal son dos formas de la misma operación; cada bit
+        corresponde a una posición en el octal ($r=4$, $w=2$, $x=1$).
+    \item Sin \texttt{r} se puede aún \emph{sobrescribir} con \texttt{>}
+        pero no abrir con un editor; los editores necesitan ambas
+        cosas.
+\end{enumerate}
+
+% =====================================================================
+\section{Ejercicio 9 --- Real UID, Effective UID y shell con \texttt{getpwuid}}
+% =====================================================================
+
+\textbf{Enunciado.} Sobre el programa dado, que imprime el real UID y
+el effective UID con su nombre asociado vía \texttt{getpwuid()},
+\textbf{extenderlo} para que también muestre el \emph{shell} que usa
+el real user.
+
+\subsection*{Análisis: real UID vs.\ effective UID}
+
+Todo proceso UNIX tiene cuatro identificadores de usuario asociados:
+
+\begin{center}
+\small
+\begin{tabular}{@{}lp{9cm}@{}}
+\toprule
+ID & Significado \\
+\midrule
+\texttt{ruid} (real)            & quién \textbf{lanzó} el proceso. Casi siempre fijo durante la vida del proceso. \\
+\texttt{euid} (effective)       & quién es ``a los efectos de chequear permisos'' en cada syscall. \\
+\texttt{suid} (saved-set)       & valor previo del \texttt{euid}; permite swap entre ruid/euid. \\
+\texttt{fsuid} (filesystem)     & sólo Linux: \texttt{euid} a efectos de operaciones de FS. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+En la mayoría de los procesos \texttt{ruid = euid = suid}. La
+distinción se vuelve relevante con programas SUID/SGID (Ejercicio 10).
+
+\textbf{\texttt{getpwuid(uid)}} consulta la base de datos de usuarios
+(\texttt{/etc/passwd} o equivalente) por el UID dado y devuelve una
+\texttt{struct passwd *}:
+
+\begin{lstlisting}[style=cstyle]
+struct passwd {
+    char   *pw_name;     /* login name        */
+    char   *pw_passwd;   /* hashed password   */
+    uid_t   pw_uid;      /* user id           */
+    gid_t   pw_gid;      /* group id          */
+    char   *pw_gecos;    /* descripcion       */
+    char   *pw_dir;      /* home directory    */
+    char   *pw_shell;    /* default shell     */
+};
+\end{lstlisting}
+
+\subsection*{Solución}
+
+\begin{lstlisting}[style=cstyle]
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <pwd.h>
+
+int main(void) {
+    uid_t ruid = getuid();   /* real UID */
+    uid_t euid = geteuid();  /* effective UID */
+
+    struct passwd *pw_r = getpwuid(ruid);
+    if (pw_r == NULL) { perror("getpwuid(ruid)"); return 1; }
+
+    printf("Process Real User ID: %d, name: %s\n", ruid, pw_r->pw_name);
+    printf("Real user shell     : %s\n", pw_r->pw_shell);    /* <-- agregado */
+
+    struct passwd *pw_e = getpwuid(euid);
+    if (pw_e == NULL) { perror("getpwuid(euid)"); return 1; }
+
+    printf("Process Effective User ID: %d, name: %s\n", euid, pw_e->pw_name);
+
+    return 0;
+}
+\end{lstlisting}
+
+\subsection*{Compilación y ejecución}
+
+\begin{lstlisting}[style=shellstyle]
+$ gcc -Wall -o whoami_extended whoami_extended.c
+$ ./whoami_extended
+Process Real User ID: 1000, name: tomi
+Real user shell     : /bin/bash
+Process Effective User ID: 1000, name: tomi
+\end{lstlisting}
+
+\textbf{Observación.} En una ejecución normal \texttt{ruid = euid}.
+La diferencia aparecerá en el Ejercicio 10 cuando se active el bit
+SUID.
+
+\begin{idea}
+El campo \texttt{pw\_shell} es el \emph{login shell} configurado para
+el usuario (séptimo campo de \texttt{/etc/passwd}). No siempre es el
+shell que el usuario está usando ahora: si abrió una sub-sesión con
+\texttt{zsh}, el valor de \texttt{pw\_shell} sigue mostrando el shell
+por defecto. Para conocer el shell en uso \emph{en este preciso
+proceso} hay que consultar la variable de ambiente \texttt{\$SHELL}
+del entorno heredado.
+\end{idea}
+
+\textbf{Conclusión.} La extensión es de una sola línea: imprimir
+\texttt{pw\_r->pw\_shell} después de obtener el \texttt{struct passwd}
+del real UID. Pero el ejercicio fuerza a entender la diferencia entre
+el UID \emph{real} (quién lanzó el proceso) y el \emph{efectivo} (con
+qué identidad se evalúan los permisos en cada syscall).
+
+% =====================================================================
+\section{Ejercicio 10 --- El bit SUID en acción}
+% =====================================================================
+
+\textbf{Enunciado.} Extender el programa anterior para que (a) abra
+el archivo creado en el ejercicio 8 para lectura/escritura, (b) se
+cambie el dueño del archivo a \texttt{root} y se vea que falla, (c) se
+ejecute con \texttt{sudo} y se vea que funciona, (d) se cambie el
+dueño del propio programa a \texttt{root} y se vea qué pasa, (e) se
+encienda el bit SUID y se ejecute como usuario regular --- explicando
+en cada paso por qué.
+
+\subsection*{Análisis: qué hace el bit SUID}
+
+Cuando un usuario ejecuta un binario, el SO crea un proceso cuyo
+\texttt{ruid} y \texttt{euid} son ambos iguales al UID del usuario.
+Pero si el binario tiene el bit \textbf{SUID} encendido, el SO
+asigna al proceso un \texttt{euid} \emph{igual al dueño del binario}.
+En símbolos, al hacer \texttt{exec} de un programa con SUID:
+
+\quad ruid\_nuevo = ruid\_actual\\
+\quad euid\_nuevo = owner\_del\_programa
+
+\begin{importante}
+SUID es el mecanismo histórico de UNIX para permitir que un programa
+sin privilegios delegue una acción privilegiada al kernel a través de
+un binario que pertenece a un usuario privilegiado. El ejemplo
+canónico es \texttt{/usr/bin/passwd}, que pertenece a \texttt{root}
+con SUID encendido: lo ejecuta cualquier usuario pero corre como
+\texttt{root}, lo cual le permite escribir en \texttt{/etc/shadow}.
+\end{importante}
+
+\subsection*{Programa extendido}
+
+\begin{lstlisting}[style=cstyle]
+#include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <pwd.h>
+
+int main(void) {
+    uid_t ruid = getuid();
+    uid_t euid = geteuid();
+    struct passwd *pw_r = getpwuid(ruid);
+    struct passwd *pw_e = getpwuid(euid);
+
+    printf("ruid=%d (%s), euid=%d (%s)\n",
+           ruid, pw_r ? pw_r->pw_name : "?",
+           euid, pw_e ? pw_e->pw_name : "?");
+
+    /* Abrir el archivo creado en el ejercicio 8 */
+    int fd = open("test.txt", O_RDWR);
+    if (fd < 0) {
+        perror("open test.txt");
+        return 1;
+    }
+    printf("Archivo abierto OK (fd=%d)\n", fd);
+    close(fd);
+    return 0;
+}
+\end{lstlisting}
+
+Compilación:
+
+\begin{lstlisting}[style=shellstyle]
+$ gcc -Wall -o whoami_open whoami_open.c
+\end{lstlisting}
+
+Estado inicial: \texttt{test.txt} es del usuario regular con permisos
+$600$, y \texttt{whoami\_open} también es del usuario regular con
+permisos $755$.
+
+\subsection*{10.a --- Abrir el archivo: OK}
+
+\begin{lstlisting}[style=shellstyle]
+$ ./whoami_open
+ruid=1000 (tomi), euid=1000 (tomi)
+Archivo abierto OK (fd=3)
+\end{lstlisting}
+
+\textbf{Por qué funciona.} El \texttt{euid} del proceso es $1000$
+(\texttt{tomi}), el archivo es de \texttt{tomi} con permisos $600$
+(\texttt{rw} para el dueño). El kernel chequea
+``\texttt{euid == st\_uid \&\& (mode \& S\_IWUSR)}'' y deja pasar.
+
+\subsection*{10.b --- Cambiar el dueño del archivo a \texttt{root}}
+
+\begin{lstlisting}[style=shellstyle]
+$ sudo chown root test.txt
+$ ls -l test.txt
+-rw-------  1 root staff  10 ... test.txt
+\end{lstlisting}
+
+\subsection*{10.c --- Repetir 10.a: ahora falla}
+
+\begin{lstlisting}[style=shellstyle]
+$ ./whoami_open
+ruid=1000 (tomi), euid=1000 (tomi)
+open test.txt: Permission denied
+\end{lstlisting}
+
+\textbf{Por qué falla.} El \texttt{euid} sigue siendo \texttt{tomi},
+pero el archivo es de \texttt{root} con permisos $600$ (sólo el dueño
+puede leer/escribir). El kernel rechaza con
+\texttt{EACCES (Permission denied)}.
+
+\subsection*{10.d --- Ejecutar con \texttt{sudo}: funciona}
+
+\begin{lstlisting}[style=shellstyle]
+$ sudo ./whoami_open
+ruid=0 (root), euid=0 (root)
+Archivo abierto OK (fd=3)
+\end{lstlisting}
+
+\textbf{Por qué funciona.} \texttt{sudo} ejecuta el comando con
+\texttt{ruid = euid = 0} (\texttt{root}). El archivo es de
+\texttt{root}, así que el chequeo del kernel pasa.
+
+\begin{idea}
+\texttt{sudo} es a su vez un binario \textbf{SUID-root}: pertenece a
+root con bit SUID encendido. Por eso cualquier usuario lo ejecuta y se
+le otorga (temporalmente, y previa autenticación) la identidad de
+root. Lo que estamos viendo en 10.d es la consecuencia de un programa
+SUID-root muy famoso.
+\end{idea}
+
+\subsection*{10.e --- Cambiar el dueño del programa a \texttt{root}}
+
+\begin{lstlisting}[style=shellstyle]
+$ sudo chown root whoami_open
+$ ls -l whoami_open
+-rwxr-xr-x  1 root staff  16400 ... whoami_open
+\end{lstlisting}
+
+El programa ahora es de root, pero conserva permisos $755$, así que el
+usuario regular sigue pudiendo ejecutarlo.
+
+\subsection*{10.f --- Ejecutar sin \texttt{sudo}: sigue fallando}
+
+\begin{lstlisting}[style=shellstyle]
+$ ./whoami_open
+ruid=1000 (tomi), euid=1000 (tomi)
+open test.txt: Permission denied
+\end{lstlisting}
+
+\textbf{Por qué falla.} Aunque el \emph{programa} sea de root, al
+ejecutarlo el sistema le asigna al proceso un \texttt{euid} igual al
+del usuario que lo invocó (\texttt{tomi}). Cambiar el dueño del
+programa por sí solo \emph{no} cambia el \texttt{euid} del proceso.
+
+\subsection*{10.g --- Con \texttt{sudo}: vuelve a funcionar}
+
+\begin{lstlisting}[style=shellstyle]
+$ sudo ./whoami_open
+ruid=0 (root), euid=0 (root)
+Archivo abierto OK (fd=3)
+\end{lstlisting}
+
+Misma razón que 10.d.
+
+\subsection*{10.h --- Encender el bit SUID en el programa}
+
+\begin{lstlisting}[style=shellstyle]
+$ sudo chmod u+s whoami_open
+$ ls -l whoami_open
+-rwsr-xr-x  1 root staff  16400 ... whoami_open
+\end{lstlisting}
+
+\textbf{Lectura del nuevo permiso.} La letra \texttt{s} en lugar de
+\texttt{x} en la posición del owner indica que el bit SUID está
+encendido. (Si el archivo tuviera SUID pero no \texttt{x}, aparecería
+una \texttt{S} mayúscula.)
+
+En octal, SUID es el bit $4000$:
+
+\quad $4755$ = SUID + \texttt{rwxr-xr-x}
+
+\subsection*{10.i --- Ejecutar como usuario regular: ahora funciona}
+
+\begin{lstlisting}[style=shellstyle]
+$ ./whoami_open
+ruid=1000 (tomi), euid=0 (root)        <- !!!
+Archivo abierto OK (fd=3)
+\end{lstlisting}
+
+\textbf{Por qué funciona.} El kernel, al hacer \texttt{exec} del
+binario SUID:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Setea \texttt{ruid = 1000} (el que lanzó el proceso).
+    \item \textbf{Setea \texttt{euid = 0}} (el dueño del programa).
+\end{itemize}
+
+A partir de ahí, cuando el programa llama \texttt{open("test.txt",
+O\_RDWR)}, el kernel chequea con \texttt{euid = 0}: pasa el chequeo
+porque \texttt{root} puede abrir cualquier cosa.
+
+\subsection*{Resumen y diagrama del juego de UIDs}
+
+\begin{center}
+\small
+\begin{tabular}{@{}llllll@{}}
+\toprule
+Paso & Dueño \texttt{test.txt} & Dueño \texttt{prog} & SUID? & ejec.\ con \texttt{sudo}? & resultado \\
+\midrule
+10.a & tomi & tomi & no & no  & OK \\
+10.c & root & tomi & no & no  & \texttt{EACCES} \\
+10.d & root & tomi & no & sí  & OK \\
+10.f & root & root & no & no  & \texttt{EACCES} \\
+10.g & root & root & no & sí  & OK \\
+10.i & root & root & \textbf{sí} & no & \textbf{OK} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    box/.style={draw,rounded corners,minimum width=3.6cm,minimum height=0.7cm,align=center}
+]
+\node[box,fill=io1!20] (a) at (0,3) {usuario \texttt{tomi}};
+\node[box,fill=io2!20] (b) at (0,1.7) {\texttt{exec("/usr/bin/prog")}};
+\node[box,fill=io3!20] (c) at (0,0.4) {kernel chequea SUID};
+\node[box,fill=ioshared!50] (d) at (0,-0.9) {ruid=tomi, euid=root};
+\node[box,fill=iofile!50] (e) at (0,-2.2) {syscalls validadas con euid=root};
+
+\draw[-Latex] (a) -- (b);
+\draw[-Latex] (b) -- (c);
+\draw[-Latex] (c) -- (d);
+\draw[-Latex] (d) -- (e);
+\end{tikzpicture}
+\end{center}
+
+\begin{importante}
+\textbf{SUID es peligroso}. Un programa SUID-root con un bug que
+permita ejecución arbitraria (buffer overflow, inyección de
+comandos, race condition) le da \texttt{root} al atacante. Por eso
+los binarios SUID-root del sistema son extremadamente auditados
+(\texttt{passwd}, \texttt{sudo}, \texttt{su}, \texttt{ping} con
+sockets raw, etc.) y se reducen al mínimo posible. Encontrarlos en un
+sistema:
+
+\begin{lstlisting}[style=shellstyle]
+$ find / -perm -u+s -type f 2>/dev/null
+\end{lstlisting}
+\end{importante}
+
+\textbf{Conclusión del ejercicio.} La secuencia ilustra los tres
+elementos que el kernel mira al chequear permisos sobre un archivo:
+(1) el \texttt{euid} del proceso (no el ruid), (2) el dueño y los
+permisos del archivo (no del programa), y (3) si el binario tiene el
+bit SUID, qué hace al \texttt{exec} (setear \texttt{euid} al dueño del
+binario). Estos tres puntos en interacción son la base de la
+seguridad clásica de UNIX.
+
+% =====================================================================
+\section{Conclusiones}
+% =====================================================================
+
+El práctico recorrió, ejercicio a ejercicio, las dos grandes capas del
+subsistema de E/S que ofrece UNIX al programador:
+
+\begin{itemize}[leftmargin=*]
+    \item Los \textbf{Ejercicios 1 a 4} se concentraron en el
+        \emph{lado bajo}, donde los dispositivos físicos aparecen como
+        archivos especiales en \texttt{/dev}. El primero ejercitó la
+        identificación de tipos de dispositivo en la salida de
+        \texttt{ls}; el segundo y el tercero usaron pseudo-dispositivos
+        (\texttt{/dev/zero} y \texttt{/dev/urandom}) como fuentes de
+        datos; el cuarto exploró el flujo completo de construcción de
+        un \emph{driver} como módulo cargable del kernel, con su
+        comunicación con el RTC vía \texttt{ioctl} sobre
+        \texttt{/dev/rtc0}.
+
+    \item Los \textbf{Ejercicios 5 y 6} subieron a la abstracción del
+        \emph{filesystem}: el 5 contrastó las dos representaciones
+        canónicas (FAT centralizada vs.\ inodos descentralizados) y
+        dejó en claro cuál es la diferencia conceptual (dónde vive la
+        metadata y la cadena de bloques de cada archivo); el 6 mostró
+        el patrón \texttt{readdir + stat} para inspeccionar entradas
+        de un directorio desde C.
+
+    \item Los \textbf{Ejercicios 7 a 10} cubrieron usuarios y control
+        de acceso. El 7 fue el lado descriptivo (cómo el sistema
+        guarda y expone usuarios y grupos en Linux y macOS); el 8, la
+        mecánica concreta de los permisos UGO y octal sobre archivos
+        y directorios, con énfasis en el bit \texttt{x} en
+        directorios; el 9, la distinción entre \texttt{ruid} y
+        \texttt{euid}; y el 10, el clímax del bloque: el bit
+        \texttt{SUID}, que es la pieza que hace posible que un proceso
+        no privilegiado obtenga, durante la ejecución de un binario
+        cuidadosamente diseñado, los privilegios del dueño de ese
+        binario.
+\end{itemize}
+
+\begin{idea}
+La idea que une todo el práctico es que \textbf{en UNIX, todo es un
+archivo}, y \textbf{para todo archivo hay un dueño y permisos}. La
+combinación de esas dos abstracciones simples ---inodo + permisos
+UGO--- es lo que permite que el mismo subsistema sirva indistintamente
+para acceder a discos, dispositivos, sockets, pipes y memoria
+compartida, con un control de acceso uniforme.
+\end{idea}
+
+\end{document}

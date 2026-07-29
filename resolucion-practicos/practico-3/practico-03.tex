@@ -24,6 +24,32 @@
 \usepackage{subcaption}
 \usepackage{amsmath,amssymb}
 
+% --- Cajas resaltadas (idea / ojo) ---
+\usepackage{tcolorbox}
+\tcbuselibrary{skins, breakable}
+\definecolor{noteborder}{rgb}{0.30,0.45,0.70}
+\definecolor{notebg}{rgb}{0.94,0.96,1.00}
+\definecolor{warnborder}{rgb}{0.75,0.45,0.10}
+\definecolor{warnbg}{rgb}{1.00,0.97,0.90}
+\newtcolorbox{idea}[1][]{
+    enhanced, breakable,
+    colback=notebg, colframe=noteborder,
+    boxrule=0.5pt, arc=2pt,
+    left=8pt, right=8pt, top=4pt, bottom=4pt,
+    title={\bfseries #1}, fonttitle=\bfseries,
+    coltitle=noteborder, colbacktitle=notebg,
+    boxed title style={frame hidden, colback=notebg}
+}
+\newtcolorbox{ojo}[1][]{
+    enhanced, breakable,
+    colback=warnbg, colframe=warnborder,
+    boxrule=0.5pt, arc=2pt,
+    left=8pt, right=8pt, top=4pt, bottom=4pt,
+    title={\bfseries #1}, fonttitle=\bfseries,
+    coltitle=warnborder, colbacktitle=warnbg,
+    boxed title style={frame hidden, colback=warnbg}
+}
+
 % --- Code listings ---
 \usepackage{listings}
 \definecolor{codegray}{rgb}{0.96,0.96,0.96}
@@ -134,8 +160,11 @@ GNU/Linux y macOS. La discusión recorre los estados de un proceso, el
 control con señales, el árbol de procesos, la planificación con prioridades,
 las condiciones de carrera, la sincronización con \texttt{flock}, mutexes
 POSIX, monitores Java, las operaciones del kernel ante interrupciones de
-timer y de I/O, la prueba semi-formal del algoritmo de Peterson y la
-implementación del problema productor-consumidor con semáforos POSIX.
+timer y de I/O, la prueba semi-formal del algoritmo de Peterson, el
+problema productor-consumidor con semáforos POSIX (con threads y con
+procesos), el análisis de \emph{deadlocks} en presencia de interrupciones
+y de grafos de recursos, y el productor-consumidor con \emph{colas de
+mensajes POSIX} controladas con \texttt{SIGSTOP}/\texttt{SIGCONT}.
 \end{abstract}
 
 \tableofcontents
@@ -1016,9 +1045,9 @@ Mecanismo Java & Categoría & Equivalente POSIX \\
 \end{tabular}
 \end{center}
 
-Además, \texttt{java.util.concurrent} ofrece \texttt{ReentrantLock},
-\texttt{Semaphore}, \texttt{CountDownLatch}, \texttt{CyclicBarrier},
-\texttt{BlockingQueue}, etc.
+Además, el paquete \texttt{java.util.concurrent} ofrece
+\texttt{ReentrantLock}, \texttt{Semaphore}, \texttt{CountDownLatch},
+\texttt{CyclicBarrier}, \texttt{BlockingQueue}, etc.
 
 \subsection*{7.c Equivalente Java sin race conditions}
 
@@ -1812,6 +1841,679 @@ de las variables de condición) más un mutex binario para exclusión
 mutua sobre el buffer.
 
 % =====================================================================
+\section{Ejercicio 12 --- Deadlock entre \texttt{interrupt\_handler} y \texttt{f()}}
+% =====================================================================
+
+\textbf{Enunciado.} Se tiene el siguiente fragmento de un SO en el que
+una función \texttt{f()} y un manejador de interrupción
+\texttt{interrupt\_handler()} comparten un recurso \texttt{r} protegido
+por un \emph{spinlock} \texttt{l}:
+
+\begin{lstlisting}[style=cstyle]
+lock l = 0;
+resource r;
+
+void interrupt_handler() {
+    acquire(&l);
+    use_resource(r);
+    release(&l);
+}
+
+void f() {
+    // do something...
+    acquire(&l);
+    use_resource(&l);
+    release(&l);
+}
+
+void acquire(lock *l) {
+    while (atomic_swap(l, 1) == 1)
+        ;                      // spin hasta tomar el lock
+}
+
+void release(lock *l) {
+    *l = 0;
+}
+\end{lstlisting}
+
+Se pide: \textbf{(A)} dar una traza que muestre que puede ocurrir
+\emph{deadlock}; \textbf{(B)} discutir si puede considerarse
+\emph{livelock}; \textbf{(C)} proponer una corrección de
+\texttt{acquire}/\texttt{release} para evitarlo.
+
+\subsection*{Análisis}
+
+Hay un detalle que cambia todo: \texttt{interrupt\_handler()} no es una
+función ordinaria. Se ejecuta \textbf{en el mismo flujo de la CPU} que
+estaba interrumpiendo, asincrónicamente, cuando llega la IRQ del
+dispositivo. Es decir: si \texttt{f()} estaba corriendo y \emph{ya
+había tomado el lock}, la CPU pasa a \texttt{interrupt\_handler()}
+\emph{con el lock tomado por el mismo flujo}, y el handler intenta
+tomarlo de nuevo. El \texttt{atomic\_swap} ve \texttt{l = 1}, entra al
+\texttt{while} y \textbf{espera por un lock que solo él podría
+liberar}.
+
+Esa es la causa estructural: en un solo procesador, un spinlock
+\emph{no es seguro} para sincronizar entre un flujo normal y un handler
+de interrupción si el handler corre \emph{con interrupciones
+habilitadas y sin deshabilitarlas antes de adquirir el lock}. La regla
+clásica de los kernels (por ejemplo, en Linux) es que cualquier
+spinlock que pueda ser tomado en contexto de interrupción se adquiere
+con \texttt{spin\_lock\_irqsave()}, que combina la toma del lock con la
+\emph{inhibición de interrupciones} en la CPU local.
+
+\subsection*{A. Traza que dispara el deadlock}
+
+CPU única, una sola entrada en la cola de planificación. Estado
+inicial: \texttt{l = 0}.
+
+\begin{lstlisting}[style=textstyle]
+t0: f() ejecuta acquire(&l)
+    -> atomic_swap(l, 1) devuelve 0  -> l = 1, lock tomado por f()
+t1: f() comienza use_resource(...)
+t2: llega IRQ del dispositivo
+    -> la CPU salta a interrupt_handler() SIN liberar el lock
+    -> el contexto "f()" queda suspendido pero el lock sigue en 1
+t3: interrupt_handler() ejecuta acquire(&l)
+    -> atomic_swap(l, 1) devuelve 1 (l ya valia 1)
+    -> entra al while (spin)
+t4: spin infinito:
+    - el handler no puede progresar (esta girando)
+    - f() no puede retomar la CPU (la tiene el handler)
+    - nadie va a hacer release(&l)
+\end{lstlisting}
+
+La CPU queda atrapada \emph{indefinidamente} en el spin del handler.
+Esto es un \textbf{deadlock} clásico: hay un ciclo de espera trivial,
+con un único actor que depende de sí mismo bloqueado por una cesión
+involuntaria de control.
+
+\begin{idea}[Las cuatro condiciones de Coffman]
+Para que haya deadlock se tienen que dar simultáneamente:
+exclusión mutua, retención y espera (\emph{hold-and-wait}),
+no apropiación (\emph{no preemption}) y espera circular. Aquí
+\textbf{las cuatro se cumplen}: el lock es de uso exclusivo;
+\texttt{f()} retiene el lock mientras la CPU pasa al handler (espera);
+el handler no puede ``quitarle'' el lock a \texttt{f()}; y el ciclo es
+$\texttt{handler} \to \text{lock} \to \texttt{f()} \to \text{CPU} \to
+\texttt{handler}$.
+\end{idea}
+
+\subsection*{B. ¿Es livelock?}
+
+\textbf{No exactamente.} El \emph{livelock} se caracteriza porque los
+actores \emph{siguen consumiendo CPU activamente} ejecutando código,
+pero ninguno hace progreso útil. En sentido amplio, sí: la CPU está
+ejecutando una instrucción tras otra (el bucle \texttt{while} del
+\texttt{acquire}), no está parada ni en \texttt{HALT}. Si uno mira la
+máquina, la ve trabajando.
+
+Pero por el criterio clásico de planificación, sigue siendo un
+\textbf{deadlock}: \texttt{f()} está bloqueado (no porque esté
+durmiendo, sino porque le secuestraron la CPU) y el handler está
+bloqueado esperando un lock que nadie va a liberar. No hay
+\emph{ningún} estado alcanzable en el que el sistema progrese, que es
+la definición operativa de deadlock.
+
+\textbf{En la literatura del curso}, el caso suele clasificarse como
+deadlock con \emph{busy-wait} (el actor activo gasta CPU pero no
+avanza), distinto al livelock genuino, donde múltiples actores
+\emph{cambian de estado activamente} pero su interacción los mantiene
+sin progreso (típicamente dos procesos que ceden el paso mutuamente y
+no avanzan ninguno).
+
+\subsection*{C. Corrección: deshabilitar interrupciones al adquirir}
+
+La corrección estándar es asegurarse de que, mientras se posee un lock
+que puede ser solicitado por un handler de interrupción, las
+interrupciones estén \emph{deshabilitadas} en la CPU local. Así, el
+handler no puede correr en medio de la región crítica y no puede
+intentar tomar el lock.
+
+\begin{lstlisting}[style=cstyle]
+/*
+ * Implementacion correcta para spinlock que puede ser solicitado
+ * tanto desde codigo normal como desde un interrupt handler.
+ */
+
+void acquire(lock *l) {
+    intr_disable();                      // deshabilita IRQs locales
+    while (atomic_swap(l, 1) == 1) {
+        intr_enable();                   // habilita brevemente
+        // (asi otras IRQs no se pierden mientras giramos)
+        cpu_relax();                     // pausa, hint al HW
+        intr_disable();                  // vuelve a deshabilitar
+    }
+    /* en este punto: lock tomado Y IRQs deshabilitadas */
+}
+
+void release(lock *l) {
+    *l = 0;
+    intr_enable();                       // las rehabilito
+}
+\end{lstlisting}
+
+Análisis de la corrección:
+
+\begin{itemize}[leftmargin=*]
+    \item Cuando \texttt{f()} llama a \texttt{acquire()}, deshabilita
+        las interrupciones de la CPU local. A partir de ese instante el
+        handler \emph{no puede correr} en este núcleo.
+    \item Si la IRQ se dispara mientras \texttt{f()} tiene el lock, el
+        hardware la deja \emph{pendiente}; será atendida en cuanto
+        \texttt{release} rehabilite las interrupciones.
+    \item En el caso simétrico (el handler tomando el lock en un
+        sistema multicore donde \texttt{f()} corre en otro núcleo), el
+        spin sigue siendo correcto: la otra CPU eventualmente liberará.
+    \item Las dos líneas \texttt{intr\_enable}/\texttt{intr\_disable}
+        dentro del bucle son una optimización: en multiprocesador, no
+        quiero perder IRQs de \emph{otros} dispositivos mientras espero.
+\end{itemize}
+
+\begin{ojo}[En Linux: \texttt{spin\_lock\_irqsave}]
+La API de Linux para este patrón es \texttt{spin\_lock\_irqsave(\&l,
+flags)} (guarda el estado de IRQ previo) y
+\texttt{spin\_unlock\_irqrestore(\&l, flags)} (lo restaura). Es exactamente
+lo mismo que la corrección de arriba, pero preservando si las IRQs ya
+estaban deshabilitadas (caso anidado). En multiprocesador, los spinlocks
+de Linux son \emph{de a uno por CPU} y bloquean en la CPU local mientras
+el spin se hace por el lock global.
+\end{ojo}
+
+\textbf{Conclusión.} El bug original es que \texttt{f()} adquiere el
+lock con interrupciones habilitadas, y luego una interrupción puede
+``aparecer'' en medio de la región crítica y pedir el mismo lock. La
+corrección es trivial pero esencial: \emph{cualquier} lock que pueda
+ser solicitado desde un manejador de interrupción debe adquirirse con
+las IRQs locales deshabilitadas.
+
+% =====================================================================
+\section{Ejercicio 13 --- Grafo de recursos y deadlock con liberación temprana}
+% =====================================================================
+
+\textbf{Enunciado.} Dado el siguiente uso de tres procesos y tres
+recursos:
+
+\begin{enumerate}[leftmargin=*,nosep,label=\arabic*.]
+    \item $P_1$ adquiere $R_1$.
+    \item $P_2$ adquiere $R_2$.
+    \item $P_3$ adquiere $R_3$.
+    \item $P_1$ requiere $R_2$.
+    \item $P_2$ requiere $R_3$.
+    \item $P_3$ requiere $R_1$.
+\end{enumerate}
+
+Dibujar el grafo de \emph{uso} (asignación) y \emph{requerimiento} de
+recursos e indicar si hay \emph{deadlock}. Después analizar qué pasa
+si $P_1$ libera $R_1$ \emph{antes} del paso~4.
+
+\subsection*{Análisis}
+
+El \textbf{grafo de asignación de recursos} es un grafo dirigido
+bipartito con dos tipos de nodos: procesos (círculo) y recursos
+(cuadrado). Las aristas se interpretan así:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item $R \to P$ (de recurso a proceso): el recurso \emph{está
+        asignado a} ese proceso.
+    \item $P \to R$ (de proceso a recurso): el proceso \emph{está
+        esperando} ese recurso.
+\end{itemize}
+
+\textbf{Criterio.} Si todos los recursos son de \emph{instancia
+única}, hay deadlock $\Longleftrightarrow$ existe un ciclo en el
+grafo.
+
+\subsection*{Caso 1: el escenario completo}
+
+Después del paso~6:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Aristas de asignación: $R_1 \to P_1$, $R_2 \to P_2$, $R_3 \to P_3$.
+    \item Aristas de petición: $P_1 \to R_2$, $P_2 \to R_3$, $P_3 \to R_1$.
+\end{itemize}
+
+\begin{center}
+\begin{tikzpicture}[
+    node distance=2cm,
+    proc/.style ={circle, draw, minimum size=0.85cm, font=\small\bfseries},
+    res/.style  ={rectangle, draw, minimum size=0.85cm, font=\small\bfseries},
+    every edge/.style={draw, -{Stealth[length=2mm]}, thick}
+]
+\node[proc] (P1) at (0, 1.8) {$P_1$};
+\node[proc] (P2) at (2.6, 0) {$P_2$};
+\node[proc] (P3) at (-2.6, 0) {$P_3$};
+
+\node[res]  (R1) at (-2.6, 1.8) {$R_1$};
+\node[res]  (R2) at (2.6, 1.8)  {$R_2$};
+\node[res]  (R3) at (0, -0.8)   {$R_3$};
+
+% asignaciones (R -> P)
+\draw[->, blue!60!black, thick] (R1) -- (P1);
+\draw[->, blue!60!black, thick] (R2) -- (P2);
+\draw[->, blue!60!black, thick] (R3) -- (P3);
+% pedidos (P -> R)
+\draw[->, red!70!black, thick, dashed] (P1) -- (R2);
+\draw[->, red!70!black, thick, dashed] (P2) -- (R3);
+\draw[->, red!70!black, thick, dashed] (P3) -- (R1);
+\end{tikzpicture}
+\end{center}
+
+(Las aristas azules sólidas son asignaciones; las rojas punteadas son
+pedidos pendientes.)
+
+Siguiendo el ciclo:
+$P_1 \to R_2 \to P_2 \to R_3 \to P_3 \to R_1 \to P_1$.
+
+\textbf{Conclusión del caso 1: hay deadlock.} Existe un ciclo cerrado:
+cada proceso espera un recurso retenido por el siguiente, formando un
+\emph{ciclo de espera} de longitud 3. Como los recursos son únicos, el
+ciclo basta para garantizar deadlock; las cuatro condiciones de Coffman
+se cumplen.
+
+\subsection*{Caso 2: $P_1$ libera $R_1$ antes del paso 4}
+
+Si entre los pasos 3 y 4 ocurre el evento adicional ``$P_1$ libera
+$R_1$'', el grafo queda así al llegar al paso~6:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Aristas de asignación: $R_2 \to P_2$, $R_3 \to P_3$.
+        \emph{$R_1$ está libre.}
+    \item Aristas de petición: $P_1 \to R_2$, $P_2 \to R_3$, $P_3 \to R_1$.
+\end{itemize}
+
+\begin{center}
+\begin{tikzpicture}[
+    node distance=2cm,
+    proc/.style ={circle, draw, minimum size=0.85cm, font=\small\bfseries},
+    res/.style  ={rectangle, draw, minimum size=0.85cm, font=\small\bfseries},
+    every edge/.style={draw, -{Stealth[length=2mm]}, thick}
+]
+\node[proc] (P1) at (0, 1.8) {$P_1$};
+\node[proc] (P2) at (2.6, 0) {$P_2$};
+\node[proc] (P3) at (-2.6, 0) {$P_3$};
+
+\node[res]  (R1) at (-2.6, 1.8) {$R_1$};
+\node[res]  (R2) at (2.6, 1.8)  {$R_2$};
+\node[res]  (R3) at (0, -0.8)   {$R_3$};
+
+\draw[->, blue!60!black, thick] (R2) -- (P2);
+\draw[->, blue!60!black, thick] (R3) -- (P3);
+\draw[->, red!70!black, thick, dashed] (P1) -- (R2);
+\draw[->, red!70!black, thick, dashed] (P2) -- (R3);
+\draw[->, red!70!black, thick, dashed] (P3) -- (R1);
+\end{tikzpicture}
+\end{center}
+
+\textbf{No hay ciclo.} La arista $R_1 \to P_1$ desapareció; $R_1$ no
+tiene aristas entrantes ni salientes. Toda cadena de espera termina en
+algún recurso libre (en concreto, $R_1$).
+
+\subsection*{Progreso de los procesos hasta su finalización}
+
+Como hay un grafo acíclico de espera, existe al menos un orden válido
+de finalización (es lo que enuncia el \emph{algoritmo de detección}
+estándar). Veamos cómo evolucionan los procesos:
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{$P_3$ obtiene $R_1$.} $R_1$ estaba libre y $P_3$ lo
+        pedía; el SO se lo asigna. Ahora $P_3$ tiene $R_3$ y $R_1$.
+    \item \textbf{$P_3$ termina su trabajo y libera $R_3$ y $R_1$.}
+    \item \textbf{$P_2$ obtiene $R_3$.} Lo estaba esperando; ahora
+        tiene $R_2$ y $R_3$.
+    \item \textbf{$P_2$ termina y libera $R_2$ y $R_3$.}
+    \item \textbf{$P_1$ obtiene $R_2$.} Termina y libera todo.
+\end{enumerate}
+
+Diagrama temporal de la progresión:
+
+\begin{lstlisting}[style=textstyle]
+estado inicial (tras la liberacion temprana de R1):
+   R1 libre       R2 -> P2       R3 -> P3
+   P1 espera R2   P2 espera R3   P3 espera R1
+
+paso 1: P3 toma R1 (estaba libre)
+   R1 -> P3       R2 -> P2       R3 -> P3
+   P1 espera R2   P2 espera R3   P3 listo para correr
+
+paso 2: P3 termina, libera R3 y R1
+   R1 libre       R2 -> P2       R3 libre
+
+paso 3: P2 toma R3
+   R1 libre       R2 -> P2       R3 -> P2
+   P1 espera R2   P2 listo para correr
+
+paso 4: P2 termina, libera R2 y R3
+   R1 libre       R2 libre       R3 libre
+
+paso 5: P1 toma R2
+   R2 -> P1
+   P1 corre, termina, libera R2
+
+estado final: todos los recursos libres, todos los procesos terminaron.
+\end{lstlisting}
+
+\textbf{Conclusión.}
+
+\begin{itemize}[leftmargin=*]
+    \item En el escenario original (pasos 1--6 sin liberación) \textbf{sí
+        hay deadlock}: el grafo de asignación tiene un ciclo de
+        longitud~3.
+    \item Si $P_1$ libera $R_1$ antes del paso~4, \textbf{no hay
+        deadlock}: el ciclo se rompe en su origen y existe una
+        secuencia de finalización ($P_3 \to P_2 \to P_1$) que lleva a
+        todos los procesos a terminar.
+\end{itemize}
+
+Esta es la base del \textbf{algoritmo del banquero} y de las técnicas
+de \emph{detección} y \emph{prevención} de deadlocks: si en cada
+estado del grafo de asignación de recursos existe al menos una
+secuencia segura de finalización, el sistema está libre de deadlock.
+
+% =====================================================================
+\section{Ejercicio 14 --- Productor-consumidor con \texttt{mq} POSIX y señales}
+% =====================================================================
+
+\textbf{Enunciado.} Implementar el problema productor-consumidor
+usando \textbf{procesos} y \textbf{colas de mensajes POSIX}
+(\texttt{mq\_open}, \texttt{mq\_send}, \texttt{mq\_receive}). El
+productor debe bloquearse cuando la cola está llena; el consumidor,
+cuando está vacía. La sincronización debe lograrse usando las señales
+\texttt{SIGSTOP} y \texttt{SIGCONT}: un proceso se auto-bloquea
+enviándose \texttt{SIGSTOP} a sí mismo y es despertado por el otro
+proceso mediante \texttt{SIGCONT}. El formato de los mensajes lo
+elegimos a conveniencia.
+
+\subsection*{Análisis}
+
+Las \textbf{colas de mensajes POSIX} son un mecanismo IPC con
+namespace global del kernel (los descriptores se nombran como
+\texttt{/nombre}). Cada cola tiene un tamaño máximo de mensajes
+(\texttt{mq\_maxmsg}) y un tamaño máximo por mensaje
+(\texttt{mq\_msgsize}). Por defecto, \texttt{mq\_send} se bloquea si
+la cola está llena y \texttt{mq\_receive} se bloquea si está vacía.
+
+\begin{ojo}[¿Por qué entonces hace falta \texttt{SIGSTOP}/\texttt{SIGCONT}?]
+Justamente, si dejáramos que las funciones \texttt{mq\_*} se bloqueen
+por sí solas, \textbf{el ejercicio sería trivial} y no enseñaría nada
+sobre control explícito de procesos. La consigna pide \emph{nosotros}
+detectar las condiciones de cola llena/vacía con la flag
+\texttt{O\_NONBLOCK} y, en esos casos, suspender el proceso con
+\texttt{kill(getpid(), SIGSTOP)}. El otro proceso, al ver que pudo
+publicar/consumir un mensaje, lo despierta con
+\texttt{kill(otro\_pid, SIGCONT)}.
+
+Es un ejercicio didáctico: muestra que las señales pueden
+implementar primitivas de sincronización (es lo que hizo
+históricamente \texttt{cu} con \texttt{SIGTTIN}/\texttt{SIGTTOU},
+y lo que hacen los debuggers).
+\end{ojo}
+
+\subsection*{Arquitectura}
+
+\begin{itemize}[leftmargin=*]
+    \item Un proceso \textbf{padre} crea la cola
+        (\texttt{mq\_open(O\_CREAT|O\_RDWR|O\_NONBLOCK)}) e
+        intercambia los PIDs con el hijo a través de un \emph{pipe}
+        (necesario porque el productor necesita saber el PID del
+        consumidor y viceversa).
+    \item \texttt{fork()}: el hijo es \textbf{consumidor}; el padre es
+        \textbf{productor}.
+    \item Formato del mensaje: una estructura simple con un número de
+        secuencia y una carga útil de texto.
+    \item Cola no bloqueante: si \texttt{mq\_send} retorna con
+        \texttt{errno == EAGAIN}, el productor se auto-suspende.
+        Análogamente \texttt{mq\_receive} para el consumidor.
+\end{itemize}
+
+\begin{center}
+\begin{tikzpicture}[
+    node distance=2cm,
+    proc/.style={rectangle, draw, rounded corners, minimum width=2.5cm,
+                 minimum height=1cm, align=center, font=\ttfamily\small},
+    box/.style={rectangle, draw, minimum width=3cm, minimum height=1cm,
+                align=center, font=\small}
+]
+\node[proc] (P) {Productor \\ (padre)};
+\node[box,  right=2.5cm of P] (Q) {\textbf{mq POSIX} \\ \texttt{/pc\_queue}};
+\node[proc, right=2.5cm of Q] (C) {Consumidor \\ (hijo)};
+
+\draw[-{Stealth[length=2.5mm]}, thick] (P) -- node[above]{\small\texttt{mq\_send}} (Q);
+\draw[-{Stealth[length=2.5mm]}, thick] (Q) -- node[above]{\small\texttt{mq\_receive}} (C);
+
+\draw[-{Stealth[length=2.5mm]}, thick, dashed, red!70!black]
+    (C.north) to[bend left=30] node[above, font=\small]{\texttt{SIGCONT}} (P.north);
+\draw[-{Stealth[length=2.5mm]}, thick, dashed, red!70!black]
+    (P.south) to[bend left=30] node[below, font=\small]{\texttt{SIGCONT}} (C.south);
+\end{tikzpicture}
+\end{center}
+
+\subsection*{Solución}
+
+\begin{lstlisting}[style=cstyle]
+/* prod_cons_mq.c -- compilar con: cc -O2 -Wall -Wextra prod_cons_mq.c -lrt */
+#define _POSIX_C_SOURCE 200809L
+#include <errno.h>
+#include <fcntl.h>
+#include <mqueue.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
+#define MQ_NAME    "/pc_queue_demo"
+#define MAX_MSG    4              /* capacidad de la cola */
+#define MSG_SIZE   sizeof(msg_t)
+#define N_ITEMS    16             /* cuantos items produce el productor */
+
+typedef struct {
+    int  seq;
+    char payload[24];
+} msg_t;
+
+static void die(const char *m) { perror(m); exit(1); }
+
+/* SIGCONT solo despierta; no necesita hacer nada en el handler. */
+static void noop_handler(int sig) { (void)sig; }
+
+int main(void) {
+    /* Limpieza por si quedo basura de una corrida previa. */
+    mq_unlink(MQ_NAME);
+
+    /* Atributos de la cola: no-bloqueante, capacidad acotada. */
+    struct mq_attr attr = {
+        .mq_flags   = O_NONBLOCK,
+        .mq_maxmsg  = MAX_MSG,
+        .mq_msgsize = MSG_SIZE,
+        .mq_curmsgs = 0,
+    };
+
+    mqd_t mq = mq_open(MQ_NAME,
+                       O_CREAT | O_RDWR | O_NONBLOCK,
+                       0600, &attr);
+    if (mq == (mqd_t)-1) die("mq_open");
+
+    /* Instalo handler de SIGCONT (default es ignore + wake up). */
+    struct sigaction sa = {0};
+    sa.sa_handler = noop_handler;
+    sigemptyset(&sa.sa_mask);
+    sigaction(SIGCONT, &sa, NULL);
+
+    /* Necesitamos que cada proceso conozca al otro PID. */
+    int pipe_p2c[2], pipe_c2p[2];
+    if (pipe(pipe_p2c) < 0 || pipe(pipe_c2p) < 0) die("pipe");
+
+    pid_t pid = fork();
+    if (pid < 0) die("fork");
+
+    if (pid == 0) {
+        /* ------------ HIJO: CONSUMIDOR ------------ */
+        close(pipe_p2c[1]);
+        close(pipe_c2p[0]);
+        pid_t prod_pid;
+        if (read(pipe_p2c[0], &prod_pid, sizeof(prod_pid)) <= 0)
+            die("read prod_pid");
+        pid_t self = getpid();
+        write(pipe_c2p[1], &self, sizeof(self));
+
+        for (int i = 0; i < N_ITEMS; i++) {
+            msg_t m;
+            unsigned prio;
+
+            /* Intentar recibir; si la cola esta vacia, auto-suspender. */
+            while (mq_receive(mq, (char *)&m, MSG_SIZE, &prio) < 0) {
+                if (errno == EAGAIN) {
+                    printf("    [C] cola vacia, me suspendo\n");
+                    fflush(stdout);
+                    kill(self, SIGSTOP);    /* duermo hasta SIGCONT */
+                    continue;               /* y reintento mq_receive */
+                }
+                die("mq_receive");
+            }
+            printf("    [C] consumio seq=%d payload=\"%s\"\n",
+                   m.seq, m.payload);
+            fflush(stdout);
+
+            /* Avisar al productor por si se durmio por cola llena. */
+            kill(prod_pid, SIGCONT);
+
+            usleep(80 * 1000);              /* consumo lento */
+        }
+
+        close(pipe_p2c[0]); close(pipe_c2p[1]);
+        mq_close(mq);
+        exit(0);
+    }
+
+    /* ------------ PADRE: PRODUCTOR ------------ */
+    close(pipe_p2c[0]);
+    close(pipe_c2p[1]);
+    pid_t self = getpid();
+    write(pipe_p2c[1], &self, sizeof(self));
+    pid_t cons_pid;
+    if (read(pipe_c2p[0], &cons_pid, sizeof(cons_pid)) <= 0)
+        die("read cons_pid");
+
+    for (int i = 0; i < N_ITEMS; i++) {
+        msg_t m = { .seq = i };
+        snprintf(m.payload, sizeof(m.payload), "item-%d", i);
+
+        /* Intentar enviar; si la cola esta llena, auto-suspender. */
+        while (mq_send(mq, (const char *)&m, MSG_SIZE, 0) < 0) {
+            if (errno == EAGAIN) {
+                printf("[P] cola llena, me suspendo\n");
+                fflush(stdout);
+                kill(self, SIGSTOP);        /* duermo hasta SIGCONT */
+                continue;
+            }
+            die("mq_send");
+        }
+        printf("[P] produjo seq=%d\n", m.seq);
+        fflush(stdout);
+
+        /* Aviso al consumidor por si esta dormido por cola vacia. */
+        kill(cons_pid, SIGCONT);
+
+        usleep(20 * 1000);                  /* produccion rapida */
+    }
+
+    waitpid(pid, NULL, 0);
+
+    close(pipe_p2c[1]); close(pipe_c2p[0]);
+    mq_close(mq);
+    mq_unlink(MQ_NAME);
+    return 0;
+}
+\end{lstlisting}
+
+\subsection*{Compilación y ejecución}
+
+\begin{lstlisting}
+# Linux: hace falta -lrt para mq_*
+cc -O2 -Wall -Wextra -o prod_cons_mq prod_cons_mq.c -lrt
+./prod_cons_mq
+\end{lstlisting}
+
+\textbf{Salida esperada} (el productor es más rápido, llena la cola,
+se suspende; el consumidor lo despierta):
+
+\begin{lstlisting}[style=textstyle]
+[P] produjo seq=0
+[P] produjo seq=1
+    [C] consumio seq=0 payload="item-0"
+[P] produjo seq=2
+[P] produjo seq=3
+[P] produjo seq=4
+[P] cola llena, me suspendo            <-- 4 mensajes en cola, SIGSTOP
+    [C] consumio seq=1 payload="item-1"
+[P] produjo seq=5                       <-- SIGCONT del consumidor
+[P] produjo seq=6
+[P] cola llena, me suspendo
+    [C] consumio seq=2 payload="item-2"
+[P] produjo seq=7
+...
+    [C] consumio seq=15 payload="item-15"
+\end{lstlisting}
+
+\subsection*{Por qué funciona}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{El handler de \texttt{SIGCONT} es un no-op.} No hace
+        falta que haga nada: el solo hecho de recibir \texttt{SIGCONT}
+        despierta al proceso de \texttt{SIGSTOP}. La presencia del
+        handler asegura que la señal no se ignore silenciosamente y
+        además \emph{interrumpe} cualquier syscall bloqueante con
+        \texttt{EINTR} (útil si en lugar de \texttt{O\_NONBLOCK} se
+        usara una variante bloqueante).
+    \item \textbf{La cola actúa como buffer.} POSIX garantiza que
+        \texttt{mq\_send}/\texttt{mq\_receive} son atómicos respecto a
+        múltiples productores/consumidores, así que no hace falta
+        proteger los índices con un mutex aparte.
+    \item \textbf{Las señales solucionan el problema del wake-up
+        perdido.} ¿Y si el consumidor manda \texttt{SIGCONT} \emph{justo}
+        antes de que el productor llame a \texttt{SIGSTOP}? Cuando el
+        productor finalmente se duerma, no habrá nadie que lo despierte.
+        Sin embargo, el bucle \texttt{while} re-intenta \texttt{mq\_send}
+        después de \texttt{SIGSTOP}, y si la cola dejó de estar llena
+        gracias al consumo previo, el envío tiene éxito sin necesidad
+        de un segundo \texttt{SIGCONT}. La condición se vuelve a
+        evaluar \emph{después} del wakeup.
+    \item \textbf{No hay deadlock.} Si productor y consumidor están
+        ambos dormidos, eso significaría cola simultáneamente llena
+        y vacía, lo cual es imposible: \texttt{MAX\_MSG > 0}.
+\end{itemize}
+
+\subsection*{Inspección de la cola desde el shell}
+
+En Linux las colas de mensajes POSIX se montan opcionalmente como un
+filesystem virtual:
+
+\begin{lstlisting}
+sudo mkdir -p /dev/mqueue
+sudo mount -t mqueue none /dev/mqueue
+ls -l /dev/mqueue/                    # muestra /pc_queue_demo
+cat /dev/mqueue/pc_queue_demo         # QSIZE: ..., NOTIFY_PID: ...
+\end{lstlisting}
+
+\subsection*{Conclusión}
+
+El productor-consumidor con \texttt{mq} POSIX y
+\texttt{SIGSTOP}/\texttt{SIGCONT} es funcional pero pedagógicamente
+\emph{barroco}: en producción se preferiría dejar que las syscalls
+bloqueantes hagan el trabajo (\texttt{mq\_send} sin \texttt{O\_NONBLOCK}
+bloquea cuando la cola está llena, sin necesidad de señales). La
+versión con señales \emph{tiene valor didáctico}: muestra que
+(1)~\texttt{SIGSTOP} es no enmascarable y permite implementar un
+\emph{sleep} confiable, (2)~\texttt{SIGCONT} es la primitiva
+recíproca, y (3)~el patrón ``probar, dormir si no hay condición,
+ser despertado, reintentar'' es exactamente la semántica de un
+\emph{condition variable} con \texttt{wait}/\texttt{signal}: las
+señales POSIX nos permiten implementar a mano lo que \texttt{pthread\_cond\_t}
+implementa por nosotros.
+
+% =====================================================================
 \section{Conclusiones}
 % =====================================================================
 
@@ -1821,21 +2523,35 @@ del modelo de tareas del SO: la \emph{representación} del proceso
 \texttt{/proc}), su \emph{planificación} (interrupciones del timer,
 context switches, prioridades con \texttt{nice}/\texttt{renice}) y su
 \emph{coordinación} ante recursos compartidos (race conditions,
-\texttt{flock}, mutexes POSIX, monitores Java, semáforos). Los dos
-ejercicios teóricos sobre operaciones del kernel (8 y 9) muestran que
-la diferencia esencial entre desalojo por \emph{quantum} y bloqueo por
-I/O es el estado al que se transita: \texttt{RUNNABLE} en un caso,
-\texttt{SLEEPING} en el otro. Esa misma distinción ---tiempo compartido
-voluntario vs. espera por evento--- es la que justifica toda la
-arquitectura de las \emph{wait queues}, los semáforos y las variables
-de condición que se materializan en el productor-consumidor del
-Ejercicio~11. Peterson, finalmente, hace el cierre teórico: la
-exclusión mutua puede resolverse por software, pero las hipótesis de
-atomicidad y consistencia secuencial que requiere muestran por qué los
-sistemas reales recurren a instrucciones atómicas del hardware. Todo
-el práctico converge en una sola idea: la concurrencia es \emph{no
-determinismo controlado}, y el objetivo del SO es ofrecer abstracciones
-suficientes para que ese no determinismo no altere los objetivos de
-cómputo.
+\texttt{flock}, mutexes POSIX, monitores Java, semáforos, colas de
+mensajes).
+
+Los dos ejercicios teóricos sobre operaciones del kernel (8 y 9)
+muestran que la diferencia esencial entre desalojo por \emph{quantum}
+y bloqueo por I/O es el estado al que se transita: \texttt{RUNNABLE}
+en un caso, \texttt{SLEEPING} en el otro. Esa misma distinción
+---tiempo compartido voluntario vs.\ espera por evento--- es la que
+justifica toda la arquitectura de las \emph{wait queues}, los
+semáforos y las variables de condición que se materializan en el
+productor-consumidor de los Ejercicios~11 y~14.
+
+Peterson (Ejercicio~10) hace el cierre teórico de la exclusión mutua:
+puede resolverse por software, pero las hipótesis de atomicidad y
+consistencia secuencial que requiere muestran por qué los sistemas
+reales recurren a instrucciones atómicas del hardware.
+
+Los Ejercicios~12 y~13 cierran el bloque de \emph{patologías} de la
+concurrencia: el primero, deadlock causado por una interrupción que
+intenta tomar un lock ya retenido en el mismo flujo de CPU (y la regla
+de oro que se desprende: \emph{todo lock pedido desde un handler debe
+adquirirse con interrupciones deshabilitadas}); el segundo, el clásico
+ciclo de espera de tres procesos sobre tres recursos, y cómo basta una
+liberación temprana para romper el grafo y permitir una secuencia
+segura de finalización.
+
+Todo el práctico converge en una sola idea: la concurrencia es
+\emph{no determinismo controlado}, y el objetivo del SO es ofrecer
+abstracciones suficientes para que ese no determinismo no altere los
+objetivos de cómputo.
 
 \end{document}

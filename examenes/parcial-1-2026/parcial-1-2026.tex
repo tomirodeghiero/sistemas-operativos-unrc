@@ -1,0 +1,956 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- Encoding ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands]{babel}
+\usepackage{lmodern}
+
+% --- Layout ---
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{parskip}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em plus 0.2em minus 0.1em}
+
+% --- Tables and graphics ---
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{positioning,shapes.geometric,arrows.meta,fit,backgrounds,calc,decorations.pathreplacing}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{amsmath,amssymb}
+
+% --- Soporte para caracteres Unicode usados en formulas en texto plano ---
+\usepackage{newunicodechar}
+\newunicodechar{→}{\ensuremath{\rightarrow}}
+\newunicodechar{≥}{\ensuremath{\geq}}
+\newunicodechar{≤}{\ensuremath{\leq}}
+\newunicodechar{×}{\ensuremath{\times}}
+\newunicodechar{÷}{\ensuremath{\div}}
+\newunicodechar{≈}{\ensuremath{\approx}}
+\newunicodechar{⌈}{\ensuremath{\lceil}}
+\newunicodechar{⌉}{\ensuremath{\rceil}}
+\newunicodechar{✓}{\ensuremath{\checkmark}}
+\newunicodechar{✗}{\ensuremath{\times}}
+
+% --- Code listings ---
+\usepackage{listings}
+\definecolor{codegray}{rgb}{0.96,0.96,0.96}
+\definecolor{codeborder}{rgb}{0.85,0.85,0.85}
+\definecolor{codecomment}{rgb}{0.30,0.55,0.30}
+\definecolor{codekeyword}{rgb}{0.10,0.30,0.70}
+\definecolor{codestring}{rgb}{0.65,0.15,0.10}
+
+\lstdefinestyle{cstyle}{
+    language=C,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+}
+
+\lstdefinestyle{shellstyle}{
+    language=bash,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+    upquote=true,
+}
+
+\lstdefinestyle{textstyle}{
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstset{style=textstyle}
+
+% --- Definition / Idea / Important boxes ---
+\usepackage[most]{tcolorbox}
+\newtcolorbox{idea}[1][]{
+    colback=orange!5!white,
+    colframe=orange!60!black,
+    fonttitle=\bfseries,
+    title=Idea intuitiva,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{importante}[1][]{
+    colback=red!5!white,
+    colframe=red!50!black,
+    fonttitle=\bfseries,
+    title=Importante,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{respuesta}[1][]{
+    colback=green!5!white,
+    colframe=green!40!black,
+    fonttitle=\bfseries,
+    title=Respuesta,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+
+% --- Hyperlinks ---
+\usepackage[colorlinks=true,
+            linkcolor=blue!60!black,
+            urlcolor=blue!50!black,
+            citecolor=blue!60!black]{hyperref}
+
+% --- Color palette ---
+\definecolor{c1}{HTML}{4C72B0}
+\definecolor{c2}{HTML}{DD8452}
+\definecolor{c3}{HTML}{55A868}
+\definecolor{c4}{HTML}{8172B2}
+\definecolor{cred}{HTML}{C44E52}
+
+% --- Title block ---
+\title{
+    \vspace{-2.5em}
+    \textbf{Parcial 1 --- 2026} \\[0.3em]
+    \large Sistemas Operativos / Sistemas Operativos y Redes
+}
+\author{
+    Tomás Rodeghiero \\
+    \small UNRC --- Universidad Nacional de Río Cuarto
+}
+\date{2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent
+Resolución completa del Parcial 1 del año 2026 de la cátedra de
+Sistemas Operativos (Lic.\ en Ciencias de la Computación, UNRC). El
+parcial consta de cinco ejercicios que abarcan: (i) verdadero/falso
+sobre arquitectura de SO (monolítico vs.\ microkernel, traps, modo
+usuario/kernel, multitarea, procesos zombie, shell); (ii) linker
+estático y resolución de símbolos entre dos archivos objeto; (iii)
+posibles salidas de un programa con \texttt{fork()}/\texttt{wait()}
+contrastado con uno multihilo que comparte una variable; (iv) análisis
+de \emph{deadlock} con grafo de dependencias entre tres tareas y dos
+recursos; (v) planificación basada en prioridades con \emph{preemption}
+y \emph{quantum} sobre tres tareas. Cada ejercicio se desarrolla con
+estructura uniforme: \textbf{Enunciado $\to$ Análisis $\to$ Desarrollo
+$\to$ Respuesta}.
+\end{abstract}
+
+\tableofcontents
+\bigskip
+
+% =====================================================================
+\section{Ejercicio 1 --- Verdadero o falso (2 pts)}
+% =====================================================================
+
+\textbf{Enunciado.} Marcar verdad (V) o falsedad (F) de las siguientes
+sentencias. Justificar brevemente las falsas.
+
+\subsection*{1.a --- SO monolítico}
+
+\emph{``Un SO monolítico tiene sus subsistemas o módulos en un único
+programa. La comunicación entre módulos se hace mediante variables
+globales e invocaciones a funciones.''}
+
+\begin{respuesta}
+\textbf{V}. En un núcleo monolítico (como Linux clásico) todos los
+subsistemas ---scheduler, gestor de memoria, sistema de archivos,
+drivers, networking--- se compilan en un único binario y corren en el
+mismo espacio de direcciones, en modo kernel. La comunicación entre
+ellos es directa: invocación de funciones y acceso a estructuras
+globales (tabla de procesos, tabla de archivos abiertos, listas de
+páginas libres, etc.).
+\end{respuesta}
+
+\subsection*{1.b --- Microkernel y rendimiento}
+
+\emph{``Un SO microkernel logra mejor rendimiento sobre uno monolítico
+debido a su kernel minimalista.''}
+
+\begin{respuesta}
+\textbf{F}. Un microkernel típicamente tiene \emph{peor} rendimiento
+que un monolítico, no mejor. En un microkernel los subsistemas
+(filesystem, drivers, gestor de memoria) corren como procesos
+servidores en \textbf{modo usuario} y se comunican entre sí por
+\emph{message passing} (IPC). Cada operación que en un monolítico es
+una llamada a función dentro del mismo espacio de direcciones, en un
+microkernel implica al menos dos cambios de modo, dos cambios de
+contexto y la copia de los datos entre espacios.
+
+Las ventajas del microkernel son \textbf{modularidad}, \textbf{robustez}
+(un driver que crashea no tira al kernel) y \textbf{seguridad}, pero
+\textbf{no} performance.
+\end{respuesta}
+
+\subsection*{1.c --- La instrucción de \texttt{trap}}
+
+\emph{``La instrucción de \texttt{trap} (usada para hacer un syscall)
+debe ser una instrucción privilegiada.''}
+
+\begin{respuesta}
+\textbf{F}. Justamente lo contrario: la instrucción de \texttt{trap}
+(\texttt{syscall} en x86-64, \texttt{ecall} en RISC-V, \texttt{svc} en
+ARM) \emph{no} es privilegiada. Si lo fuera, ningún programa de
+usuario podría usarla, lo cual rompería todo el modelo de syscalls.
+
+La instrucción de trap es una de las pocas formas legítimas en que
+un proceso de usuario puede provocar un cambio a modo supervisor.
+Hardware mediante: la CPU detecta la instrucción, salva el estado,
+cambia a modo kernel y salta a una dirección fija (la \emph{trap
+table}) donde el kernel toma el control. Lo \emph{privilegiado} es lo
+que ejecuta el kernel después del trap; la instrucción en sí está
+diseñada para ser disponible desde modo usuario.
+\end{respuesta}
+
+\subsection*{1.d --- Timesharing y \emph{quantums}}
+
+\emph{``Un SO \emph{timesharing} multiplexa la CPU entre varias tareas
+con usos basados en \emph{quantums}.''}
+
+\begin{respuesta}
+\textbf{V}. Un SO de tiempo compartido asigna a cada tarea un cuanto
+de tiempo de CPU (\emph{quantum}). Al vencer el cuanto, el timer
+dispara una interrupción que invoca al scheduler para decidir qué
+tarea ejecutar a continuación. Este es exactamente el modelo
+\emph{preemptive} sobre el que se construyen Round Robin y todos los
+planificadores modernos de tiempo compartido.
+\end{respuesta}
+
+\subsection*{1.e --- Multitarea y CPUs}
+
+\emph{``Un SO \emph{multitarea} sólo es posible con múltiples CPUs.''}
+
+\begin{respuesta}
+\textbf{F}. Multitarea \textbf{no} requiere múltiples CPUs. Se puede
+implementar perfectamente en \textbf{una sola CPU} mediante
+multiplexación temporal (timesharing). De hecho, fue así por décadas
+antes de la era multicore: Linux, UNIX y Windows corrían multitarea en
+un único procesador.
+
+La distinción clave es:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Multitarea / concurrencia}: \emph{apariencia} de
+        ejecución simultánea de varias tareas. Se logra con una sola
+        CPU multiplexando entre ellas.
+    \item \textbf{Paralelismo real}: ejecución \emph{verdaderamente
+        simultánea} de varias tareas. Esto sí requiere múltiples CPUs
+        (o cores).
+\end{itemize}
+\end{respuesta}
+
+\subsection*{1.f --- Proceso \emph{zombie}}
+
+\emph{``Un proceso Zombie ya finalizó su ejecución.''}
+
+\begin{respuesta}
+\textbf{V}. Un proceso zombie es uno que ya terminó (ejecutó
+\texttt{exit()} o fue terminado por una señal) pero cuyo descriptor
+(PCB) sigue existiendo en la tabla de procesos del kernel porque su
+\emph{padre} aún no llamó a \texttt{wait()}/\texttt{waitpid()} para
+recoger su exit status. El proceso ``está muerto'' (no consume CPU, no
+tiene memoria asignada salvo el descriptor) pero su entrada persiste.
+Se ve en \texttt{ps} con estado \texttt{Z}.
+\end{respuesta}
+
+\subsection*{1.g --- Acceso de un proceso de usuario al reloj}
+
+\emph{``Un proceso de usuario puede acceder al dispositivo del reloj y
+programarlo para que genere una interrupción luego de un intervalo de
+tiempo dado.''}
+
+\begin{respuesta}
+\textbf{F}. Un proceso de usuario \textbf{no} puede acceder
+directamente al hardware del reloj. Los registros del timer y de las
+IRQs están en el espacio de direcciones del kernel y solo son
+accesibles en modo supervisor. La MMU bloquea cualquier intento de
+lectura/escritura directa desde modo usuario.
+
+Lo que el proceso de usuario sí puede hacer es \textbf{pedírselo al
+kernel} vía syscalls: \texttt{alarm(N)}, \texttt{setitimer},
+\texttt{timer\_create}, etc. El kernel programa el hardware en su
+nombre y, cuando vence el timer, envía una señal (\texttt{SIGALRM},
+por ejemplo) al proceso. La interacción es siempre \emph{indirecta},
+mediada por el kernel.
+\end{respuesta}
+
+\subsection*{1.h --- El shell}
+
+\emph{``El \emph{shell} es un módulo del kernel.''}
+
+\begin{respuesta}
+\textbf{F}. El shell (\texttt{bash}, \texttt{zsh}, \texttt{fish}) es
+un \textbf{programa de usuario} normal y corriente, no parte del
+kernel. Es simplemente un proceso que corre en modo usuario igual que
+cualquier otra aplicación: lee comandos por \texttt{stdin}, los
+interpreta, hace \texttt{fork()}/\texttt{exec()} para lanzar otros
+procesos, y maneja redirecciones, pipes y señales \emph{usando
+syscalls como cualquier otro programa}. No tiene ningún privilegio
+especial salvo los del usuario que lo lanzó.
+\end{respuesta}
+
+% =====================================================================
+\section{Ejercicio 2 --- Linking estático (2 pts)}
+% =====================================================================
+
+\textbf{Enunciado.} Dados los dos archivos objeto siguientes,
+enlazados estáticamente con \texttt{gcc a.o b.o -o myprog}, determinar
+si las afirmaciones son verdaderas o falsas.
+
+\subsection*{Contenido de los archivos objeto}
+
+\begin{center}
+\begin{minipage}[t]{0.46\textwidth}
+\textbf{a.o}
+\begin{lstlisting}[style=textstyle]
+.text
+  0x0000  ...
+  0x00A0  call 0x00A0
+  0x00A4  ...
+  ...
+  // end .text section
+.data
+  0x00E0  ...
+.relocation entries
+  addr     type   symbol
+  0x00A0   call   f
+\end{lstlisting}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.46\textwidth}
+\textbf{b.o}
+\begin{lstlisting}[style=textstyle]
+.text
+  0x0000  ...
+  0x001A  f: ...
+  ...
+  0x00A0  ret
+  // end .text section
+.data
+  0x00A4  ...
+.symbol table
+  symbol   address
+  f        0x001A
+\end{lstlisting}
+\end{minipage}
+\end{center}
+
+\subsection*{Análisis general}
+
+Antes de resolver los tres ítems, recordemos qué hace el linker en un
+linking estático:
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item \textbf{Concatena} las secciones del mismo nombre de todos
+        los archivos objeto. Las \texttt{.text} de \texttt{a.o} y
+        \texttt{b.o} forman, una a continuación de la otra, la
+        \texttt{.text} de \texttt{myprog}.
+    \item \textbf{Asigna} direcciones absolutas a cada sección
+        concatenada en el ejecutable final.
+    \item \textbf{Resuelve} las referencias externas: para cada
+        entrada en la tabla de relocaciones, ubica el símbolo en la
+        tabla de símbolos del otro \texttt{.o} y completa la
+        instrucción con la dirección final.
+\end{enumerate}
+
+\textbf{Mapa de direcciones en \texttt{myprog}.} Tomando la
+\texttt{.text} de \texttt{a.o} primero (tamaño \texttt{0x00E0}, ya que
+\texttt{.data} comienza ahí en \texttt{a.o}), y luego la
+\texttt{.text} de \texttt{b.o} (tamaño \texttt{0x00A4}):
+
+\begin{center}
+\begin{tikzpicture}[every node/.style={font=\ttfamily\small},
+    sec/.style={draw,minimum height=0.75cm,align=center}]
+\node[sec,fill=c1!20,minimum width=4.0cm] (a) at (0,0) {.text de a.o};
+\node[sec,fill=c2!20,minimum width=3.2cm,right=0pt of a] (b) {.text de b.o};
+\node[font=\scriptsize] at ($(a.south west)+(0.1,-0.25)$) {0x0000};
+\node[font=\scriptsize] at ($(a.south east)+(0,-0.25)$) {0x00E0};
+\node[font=\scriptsize] at ($(b.south east)+(0,-0.25)$) {0x0184};
+\node[font=\scriptsize] at ($(a.north)+(0,0.25)$) {0xE0 bytes};
+\node[font=\scriptsize] at ($(b.north)+(0,0.25)$) {0xA4 bytes};
+\end{tikzpicture}
+\end{center}
+
+Es decir, en \texttt{myprog}:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item La \texttt{.text} de \texttt{a.o} ocupa
+        $[\texttt{0x0000}, \texttt{0x00E0})$.
+    \item La \texttt{.text} de \texttt{b.o} ocupa
+        $[\texttt{0x00E0}, \texttt{0x0184})$.
+\end{itemize}
+
+La función \texttt{f}, que en \texttt{b.o} estaba en el offset
+\texttt{0x001A} dentro de su propia \texttt{.text}, queda relocada a
+$\texttt{0x00E0} + \texttt{0x001A} = \texttt{0x00FA}$ en
+\texttt{myprog}.
+
+\subsection*{2.a --- Dirección de \texttt{f} en \texttt{myprog}}
+
+\emph{``La dirección de la función \texttt{f} en \texttt{myprog}
+resultará \texttt{0x001A}.''}
+
+\begin{respuesta}
+\textbf{F}. \texttt{0x001A} es solo el offset de \texttt{f} dentro de
+la \texttt{.text} de \texttt{b.o}; es una dirección \emph{relativa} en
+el archivo objeto antes del linking. Al hacer
+\texttt{gcc a.o b.o -o myprog}, el linker coloca la \texttt{.text} de
+\texttt{b.o} a continuación de la de \texttt{a.o} (que mide
+\texttt{0xE0}). La dirección absoluta de \texttt{f} en el ejecutable
+final es:
+
+\quad dir(\texttt{f}) en myprog = inicio de b.o.text + offset interno
+                                 = \texttt{0x00E0} + \texttt{0x001A}
+                                 = \textbf{\texttt{0x00FA}}.
+\end{respuesta}
+
+\subsection*{2.b --- ¿\texttt{call 0x00A0} es una llamada local?}
+
+\emph{``La instrucción \texttt{call 0x00A0} es una llamada a una
+función local en \texttt{a.o}.''}
+
+\begin{respuesta}
+\textbf{F}. No es una llamada local. La pista definitiva está en la
+\textbf{tabla de relocaciones} de \texttt{a.o}:
+
+\begin{lstlisting}[style=textstyle]
+.relocation entries
+  addr     type   symbol
+  0x00A0   call   f
+\end{lstlisting}
+
+Esta entrada dice: ``en la dirección \texttt{0x00A0} hay una
+instrucción de tipo \texttt{call} cuyo operando debe completarse con
+la dirección final del símbolo externo \texttt{f}''. El \texttt{0x00A0}
+que aparece como operando del call \emph{es un \texttt{placeholder}}
+(0 o autorreferencia) que se rellena durante el linking. El símbolo
+\texttt{f} \textbf{no} está definido en \texttt{a.o} sino en
+\texttt{b.o}, por lo cual la llamada es \emph{externa}, no local.
+
+Si fuera local, la referencia ya estaría resuelta en \texttt{a.o} y
+no aparecería en la tabla de relocaciones.
+\end{respuesta}
+
+\subsection*{2.c --- Tamaño de \texttt{.text} en \texttt{myprog}}
+
+\emph{``La sección \texttt{.text} de \texttt{myprog} será de tamaño
+\texttt{0x00E0 + 0x00A4}.''}
+
+\begin{respuesta}
+\textbf{V} (con la salvedad de alineación que se aclara abajo).
+
+En \texttt{a.o}, la sección \texttt{.text} arranca en \texttt{0x0000}
+y la sección \texttt{.data} comienza inmediatamente en \texttt{0x00E0}.
+Es decir, el \emph{tamaño} de \texttt{.text} en \texttt{a.o} es
+\texttt{0xE0} bytes. Análogamente, en \texttt{b.o} la \texttt{.text}
+mide \texttt{0xA4} bytes (desde \texttt{0x0000} hasta donde comienza
+\texttt{.data} en \texttt{0x00A4}).
+
+Como el linker concatena las dos \texttt{.text} en una sola, el
+tamaño resultante es la \textbf{suma}:
+
+\quad \texttt{0x00E0} + \texttt{0x00A4} = \texttt{0x0184} bytes.
+
+\textbf{Caveat real}: en sistemas reales el linker puede insertar
+algunos bytes de \emph{padding} para satisfacer requisitos de
+alineación entre las dos secciones \texttt{.text} concatenadas (en
+x86 típicamente 16 bytes), por lo que el tamaño \emph{exacto} podría
+ser un poco mayor. Pero la suma es esencialmente correcta y la
+afirmación es válida en el modelo simplificado del ejercicio.
+\end{respuesta}
+
+% =====================================================================
+\section{Ejercicio 3 --- Salidas posibles: \texttt{fork} vs.\ threads (2 pts)}
+% =====================================================================
+
+\textbf{Enunciado.} Mostrar las posibles salidas de los dos programas.
+
+\subsection*{Programa A (con \texttt{fork})}
+
+\begin{lstlisting}[style=cstyle]
+int x = 0;
+if (fork() == 0) {
+    /* hijo */
+    x += 1;
+    printf("child:%d ", x);
+    exit(x);
+} else {
+    /* padre */
+    printf("parent:%d ", x);
+    wait(NULL);
+    x++;
+    printf("parent:%d ", x);
+}
+\end{lstlisting}
+
+\subsubsection*{Análisis}
+
+\texttt{fork()} crea un \textbf{nuevo proceso} con su propia copia de
+la memoria. Después del \texttt{fork}, padre e hijo tienen cada uno
+su propia variable \texttt{x} (originalmente 0 en ambos). Lo que uno
+modifique \emph{no afecta} al otro.
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Hijo}: hace \texttt{x += 1} (su $x$ vale 1),
+        imprime \texttt{"child:1 "}, hace \texttt{exit(1)}.
+    \item \textbf{Padre}: imprime \texttt{"parent:0 "} (su $x$ sigue
+        en 0), entra a \texttt{wait(NULL)} hasta que el hijo termine,
+        luego hace \texttt{x++} (su $x$ pasa a 1) e imprime
+        \texttt{"parent:1 "}.
+\end{itemize}
+
+\textbf{¿Qué puede variar?} El orden entre el primer \texttt{printf}
+del padre (\texttt{"parent:0 "}) y el del hijo (\texttt{"child:1 "})
+depende del scheduling. El segundo \texttt{printf} del padre
+(\texttt{"parent:1 "}) está \textbf{después} de \texttt{wait}, así que
+siempre va al final.
+
+\subsubsection*{Salidas posibles}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lp{8cm}@{}}
+\toprule
+Orden & Salida \\
+\midrule
+Padre imprime primero & \texttt{parent:0 child:1 parent:1\ } \\
+Hijo imprime primero  & \texttt{child:1 parent:0 parent:1\ } \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{idea}
+\textbf{Lo que NO puede aparecer}: \texttt{"parent:1"} antes de
+\texttt{"child:1"}, porque el segundo \texttt{printf} del padre está
+después de \texttt{wait(NULL)}, que bloquea hasta que el hijo
+finalice. Por construcción, \texttt{"parent:1"} es siempre lo último.
+\end{idea}
+
+\subsection*{Programa B (con threads)}
+
+\begin{lstlisting}[style=cstyle]
+int x = 0;
+
+void f(void) {
+    x++;
+    printf("t1:%d ", x);
+    exit_thread();
+}
+
+int main(void) {
+    thread t1 = create_thread(f);
+    printf("main:%d ", x);
+    wait_thread(t1);
+    printf("main:%d ", ++x);
+}
+\end{lstlisting}
+
+\subsubsection*{Análisis}
+
+A diferencia de \texttt{fork()}, \texttt{create\_thread()} crea un
+\textbf{hilo dentro del mismo proceso}, que \textbf{comparte el
+espacio de direcciones} con \texttt{main}. La variable \texttt{x} es
+una sola: si el hilo \texttt{t1} hace \texttt{x++}, \texttt{main} la
+ve modificada.
+
+Esto introduce una \textbf{race condition} entre la modificación de
+\texttt{x} en \texttt{t1} y la lectura de \texttt{x} en el primer
+\texttt{printf} de \texttt{main}.
+
+Análisis paso a paso:
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{t1} ejecuta: \texttt{x++} (queda en 1) $\to$
+        \texttt{printf("t1:1 ")} $\to$ \texttt{exit\_thread}.
+    \item \texttt{main} ejecuta: \texttt{printf("main:?")} (lee el
+        $x$ actual, que puede ser 0 o 1 según si \texttt{t1} alcanzó
+        a incrementar antes) $\to$ \texttt{wait\_thread} (espera fin
+        de \texttt{t1}) $\to$ \texttt{++x} (sube $x$ a 2) $\to$
+        \texttt{printf("main:2 ")}.
+\end{itemize}
+
+El \texttt{++x} del último \texttt{printf} se evalúa siempre
+\emph{después} del \texttt{wait\_thread}, momento en el cual el
+incremento de \texttt{t1} ya quedó hecho. Por eso el \textbf{último
+valor impreso es siempre 2}.
+
+\subsubsection*{Salidas posibles}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+Interleaving & Valor de $x$ que lee main & Salida \\
+\midrule
+\texttt{t1} corre completo antes que main lea  & $1$ & \texttt{t1:1 main:1 main:2\ } \\
+main lee antes que \texttt{t1} incremente      & $0$ & \texttt{main:0 t1:1 main:2\ } \\
+\texttt{t1} incrementa, main lee, \texttt{t1} imprime & $1$ & \texttt{main:1 t1:1 main:2\ } \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{importante}
+La diferencia esencial entre los dos programas es la naturaleza de
+\texttt{x}:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item En \textbf{programa A}, \texttt{fork} duplica el espacio de
+        direcciones. Padre e hijo tienen variables \texttt{x}
+        \emph{independientes}. No hay race condition.
+    \item En \textbf{programa B}, los hilos \emph{comparten} el
+        espacio de direcciones. La misma variable \texttt{x} es
+        accedida concurrentemente. Hay race condition real: el valor
+        que lee \texttt{main} depende del orden de ejecución.
+\end{itemize}
+
+Esta es exactamente la diferencia conceptual entre procesos y
+threads.
+\end{importante}
+
+% =====================================================================
+\section{Ejercicio 4 --- Análisis de deadlock (2 pts)}
+% =====================================================================
+
+\textbf{Enunciado.} Dada la siguiente secuencia de operaciones en un
+sistema concurrente:
+
+\begin{lstlisting}[style=textstyle]
+1: T1: requiere y adquiere R1
+2: T2: requiere R1
+3: T1: libera R1
+4: T3: requiere y adquiere R2
+5: T2: adquiere R1
+6: T1: requiere R2
+7: T2: requiere R2
+8: T3: requiere R1
+9: ...
+\end{lstlisting}
+
+\textbf{(a)} Determinar si en el paso 8 se produce \emph{deadlock}.
+Mostrar el grafo de dependencias.
+
+\textbf{(b)} Si el administrador finaliza T2, ¿pueden las demás tareas
+progresar?
+
+\subsection*{Análisis: estado al finalizar el paso 8}
+
+Reconstruyamos quién posee qué y quién espera qué después de cada
+paso:
+
+\begin{center}
+\small
+\begin{tabular}{@{}cllll@{}}
+\toprule
+Paso & Operación & R1 & R2 & Bloqueadas \\
+\midrule
+1 & T1 adquiere R1                 & T1 & ---  & --- \\
+2 & T2 requiere R1 (T1 lo tiene)   & T1 & ---  & T2 \\
+3 & T1 libera R1                   & libre & --- & T2 (despierta) \\
+4 & T3 adquiere R2                 & libre & T3 & --- \\
+5 & T2 adquiere R1                 & T2 & T3 & --- \\
+6 & T1 requiere R2 (T3 lo tiene)   & T2 & T3 & T1 \\
+7 & T2 requiere R2 (T3 lo tiene)   & T2 & T3 & T1, T2 \\
+8 & T3 requiere R1 (T2 lo tiene)   & T2 & T3 & T1, T2, T3 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Configuración tras el paso 8:}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item R1 está asignado a T2.
+    \item R2 está asignado a T3.
+    \item T1 espera R2 (lo tiene T3).
+    \item T2 espera R2 (lo tiene T3).
+    \item T3 espera R1 (lo tiene T2).
+\end{itemize}
+
+\subsection*{Grafo de asignación de recursos}
+
+Convención clásica: arista $R \to P$ si el recurso está asignado al
+proceso; arista $P \to R$ si el proceso espera el recurso.
+
+\begin{center}
+\begin{tikzpicture}[
+    node distance=2cm,
+    proc/.style={circle,draw,minimum size=0.95cm,font=\bfseries\small},
+    res/.style={rectangle,draw,minimum size=0.95cm,font=\bfseries\small},
+    every edge/.style={draw,-{Stealth[length=2.5mm]},thick}
+]
+\node[proc]                            (T1) at (-3.5, 2.0) {$T_1$};
+\node[proc]                            (T2) at (   0, 2.0) {$T_2$};
+\node[proc]                            (T3) at ( 3.5, 2.0) {$T_3$};
+
+\node[res]                             (R1) at ( -1.5, -1.0) {$R_1$};
+\node[res]                             (R2) at (  1.5, -1.0) {$R_2$};
+
+% asignaciones (R -> P)
+\draw[->,blue!60!black,thick] (R1) -- node[below right,font=\scriptsize]{tiene} (T2);
+\draw[->,blue!60!black,thick] (R2) -- node[below right,font=\scriptsize]{tiene} (T3);
+
+% pedidos (P -> R)
+\draw[->,red!70!black,thick,dashed] (T1) -- node[above left,font=\scriptsize]{espera} (R2);
+\draw[->,red!70!black,thick,dashed] (T2) -- node[left,font=\scriptsize]{espera} (R2);
+\draw[->,red!70!black,thick,dashed] (T3) -- node[above right,font=\scriptsize]{espera} (R1);
+\end{tikzpicture}
+\end{center}
+
+\subsection*{4.a --- ¿Hay deadlock?}
+
+\textbf{Sí}. Sigamos las aristas a partir de T2:
+
+\quad T2 $\to$ R2 (espera) $\to$ T3 (tiene) $\to$ R1 (espera) $\to$ T2 (tiene) $\to$ \ldots
+
+Hay un \textbf{ciclo cerrado} $T_2 \to R_2 \to T_3 \to R_1 \to T_2$.
+Como los recursos son de instancia única, un ciclo basta para
+garantizar deadlock. Las dos tareas atrapadas en el ciclo son
+\textbf{T2 y T3}.
+
+\textbf{¿Y T1?} T1 espera R2. R2 está retenido por T3, que a su vez
+está en deadlock. T1 \textbf{no forma parte del ciclo} pero está
+\emph{bloqueada como víctima colateral}: nunca obtendrá R2 porque T3
+nunca lo va a liberar. T1 es lo que se llama una \emph{víctima
+indirecta} del deadlock.
+
+\begin{respuesta}
+\textbf{(a)} Hay deadlock entre \textbf{T2 y T3} (ciclo $T_2 \to R_2
+\to T_3 \to R_1 \to T_2$). \textbf{T1} también está bloqueada pero
+como consecuencia secundaria del deadlock, no como integrante del
+ciclo.
+\end{respuesta}
+
+\subsection*{4.b --- Si el admin finaliza T2}
+
+Si el administrador finaliza T2 (por ejemplo, con \texttt{kill -9}):
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item T2 muere y libera R1 (todo recurso retenido por un proceso
+        se libera cuando éste termina).
+    \item T3 estaba esperando R1 $\to$ ahora puede adquirirlo. T3
+        ahora tiene R1 y R2.
+    \item T3 progresa, termina su sección crítica y libera R1 y R2.
+    \item T1 estaba esperando R2 $\to$ al liberarse, T1 lo adquiere y
+        continúa hasta terminar.
+\end{enumerate}
+
+\begin{respuesta}
+\textbf{(b)} Sí, las demás tareas pueden progresar. Finalizar T2
+rompe el ciclo del deadlock: T3 obtiene R1 y termina su trabajo, lo
+que a su vez permite que T1 obtenga R2. Ésta es la técnica clásica de
+\textbf{recuperación de deadlock} matando un proceso del ciclo.
+\end{respuesta}
+
+% =====================================================================
+\section{Ejercicio 5 --- Planificación con prioridades y \emph{preemption}}
+% =====================================================================
+
+\textbf{Enunciado.} Dadas las siguientes tareas, todas creadas en
+$t=0$:
+
+\begin{center}
+\small
+\begin{tabular}{@{}lcl@{}}
+\toprule
+Tarea & Prioridad & Comportamiento \\
+\midrule
+\texttt{idle} & 0 & \texttt{CPU:1 CPU:1 ...} \\
+\texttt{P1}   & 1 & \texttt{CPU:2.5 EXIT} \\
+\texttt{P2}   & 2 & \texttt{CPU:1 WAIT:1 CPU:1 EXIT} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Scheduler basado en prioridades con \emph{preemption} y
+\texttt{quantum}=2.
+
+\textbf{Convención de prioridad.} Bajo la asignación dada, \texttt{idle}
+tiene prioridad 0 (la mínima), \texttt{P1} prioridad 1 y \texttt{P2}
+prioridad 2 (la máxima). \emph{Mayor número $\to$ mayor prioridad.}
+
+\subsection*{5.a --- Orden de la cola RUNNABLE tras el arribo}
+
+Al instante $t=0$ las tres tareas entran simultáneamente al sistema.
+La cola \texttt{RUNNABLE} (o \texttt{READY}) se ordena por prioridad
+\textbf{descendente}:
+
+\begin{respuesta}
+\textbf{(a)} Orden de la cola \texttt{READY} en $t = 0$:
+\begin{center}\Large \texttt{[P2, P1, idle]}\end{center}
+P2 con prioridad 2 toma la CPU primero; P1 (prio 1) queda en segundo
+lugar; \texttt{idle} (prio 0) al final.
+\end{respuesta}
+
+\subsection*{5.b --- ¿P1 termina antes que P2?}
+
+Simulamos paso a paso. Usaremos la notación \texttt{[t$_i$,t$_f$)} =
+intervalo en que cada tarea corre.
+
+\paragraph{Paso 1: \texttt{[0,1)} --- P2 ejecuta su primer
+\texttt{CPU:1}.}
+P2 (prio 2) es la de mayor prioridad. Corre 1 unidad. Al llegar a
+$t=1$, P2 termina su primera ráfaga y entra a \texttt{WAIT:1} (se
+duerme por 1 unidad).
+
+\paragraph{Paso 2: \texttt{[1,2)} --- P1 toma la CPU.}
+Con P2 dormida, la \texttt{READY} queda \texttt{[P1, idle]}. P1 (prio
+1) supera a \texttt{idle} (prio 0). P1 ejecuta 1 unidad de su
+\texttt{CPU:2.5}, le quedan $2.5 - 1 = 1.5$.
+
+\paragraph{Paso 3: \texttt{[2,2)} --- P2 despierta y \emph{preempta} a
+P1.}
+En $t=2$, P2 termina su \texttt{WAIT:1} y vuelve a \texttt{READY}. Como
+P2 tiene mayor prioridad que P1, \textbf{preempta} a P1. P1 vuelve a
+\texttt{READY} con 1.5 unidades pendientes.
+
+\paragraph{Paso 4: \texttt{[2,3)} --- P2 ejecuta su segundo
+\texttt{CPU:1}.}
+P2 corre 1 unidad más y al llegar a $t=3$ ejecuta \texttt{EXIT}. P2
+termina en $t=3$.
+
+\paragraph{Paso 5: \texttt{[3,4.5)} --- P1 retoma y termina.}
+Con P2 fuera, la \texttt{READY} es \texttt{[P1, idle]}. P1 toma la
+CPU. Le faltan 1.5 unidades. El \emph{quantum} es 2, así que no se
+agotará por tiempo. P1 corre 1.5 unidades y en $t=4.5$ hace
+\texttt{EXIT}.
+
+\subsection*{Diagrama de Gantt}
+
+\begin{center}
+\begin{tikzpicture}[xscale=1.6, yscale=0.7,
+    every node/.style={font=\ttfamily\small}]
+\draw[fill=c2!50] (0,0) rectangle (1,1) node[midway,white,font=\bfseries]{P2};
+\draw[fill=c1!50] (1,0) rectangle (2,1) node[midway,white,font=\bfseries]{P1};
+\draw[fill=c2!50] (2,0) rectangle (3,1) node[midway,white,font=\bfseries]{P2};
+\draw[fill=c1!50] (3,0) rectangle (4.5,1) node[midway,white,font=\bfseries]{P1};
+\draw[fill=c3!30] (4.5,0) rectangle (6,1) node[midway,font=\bfseries]{idle\ldots};
+
+% marcas de tiempo
+\foreach \x in {0,1,2,3,4.5,6}
+    \draw (\x,0) -- (\x,-0.2) node[below,font=\scriptsize]{\x};
+
+% anotaciones
+\node[font=\scriptsize,below=0.5cm] at (0.5,-0.1) {CPU:1};
+\node[font=\scriptsize,below=0.5cm] at (1.5,-0.1) {1 de 2.5};
+\node[font=\scriptsize,below=0.5cm] at (2.5,-0.1) {CPU:1};
+\node[font=\scriptsize,below=0.5cm] at (3.75,-0.1) {1.5 restantes};
+
+% estados de P2: WAIT
+\draw[thick,dashed,c2!70!black] (1,1.4) -- (2,1.4);
+\node[font=\scriptsize,above] at (1.5,1.4) {P2 en WAIT};
+\end{tikzpicture}
+\end{center}
+
+\subsection*{Métricas (turnaround)}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+Tarea & Llegada & Fin & Turnaround & CPU usada & Espera \\
+\midrule
+P2   & 0 & 3   & 3   & 2  & 0 \\
+P1   & 0 & 4.5 & 4.5 & 2.5 & 1 \\
+idle & 0 & --- (nunca termina) & --- & --- & 4.5 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{respuesta}
+\textbf{(b)} \textbf{NO}. P1 \emph{no} termina antes que P2:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item P2 termina en $t = 3$.
+    \item P1 termina en $t = 4.5$.
+\end{itemize}
+
+\textbf{Razón}: aunque P2 tiene una ráfaga de CPU más corta (2
+unidades en total vs.\ 2.5 de P1), su \textbf{prioridad superior}
+hace que siempre que esté \texttt{READY} preempte a P1. Cuando P2 va
+a \texttt{WAIT}, P1 progresa, pero cuando P2 despierta vuelve a
+quitarle la CPU.
+\end{respuesta}
+
+\subsection*{5.c --- ¿Cuándo se planifica la tarea \texttt{idle}?}
+
+La tarea \texttt{idle} (prio 0) solo es planificada cuando \emph{no
+hay ninguna otra tarea} en \texttt{READY}:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item De $t=0$ a $t=4.5$ siempre hay alguna tarea de mayor
+        prioridad (\texttt{P1} o \texttt{P2}) en estado
+        \texttt{READY} o \texttt{RUNNING}. Aunque P2 esté en
+        \texttt{WAIT} durante \texttt{[1,2)}, P1 ocupa la CPU en ese
+        intervalo, así que \texttt{idle} no corre.
+    \item En $t=3$ P2 termina. P1 sigue activa.
+    \item En $t=4.5$ P1 termina. La cola \texttt{READY} queda solo
+        con \texttt{idle}. Recién entonces \texttt{idle} toma la CPU.
+\end{itemize}
+
+\begin{respuesta}
+\textbf{(c)} \texttt{idle} se planifica desde $t = 4.5$ en adelante,
+una vez que \texttt{P1} y \texttt{P2} han terminado y no hay otra
+tarea \texttt{READY}. Es la función clásica de \texttt{idle}:
+ocupar la CPU cuando no hay trabajo útil para hacer.
+\end{respuesta}
+
+% =====================================================================
+\section*{Resumen del parcial}
+\addcontentsline{toc}{section}{Resumen del parcial}
+% =====================================================================
+
+\begin{center}
+\small
+\begin{tabular}{@{}clp{8cm}@{}}
+\toprule
+\# & Tema & Respuesta sintética \\
+\midrule
+1 & V/F sobre SO    & a: V, b: F, c: F, d: V, e: F, f: V, g: F, h: F \\
+2 & Linker estático & a: F (dir.\ \texttt{f} = \texttt{0x00FA}); b: F (call externo); c: V (\texttt{0x0184}) \\
+3 & \texttt{fork} vs threads & A: dos órdenes posibles; B: tres interleavings, todos terminan con \texttt{main:2} \\
+4 & Deadlock        & (a) Sí, ciclo $T_2 \to R_2 \to T_3 \to R_1 \to T_2$; T1 víctima colateral. (b) Sí, finalizar T2 desbloquea a T3 y T1 \\
+5 & Scheduling con prioridades & (a) \texttt{[P2,P1,idle]}; (b) NO: P2 termina en $t=3$, P1 en $t=4.5$; (c) \texttt{idle} a partir de $t=4.5$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\end{document}

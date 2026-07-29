@@ -1,0 +1,24 @@
+Initializing kernel block allocator...
+free pages=32759, free_list=80009000, kend=80009000, mem_end=88000000
+ktext_start: 80000000
+kdata_start: 80003000
+mapping user code va=00000000 to pa=8002e000
+Running scheduler on CPU 0
+EDOS init process: pid=1!
+init: time = 0 ticks
+pid 1 going to sleep.
+Task pid=1 awake.
+init: time = 2 ticks
+pid 1 going to sleep.
+Task pid=1 awake.
+init: time = 4 ticks
+pid 1 going to sleep.
+Task pid=1 awake.
+init: time = 6 ticks
+pid 1 going to sleep.
+Task pid=1 awake.
+init: time = 8 ticks
+pid 1 going to sleep.
+Task pid=1 awake.
+init: time final = 10 ticks. Finishing...
+Freeing task init resources...

@@ -630,7 +630,7 @@ de CPU en su ráfaga actual''. \texttt{<>} es cola vacía.
 
 \begin{center}
 \scriptsize
-\begin{tabular}{@{}llllllllp{1.6cm}@{}}
+\begin{tabular}{@{}llcccp{2.5cm}p{1.55cm}p{1.4cm}@{}}
 \toprule
 Time & CPU & T1 & T2 & T3 & $L_0$ & $L_1$ & $L_2$ \\
 \midrule
@@ -717,6 +717,161 @@ libre, T2 obtiene la CPU sin contención. Es exactamente el
 comportamiento que la teoría atribuye al MLF: \emph{mejorar el tiempo
 de respuesta de los procesos interactivos castigando a los CPU-bound,
 sin negarles servicio}.
+
+% ---------------------------------------------------------------------
+\subsection*{Variante: quantums 1, 2 y 3 ms para $L_0$, $L_1$ y $L_2$}
+% ---------------------------------------------------------------------
+
+La consigna pide repetir la simulación \emph{invirtiendo} los quantums:
+quantum corto en el nivel más prioritario y largo en el menos
+prioritario. La motivación es interesante: con $q_{L_0} = 1$ ms el
+sistema reacciona muy rápido a tareas nuevas, pero también las
+desclasifica enseguida si gastan mucha CPU.
+
+\textbf{Datos.} $q_{L_0} = 1$ ms, $q_{L_1} = 2$ ms, $q_{L_2} = 3$ ms.
+Las tres tareas y las reglas son las mismas que en la variante
+anterior.
+
+\subsubsection*{Tabla temporal}
+
+\begin{center}
+\scriptsize
+\begin{tabular}{@{}llcccp{2.5cm}p{1.85cm}p{1.7cm}@{}}
+\toprule
+Tiempo & CPU & T1 & T2 & T3 & $L_0$ & $L_1$ & $L_2$ \\
+\midrule
+$0$       & ---            & RDY  & RDY  & RDY  & \texttt{<T1:5,T2:12,T3:1>} & \texttt{<>}        & \texttt{<>}      \\
+$0$--$1$  & T1             & RUN  & RDY  & RDY  & \texttt{<T2:12,T3:1>}      & \texttt{<>}        & \texttt{<>}      \\
+$1$       & demote T1      & RDY  & RDY  & RDY  & \texttt{<T2:12,T3:1>}      & \texttt{<T1:4>}    & \texttt{<>}      \\
+$1$--$2$  & T2             & RDY  & RUN  & RDY  & \texttt{<T3:1>}            & \texttt{<T1:4>}    & \texttt{<>}      \\
+$2$       & demote T2      & RDY  & RDY  & RDY  & \texttt{<T3:1>}            & \texttt{<T1:4,T2:11>} & \texttt{<>}   \\
+$2$--$3$  & T3             & RDY  & RDY  & RUN  & \texttt{<>}                & \texttt{<T1:4,T2:11>} & \texttt{<>}   \\
+$3$       & T3 $\to$ WAIT  & RDY  & RDY  & WAIT & \texttt{<>}                & \texttt{<T1:4,T2:11>} & \texttt{<>}   \\
+$3$--$5$  & T1             & RUN  & RDY  & WAIT & \texttt{<>}                & \texttt{<T2:11>}   & \texttt{<>}      \\
+$5$       & demote T1; T3 wakeup & RDY & RDY & RDY & \texttt{<T3:1>}          & \texttt{<T2:11>}   & \texttt{<T1:2>}  \\
+$5$--$6$  & T3             & RDY  & RDY  & RUN  & \texttt{<>}                & \texttt{<T2:11>}   & \texttt{<T1:2>}  \\
+$6$       & T3 termina     & RDY  & RDY  & TERM & \texttt{<>}                & \texttt{<T2:11>}   & \texttt{<T1:2>}  \\
+$6$--$8$  & T2             & RDY  & RUN  & TERM & \texttt{<>}                & \texttt{<>}        & \texttt{<T1:2>}  \\
+$8$       & demote T2      & RDY  & RDY  & TERM & \texttt{<>}                & \texttt{<>}        & \texttt{<T1:2,T2:9>} \\
+$8$--$10$ & T1             & RUN  & RDY  & TERM & \texttt{<>}                & \texttt{<>}        & \texttt{<T2:9>}  \\
+$10$      & T1 $\to$ WAIT  & WAIT & RDY  & TERM & \texttt{<>}                & \texttt{<>}        & \texttt{<T2:9>}  \\
+$10$--$13$& T2             & WAIT & RUN  & TERM & \texttt{<>}                & \texttt{<>}        & \texttt{<>}      \\
+$13$      & T2 reencola    & WAIT & RDY  & TERM & \texttt{<>}                & \texttt{<>}        & \texttt{<T2:6>}  \\
+$13$--$15$& T2             & WAIT & RUN  & TERM & \texttt{<>}                & \texttt{<>}        & \texttt{<>}      \\
+$15$      & T1 wakeup $\to L_2$ & RDY & RUN & TERM & \texttt{<>}             & \texttt{<>}        & \texttt{<T1:1>}  \\
+$15$--$16$& T2 (sigue)     & RDY  & RUN  & TERM & \texttt{<>}                & \texttt{<>}        & \texttt{<T1:1>}  \\
+$16$      & T2 reencola    & RDY  & RDY  & TERM & \texttt{<>}                & \texttt{<>}        & \texttt{<T1:1,T2:3>} \\
+$16$--$17$& T1             & RUN  & RDY  & TERM & \texttt{<>}                & \texttt{<>}        & \texttt{<T2:3>}  \\
+$17$      & T1 termina     & TERM & RDY  & TERM & \texttt{<>}                & \texttt{<>}        & \texttt{<T2:3>}  \\
+$17$--$20$& T2             & TERM & RUN  & TERM & \texttt{<>}                & \texttt{<>}        & \texttt{<>}      \\
+$20$      & T2 termina     & TERM & TERM & TERM & \texttt{<>}                & \texttt{<>}        & \texttt{<>}      \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Verificación}: la CPU está ocupada de 0 a 20 ms sin huecos.
+Suma de ráfagas: T1 $=$ 6 ms, T2 $=$ 12 ms, T3 $=$ 2 ms, total 20 ms.
+
+\subsubsection*{Justificación de los pasos clave}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{$t = 0$--$3$}: las tres tareas pasan por $L_0$ con
+        quantum 1 ms cada una (T1, T2, T3 en orden). T1 y T2 consumen
+        el quantum y \emph{descienden} a $L_1$; T3 cede al irse a WAIT
+        (no demote).
+    \item \textbf{$t = 3$--$5$}: T1 corre en $L_1$ (quantum 2 ms),
+        consume el quantum y baja a $L_2$ con 2 ms restantes.
+    \item \textbf{$t = 5$--$6$}: T3 despierta y vuelve a $L_0$. El
+        scheduler lo prefiere a T2 (que está en $L_1$) y a T1 (en
+        $L_2$). T3 corre 1 ms, completa su última ráfaga y termina.
+    \item \textbf{$t = 6$--$8$}: con $L_0$ vacío, scheduler va a
+        $L_1$. T2 corre 2 ms y se demote a $L_2$.
+    \item \textbf{$t = 8$--$10$}: en $L_2$, T1 es el primero de la
+        cola. Quantum $L_2 = 3$ ms. T1 corre exactamente 2 ms (lo que
+        le quedaba de la primera ráfaga) y se va a WAIT por 5 ms. Como
+        cedió antes del quantum, no se demote (y de todas formas ya
+        está en $L_2$).
+    \item \textbf{$t = 10$--$16$}: T2 corre sola en $L_2$ por
+        quantums de 3 ms. En $t = 15$, T1 despierta y se incorpora a
+        $L_2$. Como están en el mismo nivel, no hay preemption: T2
+        sigue hasta que el quantum expira en $t = 16$.
+    \item \textbf{$t = 16$--$17$}: T1 (head de $L_2$) corre 1 ms y
+        termina.
+    \item \textbf{$t = 17$--$20$}: T2 completa sola sus 3 ms
+        restantes y termina en $t = 20$.
+\end{itemize}
+
+\subsubsection*{Métricas resultantes}
+
+Aplicando turnaround $=$ Fin $-$ Llegada y espera $=$ turnaround $-$
+CPU $-$ WAIT:
+
+\begin{center}
+\small
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+Tarea & Llegada & Fin & Turnaround & CPU usada & Espera \\
+\midrule
+T1 & 0 & 17 & 17 & 6  & 6 \\
+T2 & 0 & 20 & 20 & 12 & 8 \\
+T3 & 0 &  6 &  6 & 2  & 2 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsubsection*{Comparación contra la variante original (quantums 3, 2, 1)}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+ & \multicolumn{2}{c}{$q = 3, 2, 1$} & \multicolumn{2}{c}{$q = 1, 2, 3$} \\
+ \cmidrule(lr){2-3}\cmidrule(lr){4-5}
+Tarea & Turnaround & Espera & Turnaround & Espera \\
+\midrule
+T1 & 15 & 4 & 17 & 6 \\
+T2 & 20 & 8 & 20 & 8 \\
+T3 & 10 & 6 &  6 & 2 \\
+\midrule
+\textbf{Promedio} & \textbf{15.00} & \textbf{6.00} & \textbf{14.33} & \textbf{5.33} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Lectura comparada.}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{T3 (interactivo puro)}: mejora drásticamente, de
+        turnaround 10 a 6. Con $q_{L_0} = 1$ las tareas pasan
+        \emph{velozmente} por $L_0$, así que T3 obtiene la CPU mucho
+        antes (en $t = 2$, frente a $t = 6$ de la variante original).
+        Cuando despierta de WAIT, además, recupera la CPU en
+        $t = 5$--$6$ en vez de $t = 9$--$10$.
+    \item \textbf{T1 (mixto)}: empeora, de 15 a 17. Con quantums
+        crecientes hacia abajo, T1 cae más rápido a $L_2$ y queda
+        compitiendo con T2 en el nivel más bajo. Cuando despierta de
+        WAIT en $t = 15$, ya no se beneficia del nivel donde estaba
+        antes (que en la variante original era $L_1$), y eso le suma
+        2 ms.
+    \item \textbf{T2 (CPU-bound puro)}: no cambia (turnaround 20). Su
+        ráfaga es tan larga que termina siempre al final, sin importar
+        la asignación de quantums.
+    \item \textbf{Promedios}: tanto turnaround como espera promedio
+        \emph{mejoran levemente} en la variante $q = 1, 2, 3$, pero
+        eso es engañoso: la mejora viene exclusivamente de T3, a
+        costa de T1. Si el sistema tuviera muchas tareas mixtas como
+        T1 el promedio empeoraría.
+\end{itemize}
+
+\textbf{Conclusión de la variante.} Quantums \emph{crecientes hacia
+los niveles más bajos} (la convención clásica de Solaris/Windows)
+recompensan la interactividad: una tarea que se porta como
+interactiva paga muy poco en cada visita a $L_0$. La contracara es
+que las tareas mixtas pierden el ``colchón'' de tener un quantum
+generoso arriba: cualquier ráfaga $>1$ ms ya las arrastra hacia
+abajo. La elección de quantums es, en definitiva, una herramienta
+de \emph{política}: cuánto se quiere premiar a los procesos
+interactivos frente a los mixtos.
 
 % =====================================================================
 \section{Ejercicio 6 --- Processor affinity vs.\ load balancing en SMP}
@@ -834,7 +989,11 @@ CPU y deja en evidencia los compromisos centrales del diseño:
         con RR por nivel; es la versión ``natural'' para sistemas
         \emph{time-sharing} con cargas heterogéneas, y favorece a los
         procesos interactivos sin negarle progreso a los CPU-bound
-        (Ej.~5).
+        (Ej.~5). La variante con quantums crecientes hacia los niveles
+        más bajos (1, 2, 3 ms) acentúa el premio a la interactividad a
+        costa de las tareas mixtas; la variante con quantums
+        decrecientes (3, 2, 1 ms) reparte mejor entre ambos
+        comportamientos.
     \item En \textbf{SMP} el scheduler debe equilibrar affinity y
         load balancing: dos objetivos legítimos pero opuestos, que
         obligan a tomar decisiones costo-beneficio en cada migración

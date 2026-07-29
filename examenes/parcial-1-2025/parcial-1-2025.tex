@@ -1,0 +1,943 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- Encoding ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands]{babel}
+\usepackage{lmodern}
+
+% --- Layout ---
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{parskip}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em plus 0.2em minus 0.1em}
+
+% --- Tables and graphics ---
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{positioning,shapes.geometric,arrows.meta,fit,backgrounds,calc,decorations.pathreplacing}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{amsmath,amssymb}
+
+% --- Soporte para caracteres Unicode usados en formulas en texto plano ---
+\usepackage{newunicodechar}
+\newunicodechar{→}{\ensuremath{\rightarrow}}
+\newunicodechar{≥}{\ensuremath{\geq}}
+\newunicodechar{≤}{\ensuremath{\leq}}
+\newunicodechar{×}{\ensuremath{\times}}
+\newunicodechar{÷}{\ensuremath{\div}}
+\newunicodechar{≈}{\ensuremath{\approx}}
+\newunicodechar{⌈}{\ensuremath{\lceil}}
+\newunicodechar{⌉}{\ensuremath{\rceil}}
+\newunicodechar{✓}{\ensuremath{\checkmark}}
+
+% --- Code listings ---
+\usepackage{listings}
+\definecolor{codegray}{rgb}{0.96,0.96,0.96}
+\definecolor{codeborder}{rgb}{0.85,0.85,0.85}
+\definecolor{codecomment}{rgb}{0.30,0.55,0.30}
+\definecolor{codekeyword}{rgb}{0.10,0.30,0.70}
+\definecolor{codestring}{rgb}{0.65,0.15,0.10}
+
+\lstdefinestyle{cstyle}{
+    language=C,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+}
+
+\lstdefinestyle{shellstyle}{
+    language=bash,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+    upquote=true,
+}
+
+\lstdefinestyle{textstyle}{
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstset{style=textstyle}
+
+% --- Definition / Idea / Important boxes ---
+\usepackage[most]{tcolorbox}
+\newtcolorbox{idea}[1][]{
+    colback=orange!5!white,
+    colframe=orange!60!black,
+    fonttitle=\bfseries,
+    title=Idea intuitiva,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{importante}[1][]{
+    colback=red!5!white,
+    colframe=red!50!black,
+    fonttitle=\bfseries,
+    title=Importante,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{respuesta}[1][]{
+    colback=green!5!white,
+    colframe=green!40!black,
+    fonttitle=\bfseries,
+    title=Respuesta,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+
+% --- Hyperlinks ---
+\usepackage[colorlinks=true,
+            linkcolor=blue!60!black,
+            urlcolor=blue!50!black,
+            citecolor=blue!60!black]{hyperref}
+
+% --- Color palette ---
+\definecolor{c1}{HTML}{4C72B0}
+\definecolor{c2}{HTML}{DD8452}
+\definecolor{c3}{HTML}{55A868}
+\definecolor{c4}{HTML}{8172B2}
+\definecolor{cred}{HTML}{C44E52}
+\definecolor{cfree}{HTML}{8C8C8C}
+
+% --- Title block ---
+\title{
+    \vspace{-2.5em}
+    \textbf{Examen Parcial 1 --- 2025} \\[0.3em]
+    \large Sistemas Operativos
+}
+\author{
+    Tomás Rodeghiero \\
+    \small UNRC --- Universidad Nacional de Río Cuarto
+}
+\date{2025}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent
+Resolución completa del Parcial 1 del año 2025 de la cátedra de
+Sistemas Operativos (UNRC). El parcial consta de siete ejercicios
+que cubren: (i) IPC síncrono en un microkernel, contando traps y
+context switches y comparándolos con un kernel monolítico; (ii)
+preguntas sobre pipes y syscalls que crean procesos; (iii)
+implementación de \texttt{lock}/\texttt{unlock} sin instrucciones
+atómicas y análisis de fallas en monoprocesador y multiprocesador;
+(iv) verdadero/falso sobre \emph{multilevel feedback queue} (MLFQ);
+(v) ejemplo de deadlock con \texttt{lock}/\texttt{unlock}; (vi)
+verdadero/falso sobre paginación; (vii) cálculos sobre una
+arquitectura de 32 bits con páginas de 4\,MB (cantidad de páginas,
+interpretación de la dirección virtual, tabla de un proceso y
+detección de page faults). Cada ejercicio se desarrolla con la
+estructura \textbf{Enunciado $\to$ Análisis $\to$ Desarrollo $\to$
+Respuesta}.
+\end{abstract}
+
+\tableofcontents
+\bigskip
+
+% =====================================================================
+\section{Ejercicio 1 --- IPC síncrono en microkernel (1 pto)}
+% =====================================================================
+
+\textbf{Enunciado.} En un SO con diseño microkernel, un proceso $U$
+realiza una llamada al sistema de la forma
+\texttt{send(process\_manager, "getpid")}. El microkernel reenvía el
+mensaje al \texttt{process\_manager}. El mecanismo de mensajes es
+\textbf{síncrono} y se basa en interrupciones por software, de modo
+que cada operación \texttt{send} o \texttt{receive} causa un trap al
+microkernel.
+
+\textbf{(a)} Determinar la cantidad de traps y de cambios de
+contexto entre procesos que requiere esta llamada al sistema hasta
+que el proceso recibe la respuesta.
+
+\textbf{(b)} Compararlo con un kernel monolítico.
+
+\subsection*{Análisis: arquitectura microkernel}
+
+En un microkernel los \emph{servicios del SO} (gestor de memoria,
+file system, drivers, gestor de procesos, etc.) corren como procesos
+en \textbf{espacio de usuario}. La única función del microkernel
+mínimo es \emph{enviar mensajes} entre procesos y gestionar la
+planificación y trampas de hardware.
+
+Para que $U$ obtenga su PID, no puede preguntar directamente al
+kernel (como en monolítico): tiene que \emph{enviar un mensaje} al
+proceso servidor llamado \texttt{process\_manager} (PM), que vive en
+modo usuario y responde.
+
+\subsection*{1.a --- Conteo de traps y context switches}
+
+Trazamos el camino completo de la llamada:
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small,align=center},
+    box/.style={draw,rounded corners,minimum width=1.6cm,minimum height=0.8cm},
+    user/.style={box,fill=c1!25},
+    kern/.style={box,fill=c2!25},
+    pm/.style={box,fill=c3!25},
+    arr/.style={->,thick}
+]
+\node[user] (u1) at (0,3)  {$U$};
+\node[kern] (k1) at (3,3)  {$\mu$kernel};
+\node[pm]   (p1) at (6,3)  {PM};
+\node[kern] (k2) at (3,0.5){$\mu$kernel};
+\node[user] (u2) at (0,-2) {$U$};
+
+\draw[arr] (u1.east) -- node[above,font=\scriptsize]{trap 1 (\texttt{send})} (k1.west);
+\draw[arr,dashed] (k1.east) -- node[above,font=\scriptsize]{ctx switch 1} (p1.west);
+\draw[arr] (p1.south) -- node[right,font=\scriptsize]{trap 2 (\texttt{send} reply)} (k2.north east);
+\draw[arr,dashed] (k2.west) -- node[above,font=\scriptsize]{ctx switch 2} ++(-3,0) |- (u2.east);
+\end{tikzpicture}
+\end{center}
+
+\textbf{Secuencia mínima} (send sincrónico, estilo Mach/L4/QNX,
+\emph{send-and-receive-reply}):
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item $U$ ejecuta \texttt{send(PM, "getpid")} en modo usuario.
+        \textbf{Trap 1} al microkernel.
+    \item El microkernel encola el mensaje para PM. $U$ queda
+        bloqueado esperando la respuesta.
+    \item PM estaba previamente bloqueado en un \texttt{receive}
+        (esperando peticiones). El microkernel lo despierta y
+        ejecuta un \textbf{cambio de contexto 1} ($U \to$ PM).
+    \item PM en modo usuario procesa la petición (computa el PID)
+        y ejecuta \texttt{send(U, "$pid$")} para devolver la
+        respuesta. \textbf{Trap 2} al microkernel.
+    \item El microkernel entrega la respuesta a $U$ (que estaba
+        bloqueado). \textbf{Cambio de contexto 2} (PM $\to U$).
+    \item $U$ reanuda y obtiene la respuesta.
+\end{enumerate}
+
+\begin{respuesta}
+\textbf{(a)} La llamada requiere:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{2 traps} al microkernel (uno por cada \texttt{send}).
+    \item \textbf{2 cambios de contexto} entre procesos
+        ($U \to$ PM y PM $\to U$).
+\end{itemize}
+
+\textbf{Nota}: si la API separara \texttt{send} y \texttt{receive}
+en syscalls independientes (estilo POSIX message queues), el conteo
+sería de 3 o 4 traps. La cantidad de cambios de contexto se mantiene
+en 2.
+\end{respuesta}
+
+\subsection*{1.b --- Comparación con kernel monolítico}
+
+En un kernel monolítico, \texttt{getpid()} es una syscall provista
+directamente por el kernel:
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item $U$ ejecuta \texttt{getpid()}. \textbf{Trap 1} al kernel.
+    \item El kernel lee el PID del PCB del proceso actual y retorna.
+    \item $U$ reanuda con el valor.
+\end{enumerate}
+
+\textbf{Total}: \textbf{1 trap, 0 cambios de contexto}.
+
+\begin{idea}
+La comparación muestra el \emph{overhead inherente} del modelo
+microkernel para syscalls simples: para obtener un valor que en
+monolítico se resuelve con $\sim 50$\,ns de trap, el microkernel
+agrega $2 \times$ cambio de contexto $+ 2 \times$ trap, fácilmente
+$1$\,$\mu$s o más. Por eso los microkernels (Mach, MINIX) son
+\emph{conceptualmente elegantes} pero \emph{históricamente más
+lentos} que los monolíticos para cargas típicas. L4 y derivados
+modernos (seL4, Fiasco) han optimizado mucho este camino, pero la
+diferencia estructural sigue existiendo.
+\end{idea}
+
+% =====================================================================
+\section{Ejercicio 2 --- Comandos y syscalls (1 pto)}
+% =====================================================================
+
+\subsection*{2.a --- ``\texttt{p1 | p2} hace que p2 se bloquee hasta que p1 escriba''}
+
+\begin{respuesta}
+\textbf{V}. El operador \texttt{|} conecta el \texttt{stdout} de
+\texttt{p1} con el \texttt{stdin} de \texttt{p2} mediante un pipe del
+kernel. Si \texttt{p2} llama a \texttt{read(stdin, \ldots)} y el pipe
+está vacío, el \texttt{read} bloquea al proceso (estado
+\texttt{SLEEPING}) hasta que haya datos disponibles. Cuando \texttt{p1}
+escriba, el kernel despierta a \texttt{p2} y el \texttt{read} retorna.
+\end{respuesta}
+
+\subsection*{2.b --- ``Si p1 se planifica primero, p1 se bloqueará al escribir''}
+
+\begin{respuesta}
+\textbf{F}. \texttt{p1} \emph{no} se bloquea al escribir mientras
+haya espacio en el buffer interno del pipe (\texttt{PIPE\_BUF}, en
+Linux típicamente $64$\,KB). El escritor solo se bloquea cuando el
+buffer está \emph{lleno} y nadie lo está consumiendo. Si \texttt{p1}
+escribe poco (o si \texttt{p2} lee a un ritmo razonable), no hay
+bloqueo del escritor: la idea del pipe es justamente desacoplar
+productor y consumidor.
+
+\textbf{Excepción}: si \texttt{p1} es CPU-bound y produce gigas de
+datos sin que \texttt{p2} consuma, sí terminará bloqueándose.
+\end{respuesta}
+
+\subsection*{2.c --- Eliminar duplicados y ordenar sin temporales}
+
+Comando idiomático:
+
+\begin{lstlisting}[style=shellstyle]
+sort archivo | uniq > email-final.txt
+\end{lstlisting}
+
+\quad O en una sola pasada con \texttt{sort -u}:
+
+\begin{lstlisting}[style=shellstyle]
+sort -u archivo > email-final.txt
+\end{lstlisting}
+
+\begin{respuesta}
+La forma canónica es \verb|sort archivo | uniq > email-final.txt|.
+
+\textbf{Por qué funciona sin archivos auxiliares:}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{sort} lee el archivo, lo ordena y vuelca a
+        \texttt{stdout}.
+    \item El pipe conecta esa salida con \texttt{uniq} como entrada.
+    \item \texttt{uniq} requiere su entrada \emph{ordenada} para
+        funcionar (elimina duplicados \emph{adyacentes}); por eso
+        viene después de \texttt{sort}.
+    \item \texttt{>} redirige la salida final al archivo
+        \texttt{email-final.txt}.
+\end{itemize}
+
+Los datos viajan por buffers en RAM del kernel; no hay archivos
+intermedios en disco.
+\end{respuesta}
+
+\subsection*{2.d --- ``\texttt{fork} y \texttt{exec} son las únicas que crean procesos''}
+
+\begin{respuesta}
+\textbf{F}. \texttt{exec} \emph{no crea un proceso nuevo}: reemplaza
+la imagen del proceso actual con la del nuevo programa (mismo PID,
+mismo descriptor). La única syscall que efectivamente \emph{crea} un
+nuevo proceso es \texttt{fork()} (y sus variantes
+\texttt{vfork()}/\texttt{clone()} en Linux, internamente las tres
+descansan sobre el mismo mecanismo).
+
+El patrón clásico \textbf{fork+exec} usa las dos juntas: \texttt{fork}
+crea el hijo, y \texttt{exec} lo transforma en otro programa. Pero la
+\emph{creación} es solo del \texttt{fork}.
+\end{respuesta}
+
+% =====================================================================
+\section{Ejercicio 3 --- \texttt{lock}/\texttt{unlock} sin atomicidad (2 ptos)}
+% =====================================================================
+
+\textbf{Enunciado.} Dar pseudo-código de \texttt{lock(\&lk)} y
+\texttt{unlock(\&lk)} que \emph{no} deshabilitan ni habilitan
+interrupciones, asumiendo un sistema mono-procesador.
+
+\subsection*{Pseudo-código (incorrecto a propósito)}
+
+\begin{lstlisting}[style=cstyle]
+typedef int lock_t;     // 0 = libre, 1 = tomado
+
+void lock(lock_t *lk) {
+    while (*lk == 1)     // 1) test
+        ;                //    busy-wait
+    *lk = 1;             // 2) set
+}
+
+void unlock(lock_t *lk) {
+    *lk = 0;
+}
+\end{lstlisting}
+
+\textbf{El problema fundamental}: la pareja ``test luego set''
+(líneas 1 y 2 de \texttt{lock}) \textbf{no es atómica}: entre la
+lectura de \texttt{*lk} y la escritura de \texttt{*lk = 1} puede
+ocurrir una interrupción que dé control a otro thread, el cual entre
+también a la sección crítica.
+
+\subsection*{3.a --- Traza que viola la exclusión mutua (monoprocesador)}
+
+Sean dos threads $T_1$ y $T_2$ en un único procesador. Inicialmente
+\texttt{lk = 0}.
+
+\begin{center}
+\small
+\begin{tabular}{@{}clp{6cm}p{3.5cm}@{}}
+\toprule
+$t$ & Tarea ejecutando & Operación & Estado \\
+\midrule
+$t_1$ & $T_1$ & \texttt{while (*lk == 1)} $\to$ lee $0$, sale & \texttt{lk} = 0 \\
+$t_2$ & \multicolumn{2}{l}{\textbf{interrupción del timer}: scheduler cambia a $T_2$} & \\
+$t_3$ & $T_2$ & \texttt{while (*lk == 1)} $\to$ lee $0$, sale & \texttt{lk} = 0 \\
+$t_4$ & $T_2$ & \texttt{*lk = 1} & \texttt{lk} = 1 \\
+$t_5$ & $T_2$ & \textbf{ENTRA a la sección crítica} & \\
+$t_6$ & \multicolumn{2}{l}{\textbf{interrupción del timer}: scheduler cambia a $T_1$} & \\
+$t_7$ & $T_1$ & \texttt{*lk = 1} (siguiendo desde donde quedó) & \texttt{lk} = 1 \\
+$t_8$ & $T_1$ & \textbf{ENTRA a la sección crítica} & \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Resultado}: ambos threads están simultáneamente dentro de la
+sección crítica. \textbf{No se garantiza exclusión mutua.}
+
+La raíz del problema: $T_1$ \emph{ya había decidido} entrar
+(\texttt{while} salió con \texttt{lk = 0}) pero \emph{aún no había
+escrito} \texttt{lk = 1}. La interrupción dejó el ``lock'' en un
+estado inconsistente: $T_1$ comprometido pero aún no marcado.
+
+\subsection*{3.b --- Multiprocesador, aún con IRQs deshabilitadas}
+
+Ahora supongamos que \texttt{lock} \emph{sí} deshabilita IRQs en la
+CPU local antes del test-set, y las habilita después. Pero el sistema
+es multiprocesador (varias CPUs corriendo en paralelo).
+
+\textbf{Problema}: deshabilitar IRQs en la CPU $A$ no impide que la
+CPU $B$ ejecute simultáneamente. Las dos CPUs pueden estar en la
+sección de test-set al mismo tiempo, y como ``test luego set'' no es
+atómico a nivel de memoria, ambas terminan entrando.
+
+\textbf{Traza:}
+
+\begin{center}
+\small
+\begin{tabular}{@{}clll@{}}
+\toprule
+$t$ & CPU $A$ (corre $T_1$) & CPU $B$ (corre $T_2$) & \texttt{lk} \\
+\midrule
+$t_1$ & \texttt{cli} (deshabilita IRQs en $A$) & \texttt{cli} (deshabilita IRQs en $B$) & 0 \\
+$t_2$ & lee \texttt{*lk} $\to$ 0, sale del while & lee \texttt{*lk} $\to$ 0, sale del while & 0 \\
+$t_3$ & \texttt{*lk = 1} & \texttt{*lk = 1} (lo mismo, ya estaba 1) & 1 \\
+$t_4$ & \textbf{entra SC} & \textbf{entra SC}  & 1 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Ambas CPUs leen \texttt{lk = 0} casi simultáneamente; ambas escriben
+\texttt{*lk = 1}; ambas entran a la sección crítica. \textbf{Falla.}
+
+\begin{importante}
+\textbf{Conclusión}: deshabilitar interrupciones funciona como
+mecanismo de exclusión \emph{solo en monoprocesador}, porque allí la
+preemption es la única fuente de concurrencia. En multiprocesador,
+\textbf{además} hay paralelismo físico entre CPUs, y deshabilitar
+IRQs no afecta a otras CPUs.
+
+La solución para multiprocesador es usar \textbf{instrucciones
+atómicas del hardware}:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Test-And-Set} (TAS): \texttt{xchg} en x86;
+        actualiza el valor y retorna el anterior en una sola
+        operación que el bus de memoria garantiza atómica.
+    \item \textbf{Compare-And-Swap} (CAS): \texttt{cmpxchg};
+        condicional, base de muchos algoritmos lock-free.
+    \item \textbf{LL/SC}: \texttt{ldrex/strex} (ARM),
+        \texttt{lr/sc} (RISC-V); par de instrucciones cuya
+        atomicidad la detecta el cache coherence.
+\end{itemize}
+
+Con cualquiera de estas, el ``test luego set'' se vuelve atómico y
+la exclusión mutua queda garantizada.
+\end{importante}
+
+% =====================================================================
+\section{Ejercicio 4 --- V/F sobre MLFQ (1.5 ptos)}
+% =====================================================================
+
+\textbf{Enunciado.} Un SO usa MLFQ con la siguiente regla: si un
+proceso \emph{no} usó todo su quantum, se le \textbf{sube} la
+prioridad (al nivel superior). Si lo usó completo, se le \textbf{baja}
+la prioridad. ¿V/F?
+
+\subsection*{Análisis: qué procesos suben y cuáles bajan}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Un proceso \textbf{CPU-bound} ejecuta su quantum entero
+        sin bloquearse (no hace I/O). Por la regla, \textbf{baja} de
+        prioridad.
+    \item Un proceso \textbf{I/O-bound} típicamente se bloquea en una
+        operación de I/O (\texttt{read}, \texttt{recv}, etc.) antes
+        de agotar el quantum. Por la regla, \textbf{sube} de prioridad.
+\end{itemize}
+
+Resultado: los procesos interactivos (I/O-bound) terminan en los
+niveles altos del MLFQ y se planifican \emph{antes}; los CPU-bound
+quedan relegados a los niveles bajos.
+
+\subsection*{4.a --- ``El scheduler prioriza a los procesos CPU-bound''}
+
+\begin{respuesta}
+\textbf{F}. Es exactamente al revés. Los procesos CPU-bound
+consumen siempre todo su quantum y por eso \emph{bajan} de prioridad;
+quedan en los niveles más bajos del MLFQ y se planifican menos.
+\end{respuesta}
+
+\subsection*{4.b --- ``El scheduler prioriza a los procesos I/O-bound''}
+
+\begin{respuesta}
+\textbf{V}. Los I/O-bound se bloquean antes de gastar su quantum,
+así que por la regla suben de prioridad. Tienden a quedar en los
+niveles altos, lo que les da menor tiempo de respuesta --- ideal para
+procesos interactivos.
+\end{respuesta}
+
+\subsection*{4.c --- ``El objetivo es maximizar el throughput''}
+
+\begin{respuesta}
+\textbf{F}. El objetivo principal de MLFQ no es maximizar
+\emph{throughput} (cantidad de procesos completados por unidad de
+tiempo). Para eso conviene FCFS o SJF (que minimizan el promedio de
+turnaround sin la sobrecarga de muchos cambios de contexto).
+
+MLFQ se diseñó para optimizar el \textbf{tiempo de respuesta} de
+los procesos interactivos manteniendo \emph{fairness}: la prioridad
+adaptativa hace que los procesos I/O-bound (que esperan input del
+usuario o de la red) se ejecuten apenas tienen trabajo, sin sacrificar
+totalmente a los CPU-bound.
+\end{respuesta}
+
+\subsection*{4.d --- ``Minimizar el tiempo medio de espera de los I/O-bound''}
+
+\begin{respuesta}
+\textbf{V}. Es exactamente el objetivo: que los procesos
+orientados a I/O (interactivos) reciban CPU rápidamente cuando
+están listos para ejecutar. Esto reduce su tiempo de espera en la
+cola \texttt{READY} y, por ende, mejora la latencia percibida por el
+usuario.
+
+Un usuario tipeando en un editor o esperando una respuesta del
+servidor web nota fundamentalmente el tiempo entre que termina su
+input y la pantalla responde. MLFQ optimiza precisamente esa métrica.
+\end{respuesta}
+
+% =====================================================================
+\section{Ejercicio 5 --- Ejemplo de deadlock con \texttt{lock}/\texttt{unlock} (1.5 ptos)}
+% =====================================================================
+
+\textbf{Enunciado.} Dar un ejemplo de dos tareas (procesos o threads)
+que produzcan un deadlock usando las primitivas \texttt{lock} y
+\texttt{unlock}.
+
+\subsection*{Análisis: el patrón clásico}
+
+La forma más simple de generar deadlock con dos mutex es que dos
+tareas los adquieran en \textbf{orden inverso}: una toma $A$ y
+después espera $B$; la otra toma $B$ y después espera $A$.
+
+\subsection*{Código}
+
+\begin{lstlisting}[style=cstyle]
+lock_t lock_A;
+lock_t lock_B;
+
+/* Tarea T1: toma A, luego B */
+void *thread1(void *arg) {
+    lock(&lock_A);
+    /* aqui puede haber una interrupcion / context switch */
+    lock(&lock_B);          /* <-- espera B */
+
+    /* seccion critica usando A y B */
+    use(A, B);
+
+    unlock(&lock_B);
+    unlock(&lock_A);
+    return NULL;
+}
+
+/* Tarea T2: toma B, luego A */
+void *thread2(void *arg) {
+    lock(&lock_B);
+    /* aqui puede haber una interrupcion / context switch */
+    lock(&lock_A);          /* <-- espera A */
+
+    /* seccion critica usando A y B */
+    use(A, B);
+
+    unlock(&lock_A);
+    unlock(&lock_B);
+    return NULL;
+}
+\end{lstlisting}
+
+\subsection*{Traza que produce el deadlock}
+
+\begin{center}
+\small
+\begin{tabular}{@{}cll@{}}
+\toprule
+$t$  & $T_1$                       & $T_2$ \\
+\midrule
+$t_1$ & \texttt{lock(\&lock\_A)} $\to$ obtiene $A$ & --- \\
+$t_2$ & (context switch)            & \\
+$t_3$ & ---                         & \texttt{lock(\&lock\_B)} $\to$ obtiene $B$ \\
+$t_4$ & ---                         & \texttt{lock(\&lock\_A)} $\to$ \textbf{bloqueado} \\
+$t_5$ & (context switch)            & \\
+$t_6$ & \texttt{lock(\&lock\_B)} $\to$ \textbf{bloqueado} & \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Resultado}: $T_1$ tiene $A$ y espera $B$. $T_2$ tiene $B$ y
+espera $A$. Ninguno puede progresar; ambos están dormidos esperando
+un lock que el otro retiene. \textbf{Deadlock.}
+
+\subsection*{Grafo de espera}
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    proc/.style={circle,draw,minimum size=0.95cm,font=\bfseries\small},
+    res/.style={rectangle,draw,minimum size=0.95cm,font=\bfseries\small},
+    every edge/.style={draw,-{Stealth[length=2.5mm]},thick}
+]
+\node[proc] (T1) at (0, 1.5) {$T_1$};
+\node[proc] (T2) at (4, 1.5) {$T_2$};
+\node[res]  (LA) at (-1.5, -1) {$A$};
+\node[res]  (LB) at (5.5, -1)  {$B$};
+
+\draw[->,blue!60!black,thick] (LA) -- node[left,font=\scriptsize]{tiene} (T1);
+\draw[->,blue!60!black,thick] (LB) -- node[right,font=\scriptsize]{tiene} (T2);
+\draw[->,red!70!black,thick,dashed] (T1) -- node[above,font=\scriptsize]{espera} (LB);
+\draw[->,red!70!black,thick,dashed] (T2) -- node[above,font=\scriptsize]{espera} (LA);
+\end{tikzpicture}
+\end{center}
+
+Se cumple el ciclo $T_1 \to B \to T_2 \to A \to T_1$. Las cuatro
+condiciones de Coffman se satisfacen:
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item \textbf{Exclusión mutua}: cada lock es de uso exclusivo.
+    \item \textbf{Hold and wait}: cada tarea tiene un lock y espera
+        otro.
+    \item \textbf{No preemption}: el SO no puede quitarle un lock a
+        un thread.
+    \item \textbf{Espera circular}: el ciclo descripto.
+\end{enumerate}
+
+\begin{respuesta}
+El ejemplo presentado produce deadlock cuando $T_1$ adquiere
+\texttt{lock\_A} y $T_2$ adquiere \texttt{lock\_B} antes de que
+cualquiera intente tomar el segundo lock.
+
+\textbf{Prevención estándar}: imponer un \emph{orden global} de
+adquisición. Si ambas tareas tomaran siempre \texttt{lock\_A} antes
+que \texttt{lock\_B} (e.g., orden por ID o por dirección de memoria),
+el deadlock es imposible: la primera tarea en obtener $A$ retiene la
+oportunidad de tomar también $B$ sin que nadie esté pidiendo el otro
+en orden inverso.
+\end{respuesta}
+
+% =====================================================================
+\section{Ejercicio 6 --- V/F sobre paginación (1 pto)}
+% =====================================================================
+
+\subsection*{6.a --- ``El paginado permite definir un espacio lógico a cada proceso''}
+
+\begin{respuesta}
+\textbf{V}. Cada proceso tiene su propia tabla de páginas. La MMU,
+al hacer el cambio de contexto, carga el registro de tabla de
+páginas (\texttt{CR3} en x86, \texttt{satp} en RISC-V) con la
+dirección de la tabla del proceso entrante. A partir de ese momento,
+las direcciones virtuales que emite la CPU se traducen según esa
+tabla. Así, dos procesos pueden usar la misma dirección virtual
+\texttt{0x1000} sin colisionar: cada uno mapea a un frame físico
+distinto.
+\end{respuesta}
+
+\subsection*{6.b --- ``Dos procesos que referencian la misma dirección virtual están compartiendo memoria''}
+
+\begin{respuesta}
+\textbf{F}. Por defecto, dos procesos con sus tablas de páginas
+\emph{independientes} mapean la \emph{misma dirección virtual} a
+\emph{frames físicos distintos}. Que dos procesos lean
+\texttt{0x1000} no significa nada en común: pueden estar
+referenciando memoria completamente distinta.
+
+\textbf{La memoria compartida real} ocurre cuando dos tablas de
+páginas (de procesos distintos) tienen entradas que apuntan al
+\emph{mismo frame físico}. Esto se logra explícitamente con
+\texttt{shmget}/\texttt{shmat}, \texttt{mmap(MAP\_SHARED)}, librerías
+compartidas (\texttt{.so}), etc. Y nada obliga a que las direcciones
+virtuales coincidan entre procesos: típicamente \emph{no} coinciden.
+\end{respuesta}
+
+\subsection*{6.c --- ``Page fault cuando el bit V está apagado''}
+
+\begin{respuesta}
+\textbf{V}. El bit \texttt{V} (valid) en la PTE indica si la entrada
+es legítima. Si \texttt{V = 0}, el hardware genera un \emph{page
+fault} en cuanto la MMU intenta traducir esa dirección. Es el
+mecanismo básico para detectar:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Accesos a direcciones no asignadas (typical NULL deref).
+    \item Demand paging (la página existe lógicamente pero todavía
+        no se cargó del disco).
+    \item Copy-on-write (la página existe pero como solo-lectura
+        marcada para CoW).
+    \item Crecimiento dinámico del stack.
+\end{itemize}
+\end{respuesta}
+
+\subsection*{6.d --- ``Tabla de páginas implementa \texttt{v2p: virt $\to$ phys}''}
+
+\begin{respuesta}
+\textbf{V}. La función conceptual de la tabla de páginas es
+exactamente esa: dado un \texttt{vpn} (los bits altos de la
+dirección virtual), devolver el \texttt{ppn} correspondiente y
+concatenar con el offset para formar la dirección física. Es una
+función determinista mientras el contenido de la tabla no cambie.
+\end{respuesta}
+
+\subsection*{6.e --- ``El SO debería hacer panic ante un page fault de usuario''}
+
+\begin{respuesta}
+\textbf{F}. Un page fault \emph{no es un error fatal}. Es el
+mecanismo principal por el cual el SO implementa varias optimizaciones
+y servicios:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Demand paging}: solo se cargan en RAM las páginas
+        efectivamente accedidas; las demás generan page fault que
+        el kernel atiende cargándolas del disco.
+    \item \textbf{Copy-on-write}: el fork() inicial no copia
+        nada; las páginas se marcan solo-lectura. Al primer write,
+        un page fault dispara la copia real.
+    \item \textbf{Crecimiento dinámico del stack/heap}: cuando un
+        proceso accede a una página recién asignada, el kernel la
+        aloja en el momento.
+    \item \textbf{Mapeos de archivos} (\texttt{mmap}): el contenido
+        del archivo se trae a memoria solo cuando se referencia.
+\end{itemize}
+
+El SO debe \textbf{atender} el page fault. Si la dirección es
+\emph{realmente inválida} (no pertenece a ningún VMA del proceso),
+recién entonces envía \texttt{SIGSEGV} al proceso, que normalmente
+termina. \textbf{Nunca debe hacer \texttt{panic}}: un panic significa
+falla del kernel, no de un proceso de usuario.
+\end{respuesta}
+
+% =====================================================================
+\section{Ejercicio 7 --- Paginación en arquitectura de 32 bits (2 ptos)}
+% =====================================================================
+
+\textbf{Enunciado.} En una arquitectura de 32 bits, con páginas de
+$4$\,MB, los procesos usan un espacio de direcciones
+\texttt{[0, 0x8000000)}. Ayuda: $4$\,MB $=$ \texttt{0x400000}.
+
+\subsection*{Análisis de parámetros}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Tamaño de página: $4$\,MB $= 2^{22}$ bytes.
+    \item Espacio de direcciones del proceso:
+        \texttt{[0, 0x8000000)} $= 2^{27}$ bytes $= 128$\,MB.
+    \item Espacio direccionable de la arquitectura: $2^{32}$ bytes $=
+        4$\,GB (mucho mayor que lo que usa cada proceso).
+\end{itemize}
+
+\subsection*{7.a --- Cantidad de páginas}
+
+\textbf{Páginas físicas totales en la arquitectura}:
+
+\quad $2^{32} \div 2^{22} = 2^{10} = 1024$ páginas físicas
+
+\textbf{Páginas virtuales que usa el proceso}:
+
+\quad \texttt{0x8000000} $\div$ \texttt{0x400000} $= 2^{27} \div 2^{22} = 2^5 = 32$ páginas
+
+\begin{respuesta}
+\textbf{(7.a)} En total, la arquitectura permite hasta
+\textbf{1024 páginas} físicas (si toda la RAM estuviera presente).
+El proceso, restringido a \texttt{[0, 0x8000000)}, usa hasta
+\textbf{32 páginas virtuales}.
+\end{respuesta}
+
+\subsection*{7.b --- Interpretación de la dirección virtual}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Total: $32$ bits.
+    \item Offset (dentro de la página de $4$\,MB): $22$ bits bajos.
+    \item Page index (vpn): $32 - 22 = 10$ bits altos.
+\end{itemize}
+
+\begin{center}
+\begin{tikzpicture}[every node/.style={font=\ttfamily\small},
+    cell/.style={draw,minimum height=0.7cm,align=center}]
+\node[cell,minimum width=2.6cm,fill=c1!20] (vpn) at (0,0) {vpn};
+\node[cell,minimum width=5.6cm,fill=c2!20,right=0pt of vpn] (off) {offset};
+\node[font=\scriptsize] at ($(vpn.north)+(0,0.25)$) {10 bits};
+\node[font=\scriptsize] at ($(off.north)+(0,0.25)$) {22 bits};
+\node[font=\scriptsize] at ($(vpn.north west)+(0.1,-0.05)$) {31};
+\node[font=\scriptsize] at ($(vpn.north east)+(-0.15,-0.05)$) {22};
+\node[font=\scriptsize] at ($(off.north west)+(0.1,-0.05)$) {21};
+\node[font=\scriptsize] at ($(off.north east)+(-0.05,-0.05)$) {0};
+\end{tikzpicture}
+\end{center}
+
+\textbf{Cómo procesa la MMU una dirección virtual $va$:}
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item Extrae los $10$ bits altos $\to$ \texttt{vpn}.
+    \item Accede a la entrada \texttt{vpn} de la tabla de páginas.
+    \item Si \texttt{V = 0} o se violan los permisos $\to$ page fault.
+    \item Si \texttt{V = 1}, concatena el \texttt{ppn} de la entrada
+        con los $22$ bits del offset $\to$ dirección física.
+\end{enumerate}
+
+\subsection*{7.c --- Tabla de páginas del proceso}
+
+El proceso usa: $2$ páginas de código, $1$ de datos globales,
+$1$ libre (no mapeada), $2$ de stack, en ese orden a partir de la
+dirección $0$.
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{vpn 0}: código (página 1).
+    \item \texttt{vpn 1}: código (página 2).
+    \item \texttt{vpn 2}: datos globales.
+    \item \texttt{vpn 3}: \textbf{libre (no mapeada)}.
+    \item \texttt{vpn 4}: stack (página 1).
+    \item \texttt{vpn 5}: stack (página 2).
+    \item \texttt{vpn 6} en adelante: no asignadas.
+\end{itemize}
+
+Asignamos los \texttt{ppn} arbitrariamente (los elige el SO):
+
+\begin{center}
+\small
+\begin{tabular}{@{}cccccp{4.5cm}@{}}
+\toprule
+vpn        & ppn          & V & R/W/X    & Rango virtual                        & Área \\
+\midrule
+$0$        & \texttt{0x10} & 1 & R + X    & \texttt{[0x0000000, 0x0400000)}      & código (página 1) \\
+$1$        & \texttt{0x11} & 1 & R + X    & \texttt{[0x0400000, 0x0800000)}      & código (página 2) \\
+$2$        & \texttt{0x20} & 1 & R + W    & \texttt{[0x0800000, 0x0C00000)}      & datos globales \\
+$\boldsymbol{3}$ & ---     & \textbf{0} & --- & \texttt{[0x0C00000, 0x1000000)} & \textbf{libre (no mapeada)} \\
+$4$        & \texttt{0x30} & 1 & R + W    & \texttt{[0x1000000, 0x1400000)}      & stack (página 1) \\
+$5$        & \texttt{0x31} & 1 & R + W    & \texttt{[0x1400000, 0x1800000)}      & stack (página 2) \\
+$6$--$31$  & ---           & 0 & ---      & \texttt{[0x1800000, 0x8000000)}      & no asignadas \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{7.d --- ¿La dirección \texttt{0xc40000} produce page fault?}
+
+\textbf{Descomposición} (10 bits vpn, 22 bits offset):
+
+\quad \texttt{0xc40000} $=$ \texttt{0x00c40000} (con 32 bits)
+
+\quad \texttt{0xc40000} $\div$ \texttt{0x400000} $= 3$ (con resto)
+
+\quad \texttt{0xc40000} $-$ $3 \times$ \texttt{0x400000} $=$ \texttt{0xc40000} $-$ \texttt{0xc00000} $=$ \texttt{0x40000}
+
+Por tanto: \texttt{vpn = 3}, \texttt{offset = 0x40000}.
+
+\textbf{Consulta a la tabla}: la entrada \texttt{vpn = 3} es la página
+``libre, no mapeada'' con \texttt{V = 0}.
+
+\begin{respuesta}
+\textbf{(7.d)} \textbf{Sí, produce page fault.} La dirección
+\texttt{0xc40000} cae en la \texttt{vpn = 3}, que en la tabla del
+proceso tiene \texttt{V = 0} (es la página intencionalmente libre
+entre datos y stack). El hardware levanta page fault y, como el
+proceso no espera tener esa dirección mapeada, el kernel le envía
+\texttt{SIGSEGV}.
+\end{respuesta}
+
+\subsection*{7.e --- ¿A qué área pertenece \texttt{va = 0x1400000}?}
+
+\textbf{Descomposición}:
+
+\quad \texttt{0x1400000} $\div$ \texttt{0x400000} $= 5$ (sin resto)
+
+\quad $\Rightarrow$ \texttt{vpn = 5}, \texttt{offset = 0}.
+
+\textbf{Consulta a la tabla}: la entrada \texttt{vpn = 5} corresponde
+a la segunda página del stack.
+
+\begin{respuesta}
+\textbf{(7.e)} \texttt{0x1400000} pertenece al área de \textbf{stack}
+(segunda página). Más concretamente, es el primer byte de la segunda
+página de stack: \texttt{vpn = 5}, \texttt{offset = 0}.
+
+\textbf{Nota}: el enunciado dice ``código, texto o stack''. Como
+``código'' y ``texto'' son el mismo concepto (la sección
+\texttt{.text} del ejecutable), suponemos que la opción intermedia
+debía decir ``datos''. La respuesta correcta es claramente
+\textbf{stack}.
+\end{respuesta}
+
+% =====================================================================
+\section*{Resumen del parcial}
+\addcontentsline{toc}{section}{Resumen del parcial}
+% =====================================================================
+
+\begin{center}
+\small
+\begin{tabular}{@{}clp{8.5cm}@{}}
+\toprule
+\# & Tema & Respuesta sintética \\
+\midrule
+1 & Microkernel IPC      & 2 traps (\texttt{send} en ambos lados) + 2 ctx switches; monolítico: 1 trap, 0 ctx \\
+2 & Comandos y syscalls  & a:V, b:F (buffer del pipe), c: \texttt{sort F | uniq > final}, d:F (\texttt{exec} no crea) \\
+3 & locks no atómicos    & Sin atomicidad: traza interrupciones entre test y set. En SMP con IRQs off: traza simultánea en dos CPUs \\
+4 & MLFQ V/F             & a:F (no CPU-bound), b:V (sí I/O-bound), c:F (no es throughput), d:V (sí latencia interactiva) \\
+5 & Deadlock             & T1 toma A,B; T2 toma B,A en orden inverso. 4 condiciones de Coffman. Fix: orden global \\
+6 & Paginación V/F       & a:V, b:F (tablas distintas), c:V, d:V, e:F (no panic, atender el fault) \\
+7 & Paginación numérica  & a: 1024 físicas / 32 virtuales; b: 10 + 22 bits; c: vpns 0,1,2,4,5 mapeadas y 3 libre; d: page fault; e: stack \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\end{document}

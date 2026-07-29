@@ -1,0 +1,1297 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- Encoding ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands]{babel}
+\usepackage{lmodern}
+
+% --- Layout ---
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{parskip}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em plus 0.2em minus 0.1em}
+
+% --- Tables and graphics ---
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{positioning,shapes.geometric,arrows.meta,fit,backgrounds,calc,decorations.pathreplacing}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{amsmath,amssymb}
+
+% --- Soporte para caracteres Unicode usados en formulas en texto plano ---
+\usepackage{newunicodechar}
+\newunicodechar{→}{\ensuremath{\rightarrow}}
+\newunicodechar{≥}{\ensuremath{\geq}}
+\newunicodechar{≤}{\ensuremath{\leq}}
+\newunicodechar{×}{\ensuremath{\times}}
+\newunicodechar{÷}{\ensuremath{\div}}
+\newunicodechar{≈}{\ensuremath{\approx}}
+\newunicodechar{⌈}{\ensuremath{\lceil}}
+\newunicodechar{⌉}{\ensuremath{\rceil}}
+\newunicodechar{✓}{\ensuremath{\checkmark}}
+
+% --- Code listings ---
+\usepackage{listings}
+\definecolor{codegray}{rgb}{0.96,0.96,0.96}
+\definecolor{codeborder}{rgb}{0.85,0.85,0.85}
+\definecolor{codecomment}{rgb}{0.30,0.55,0.30}
+\definecolor{codekeyword}{rgb}{0.10,0.30,0.70}
+\definecolor{codestring}{rgb}{0.65,0.15,0.10}
+
+\lstdefinestyle{cstyle}{
+    language=C,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+}
+
+\lstdefinestyle{shellstyle}{
+    language=bash,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+    upquote=true,
+}
+
+\lstdefinestyle{textstyle}{
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstset{style=textstyle}
+
+% --- Definition / Idea / Important boxes ---
+\usepackage[most]{tcolorbox}
+\newtcolorbox{idea}[1][]{
+    colback=orange!5!white,
+    colframe=orange!60!black,
+    fonttitle=\bfseries,
+    title=Idea intuitiva,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{importante}[1][]{
+    colback=red!5!white,
+    colframe=red!50!black,
+    fonttitle=\bfseries,
+    title=Importante,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{respuesta}[1][]{
+    colback=green!5!white,
+    colframe=green!40!black,
+    fonttitle=\bfseries,
+    title=Respuesta,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+
+% --- Hyperlinks ---
+\usepackage[colorlinks=true,
+            linkcolor=blue!60!black,
+            urlcolor=blue!50!black,
+            citecolor=blue!60!black]{hyperref}
+
+% --- Color palette ---
+\definecolor{c1}{HTML}{4C72B0}
+\definecolor{c2}{HTML}{DD8452}
+\definecolor{c3}{HTML}{55A868}
+\definecolor{c4}{HTML}{8172B2}
+\definecolor{cred}{HTML}{C44E52}
+\definecolor{cfree}{HTML}{8C8C8C}
+
+% --- Title block ---
+\title{
+    \vspace{-2.5em}
+    \textbf{Parcial --- OS} \\[0.3em]
+    \large Sistemas Operativos
+}
+\author{
+    Tomás Rodeghiero \\
+    \small UNRC --- Universidad Nacional de Río Cuarto
+}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent
+Resolución completa y verificada del parcial ``Parcial --- OS'' de
+la cátedra de Sistemas Operativos. El parcial consta de diez
+ejercicios mixtos (multiple-choice y abiertos) sobre: diseño de
+sistemas operativos (monolítico vs.\ microkernel), gestión de
+procesos, motivación de \texttt{fork+exec}, características de xv6,
+deadlock en pares de locks adquiridos en orden inverso, traducción
+de direcciones lógicas a físicas con paginación de dos niveles,
+diagrama de tabla de páginas para un proceso xv6, segmentación vs.\
+paginación, paginación de un solo nivel en x86, y concepto de
+memoria virtual. Cada respuesta se verifica de manera independiente
+y se documenta el razonamiento.
+\end{abstract}
+
+\tableofcontents
+\bigskip
+
+% =====================================================================
+\section{Ejercicio 1 --- Diseño de sistemas operativos}
+% =====================================================================
+
+\textbf{Enunciado.} Marcar las respuestas verdaderas.
+
+\subsection*{1.a --- ``Un sistema monolítico tiene los subsistemas del kernel en un mismo espacio de memoria''}
+
+\begin{respuesta}
+\textbf{V}. En un kernel monolítico (Linux, Windows NT, xv6) todos
+los subsistemas (scheduler, gestor de memoria, FS, drivers,
+networking) se compilan en un único binario y se cargan en el mismo
+espacio de direcciones del kernel. La comunicación entre subsistemas
+es por llamadas a función directa y acceso a estructuras globales.
+\end{respuesta}
+
+\subsection*{1.b --- ``En un sistema monolítico sus subsistemas se comunican por medio de mensajes''}
+
+\begin{respuesta}
+\textbf{F}. En monolítico, los subsistemas comparten el mismo
+espacio de direcciones y se comunican por \textbf{llamadas a función
+directa} y por acceso a estructuras de datos globales (tabla de
+procesos, tabla de archivos, etc.). El paso de mensajes es típico
+del \emph{microkernel}, no del monolítico.
+\end{respuesta}
+
+\subsection*{1.c --- ``En un microkernel un subsistema no puede acceder al espacio de memoria de otros módulos''}
+
+\begin{respuesta}
+\textbf{V}. En un microkernel los subsistemas (FS, drivers, etc.)
+son \emph{procesos} en modo usuario, cada uno con su propio espacio
+de direcciones. La MMU impide que un servicio acceda directamente a
+la memoria de otro. La comunicación es vía IPC (mensajes) gestionado
+por el microkernel.
+\end{respuesta}
+
+\subsection*{1.d --- ``Un diseño microkernel tiene como ventaja que se puede distribuir\ldots''}
+
+\emph{(diferentes componentes corriendo en diferentes computadoras
+en una red)}
+
+\begin{respuesta}
+\textbf{V}. Como los servicios del SO son procesos independientes
+que se comunican por mensajes, esos mensajes pueden viajar tanto
+localmente (IPC tradicional) como a través de la red. Esto fue una
+ventaja explotada por Mach (base de macOS) y por sistemas
+distribuidos como QNX/Helios. Un servicio (e.g., un servidor de
+archivos) puede vivir físicamente en otra máquina y los clientes lo
+acceden de manera transparente.
+
+\textbf{En un monolítico esto es imposible}: todos los subsistemas
+viven en el mismo proceso (el kernel) y dependen de acceso directo
+a la memoria, lo cual no es distribuible.
+\end{respuesta}
+
+\subsection*{1.e --- ``Un sistema microkernel generalmente ofrece mejor rendimiento que un monolítico''}
+
+\begin{respuesta}
+\textbf{F}. Es al revés: \emph{en general}, los monolíticos tienen
+\textbf{mejor rendimiento}. La razón: en monolítico una llamada
+entre subsistemas es una llamada a función directa; en microkernel
+es un mensaje IPC con (al menos) dos cambios de modo y dos cambios
+de contexto, más posible copia de datos entre espacios.
+
+A cambio, el microkernel gana en \textbf{modularidad}, \textbf{robustez}
+(crash de un driver no tira el kernel), \textbf{seguridad} y
+\textbf{distribución} (1.d).
+\end{respuesta}
+
+\subsection*{Resumen Ej.\ 1}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+Ítem & Respuesta & Marcar como verdadera \\
+\midrule
+a    & V         & \checkmark \\
+b    & F         &           \\
+c    & V         & \checkmark \\
+d    & V         & \checkmark \\
+e    & F         &           \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{importante}
+\textbf{Corrección frente a la respuesta original}: el ítem
+\textbf{(d) es V}. La capacidad de distribuir un microkernel en una
+red es justamente una de sus ventajas clásicas.
+\end{importante}
+
+% =====================================================================
+\section{Ejercicio 2 --- Gestión de procesos}
+% =====================================================================
+
+\textbf{Enunciado.} Marcar las respuestas verdaderas.
+
+\subsection*{2.a --- ``En UNIX la única llamada al sistema que crea un nuevo proceso es \texttt{fork()}''}
+
+\begin{respuesta}
+\textbf{V}. \texttt{fork()} es la única syscall que crea un nuevo
+proceso (con un nuevo PID). Sus variantes \texttt{vfork()} y
+\texttt{clone()} en Linux son del mismo mecanismo conceptual:
+producen un nuevo proceso. \texttt{exec()}, en contraste, NO crea
+proceso: reemplaza la imagen del proceso actual.
+\end{respuesta}
+
+\subsection*{2.b --- ``Un proceso \emph{zombie} es uno tal que no puede finalizar porque no ha liberado todos sus recursos''}
+
+\begin{respuesta}
+\textbf{F}. Un zombie \emph{ya finalizó} (ejecutó \texttt{exit()} o
+fue terminado por una señal). Sus recursos (memoria, descriptores,
+mapeos) \textbf{ya fueron liberados}. Lo único que sigue existiendo
+es su \emph{descriptor} (PCB) en la tabla de procesos del kernel,
+con su \emph{exit code} guardado, esperando que el \textbf{padre}
+llame a \texttt{wait()}/\texttt{waitpid()} para recogerlo.
+
+Sólo cuando el padre hace \texttt{wait}, el descriptor se libera y
+el zombie desaparece definitivamente.
+\end{respuesta}
+
+\subsection*{2.c --- ``La llamada al sistema \texttt{exec(path, argv)} crea un nuevo proceso y carga el código y datos estáticos en memoria''}
+
+\begin{respuesta}
+\textbf{F}. \texttt{exec()} \textbf{no crea un nuevo proceso}.
+Reemplaza la imagen del proceso \emph{corriente}: mismo PID, mismo
+descriptor, mismo padre, pero todo el código, datos y stack se
+sustituyen por los del nuevo programa.
+
+Para crear procesos se usa \texttt{fork()}. El patrón clásico es
+\texttt{fork} + \texttt{exec}: \texttt{fork} crea el hijo;
+\texttt{exec} reemplaza al hijo con el nuevo programa.
+\end{respuesta}
+
+\subsection*{2.d --- ``Siempre hay un proceso en estado RUNNING, ya que el scheduler asume eso''}
+
+\begin{respuesta}
+\textbf{F}. No es cierto que \emph{siempre} haya un proceso de
+usuario en RUNNING:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item En xv6 (original), si la cola \texttt{RUNNABLE} está vacía,
+        el \texttt{scheduler()} entra a un \emph{spin} (loop) con la
+        instrucción \texttt{hlt} o equivalente, esperando que un
+        \texttt{wakeup} o el timer cree trabajo. No hay un ``proceso
+        idle'' formal.
+    \item En Linux y algunos SO modernos, sí existe un \emph{idle
+        process} (\texttt{swapper} con PID 0) que se planifica
+        cuando no hay nadie más. Pero eso es una particularidad de
+        la implementación, no un requisito conceptual.
+\end{itemize}
+
+El scheduler está \emph{diseñado para tolerar} el caso de no haber
+procesos RUNNABLE. No \emph{asume} que siempre haya algo que correr.
+\end{respuesta}
+
+\subsection*{2.e --- ``Sólo puede haber un único proceso en estado RUNNING''}
+
+\begin{respuesta}
+\textbf{F}. En sistemas multi-procesador (SMP), hay tantos procesos
+RUNNING simultáneamente como CPUs/cores haya. Cada CPU ejecuta a su
+proceso elegido por el scheduler. En sistemas mono-procesador sí
+sería V, pero la afirmación absoluta es falsa.
+\end{respuesta}
+
+\subsection*{Resumen Ej.\ 2}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+Ítem & Respuesta & Marcar como verdadera \\
+\midrule
+a    & V         & \checkmark \\
+b    & F         &           \\
+c    & F         &           \\
+d    & F         &           \\
+e    & F         &           \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{importante}
+\textbf{Sólo la (a) debe marcarse como verdadera.} La respuesta
+original tenía sin completar (d) y (e); ambas son \textbf{F}.
+\end{importante}
+
+% =====================================================================
+\section{Ejercicio 3 --- Ventajas de \texttt{fork()} + \texttt{exec()}}
+% =====================================================================
+
+\textbf{Enunciado.} Describa las ventajas de que ejecutar un programa
+en el contexto de un nuevo proceso deba hacerse en dos pasos
+(\texttt{fork()} \ldots\ \texttt{exec()}). Ejemplificar.
+
+\subsection*{Análisis}
+
+La división en dos syscalls (\texttt{fork}, \texttt{exec}) es una
+\textbf{decisión de diseño elegante} de UNIX que evita un único
+\texttt{spawn(prog, args, \ldots)} con docenas de argumentos. La
+idea: entre \texttt{fork} y \texttt{exec} el hijo está en una
+\emph{ventana} en la que puede usar \emph{cualquier syscall}
+disponible para configurar su ambiente, y luego saltar al programa
+final.
+
+\subsection*{Ventajas concretas}
+
+\paragraph{1) Redirecciones de E/S por el shell.}
+El shell hace \texttt{open}/\texttt{close}/\texttt{dup2} entre
+\texttt{fork} y \texttt{exec} para conectar \texttt{stdin}/\texttt{stdout}/
+\texttt{stderr} a archivos o pipes:
+
+\begin{lstlisting}[style=cstyle]
+/* Implementacion de `ls > out.txt` por el shell */
+pid_t pid = fork();
+if (pid == 0) {
+    int fd = open("out.txt", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    dup2(fd, STDOUT_FILENO);   /* fd 1 ahora apunta a out.txt */
+    close(fd);
+    execlp("ls", "ls", (char*)NULL);
+}
+\end{lstlisting}
+
+Sin \texttt{fork}/\texttt{exec} separados, habría que pasarle a
+\texttt{ls} (o a una hipotética \texttt{spawn}) un parámetro para
+indicar la redirección. UNIX lo hace genérico: el shell modifica los
+descriptores y \texttt{ls} simplemente escribe a \texttt{stdout}.
+
+\paragraph{2) Pipes entre comandos.}
+
+\begin{lstlisting}[style=cstyle]
+/* `ls | wc -l` */
+int p[2]; pipe(p);
+if (fork() == 0) {        /* hijo izquierdo: ls */
+    dup2(p[1], 1);
+    close(p[0]); close(p[1]);
+    execlp("ls", "ls", NULL);
+}
+if (fork() == 0) {        /* hijo derecho: wc */
+    dup2(p[0], 0);
+    close(p[0]); close(p[1]);
+    execlp("wc", "wc", "-l", NULL);
+}
+close(p[0]); close(p[1]);
+/* el shell espera ambos */
+\end{lstlisting}
+
+\paragraph{3) Cambio de ambiente.}
+El hijo puede modificar variables de entorno con \texttt{setenv} o
+construirse un \texttt{envp} propio antes de \texttt{exec}, sin
+afectar al padre.
+
+\paragraph{4) Cambio de identidad y privilegios.}
+Programas SUID-root típicamente hacen \texttt{setuid()} para bajar
+sus privilegios antes de \texttt{exec}, ejecutando ya como el usuario
+real, no como root.
+
+\paragraph{5) Cambio de directorio de trabajo.}
+\texttt{chdir(\ldots)} en el hijo antes de \texttt{exec} para que
+el nuevo programa arranque en otro directorio.
+
+\paragraph{6) Configuración de signal handlers / mask.}
+Resetear handlers a default antes del \texttt{exec}.
+
+\paragraph{7) Limites de recursos.}
+\texttt{setrlimit} (memoria máxima, tiempo de CPU, etc.) antes del
+\texttt{exec}.
+
+\paragraph{8) Uso de \texttt{fork} sin \texttt{exec}.}
+También permite el patrón inverso: crear procesos hijos que ejecutan
+el \emph{mismo programa} (paralelismo, workers, servidores con
+modelo \emph{forking}). El servidor \texttt{Apache} pre-fork es el
+ejemplo clásico.
+
+\subsection*{Comparación con \texttt{spawn()}}
+
+Windows tiene \texttt{CreateProcess()}, un único syscall con
+\emph{muchísimos} argumentos para configurar todo lo anterior. UNIX
+prefiere la \textbf{composición de syscalls pequeñas y ortogonales}
+(redirección con \texttt{dup2}, cambio de privilegios con
+\texttt{setuid}, etc.), y la flexibilidad de poder usar
+\emph{cualquier} syscall durante la ventana del hijo.
+
+\begin{respuesta}
+La separación en dos pasos permite, en el período entre
+\texttt{fork} y \texttt{exec}, configurar libremente el ambiente del
+hijo: redirigir descriptores, conectarse a pipes, cambiar
+variables de entorno, bajar privilegios, cambiar el directorio de
+trabajo, configurar signal handlers, etc. Es la base de cómo el
+shell implementa redirecciones (\texttt{>}, \texttt{<}), pipes
+(\texttt{|}), substitución de comandos, jobs en background y demás
+features. Si \texttt{fork+exec} fueran un solo syscall, todo eso
+debería pasarse como parámetros.
+\end{respuesta}
+
+% =====================================================================
+\section{Ejercicio 4 --- Características de xv6}
+% =====================================================================
+
+\textbf{Enunciado.} Tildar las opciones correctas sobre xv6 (código
+original).
+
+\subsection*{4.a --- ``Soporta spinlock''}
+
+\begin{respuesta}
+\textbf{V}. xv6 implementa spinlocks en \texttt{spinlock.c}: la
+estructura \texttt{struct spinlock} con las funciones
+\texttt{acquire()} y \texttt{release()}. Usa la instrucción atómica
+\texttt{xchg} en x86 (\texttt{amoswap.w.aq} en RISC-V) para
+implementar el test-and-set. Es el mecanismo de exclusión mutua
+fundamental del kernel.
+\end{respuesta}
+
+\subsection*{4.b --- ``Soporta monitores''}
+
+\begin{respuesta}
+\textbf{F}. xv6 \emph{no} ofrece la abstracción de \emph{monitor}
+(que en Java/C\# combina un lock con variables de condición en una
+única construcción del lenguaje). Lo que xv6 sí ofrece son las
+piezas separadas: \texttt{spinlock} para exclusión mutua y
+\texttt{sleep}/\texttt{wakeup} para condition-variables-like
+(item 4.c), pero el programador del kernel las combina manualmente.
+\end{respuesta}
+
+\subsection*{4.c --- ``El gestor de procesos tiene funciones comparables a variables de condición''}
+
+\begin{respuesta}
+\textbf{V}. Las funciones \texttt{sleep(chan, lock)} y
+\texttt{wakeup(chan)} de xv6 implementan \emph{exactamente} la
+semántica de variables de condición:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{sleep(chan, lock)}: libera \texttt{lock}, pone al
+        proceso a dormir en \texttt{chan} (estado \texttt{SLEEPING}).
+        Al despertar, vuelve a tomar el lock. Equivalente a
+        \texttt{pthread\_cond\_wait}.
+    \item \texttt{wakeup(chan)}: despierta a \emph{todos} los
+        procesos dormidos en \texttt{chan} (pasa a
+        \texttt{RUNNABLE}). Equivalente a
+        \texttt{pthread\_cond\_broadcast}.
+\end{itemize}
+
+xv6 no llama a estas operaciones ``variables de condición''
+explícitamente, pero la analogía es directa.
+\end{respuesta}
+
+\subsection*{4.d --- ``No ofrece ningún mecanismo de comunicación y sincronización entre procesos''}
+
+\begin{respuesta}
+\textbf{F}. xv6 \emph{sí} ofrece mecanismos:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Pipes}: \texttt{pipe(p)} crea pipes entre procesos
+        emparentados.
+    \item \textbf{Archivos}: pueden usarse para comunicar procesos.
+    \item \textbf{Signals (kill)}: aunque limitadas, xv6 implementa
+        \texttt{kill(pid)}.
+    \item \textbf{\texttt{wait}/\texttt{exit}}: sincronización
+        padre-hijo a través del estado de salida.
+    \item \textbf{Locks compartidos en filesystem}: \texttt{ilock} para
+        inodos compartidos.
+\end{itemize}
+\end{respuesta}
+
+\subsection*{4.e --- ``Tiene mecanismo de detección de deadlock''}
+
+\begin{respuesta}
+\textbf{F}. xv6 \emph{no} detecta deadlocks. La política es
+``ostrich algorithm'': si los locks del kernel se toman siempre en
+el mismo orden global (convención del código), el deadlock no
+ocurrirá; si el programador comete un error de ordenamiento, xv6
+simplemente se cuelga.
+
+No hay grafo de espera, no hay timeout en \texttt{acquire}, no hay
+recuperación. La prevención se hace por disciplina, no por detección
+automática.
+\end{respuesta}
+
+\subsection*{Resumen Ej.\ 4}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+Ítem & Respuesta & Marcar como verdadera \\
+\midrule
+a    & V         & \checkmark \\
+b    & F         &           \\
+c    & V         & \checkmark \\
+d    & F         &           \\
+e    & F         &           \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% =====================================================================
+\section{Ejercicio 5 --- Evitar deadlock en par de locks invertidos}
+% =====================================================================
+
+\textbf{Enunciado.} Proponer una solución al código dado para evitar
+deadlock. Describir ventajas/desventajas.
+
+\begin{lstlisting}[style=cstyle]
+// module A                     // module B
+acquire(&a.lock);                acquire(&b.lock);
+// update a.data                 // update b.value
+acquire(&b.lock);                acquire(&a.lock);
+// update b.value                // update a.data
+release(&b.lock);                release(&a.lock);
+release(&a.lock);                release(&b.lock);
+\end{lstlisting}
+
+\subsection*{Análisis: por qué hay deadlock}
+
+Los módulos $A$ y $B$ adquieren los mismos dos locks en
+\textbf{orden inverso}: $A$ toma $a$ y luego $b$; $B$ toma $b$ y
+luego $a$. Una traza con ambos ejecutándose en paralelo:
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item $A$ ejecuta \texttt{acquire(\&a.lock)}: obtiene $a$.
+    \item $B$ ejecuta \texttt{acquire(\&b.lock)}: obtiene $b$.
+    \item $A$ ejecuta \texttt{acquire(\&b.lock)}: bloquea (B tiene $b$).
+    \item $B$ ejecuta \texttt{acquire(\&a.lock)}: bloquea (A tiene $a$).
+\end{enumerate}
+
+Ambos bloqueados esperando un lock que el otro retiene $\to$
+\textbf{deadlock} (las 4 condiciones de Coffman se cumplen).
+
+\subsection*{Solución 1 (recomendada): orden global de adquisición}
+
+Imponer un \textbf{orden total} sobre los locks que ambos módulos
+respeten. Por ejemplo, ``siempre tomar primero el lock con menor
+dirección de memoria'', o ``siempre primero \texttt{a.lock} y luego
+\texttt{b.lock}''.
+
+\begin{lstlisting}[style=cstyle]
+/* Versión corregida: ambos módulos toman a.lock ANTES que b.lock */
+
+// module A                     // module B
+acquire(&a.lock);                acquire(&a.lock);  // CAMBIA: primero a
+acquire(&b.lock);                acquire(&b.lock);  // luego b
+
+// update a.data                 // update a.data
+// update b.value                // update b.value
+
+release(&b.lock);                release(&b.lock);
+release(&a.lock);                release(&a.lock);
+\end{lstlisting}
+
+\paragraph{Por qué funciona.} Con orden global, nunca pueden formar
+una espera circular: el primero que tome \texttt{a.lock} es el que
+después podrá pedir \texttt{b.lock}, y el otro espera al primero.
+Como mucho hay una cadena lineal, jamás un ciclo.
+
+\paragraph{Ventajas.}
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Simple} de implementar y razonar.
+    \item \textbf{Sin penalidad de performance}: los locks se toman
+        normalmente, sólo cambia el orden.
+    \item \textbf{Granularidad fina}: dos hilos que toquen partes
+        disjuntas del estado pueden ejecutar concurrentemente
+        (sólo se serializan cuando colisionan en los mismos locks).
+\end{itemize}
+
+\paragraph{Desventajas.}
+\begin{itemize}[leftmargin=*,nosep]
+    \item Requiere disciplina del programador: si en algún lugar
+        del código alguien viola el orden, vuelve el deadlock.
+    \item En sistemas grandes con muchos locks, mantener el orden
+        global se complica.
+\end{itemize}
+
+\subsection*{Solución 2: un único lock global}
+
+Sustituir los dos locks por uno solo, que proteja todo el estado.
+
+\paragraph{Ventajas.}
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Imposible} formar deadlock con un único lock.
+    \item Trivial de implementar.
+\end{itemize}
+
+\paragraph{Desventajas.}
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Pérdida de concurrencia}: dos hilos que tocaran
+        partes disjuntas del estado ahora se serializan
+        innecesariamente.
+    \item En sistemas con alta contención, este lock se vuelve
+        cuello de botella.
+\end{itemize}
+
+\subsection*{Solución 3: \texttt{trylock} con \emph{back-off}}
+
+Usar \texttt{trylock} para el segundo lock; si falla, soltar el
+primero y reintentar.
+
+\begin{lstlisting}[style=cstyle]
+while (1) {
+    acquire(&a.lock);
+    if (trylock(&b.lock) == 0) {  /* tomado */
+        break;
+    }
+    release(&a.lock);
+    /* opcional: sleep o spin un rato antes de reintentar */
+}
+/* aqui A tiene a y b */
+\end{lstlisting}
+
+\paragraph{Ventajas.}
+\begin{itemize}[leftmargin=*,nosep]
+    \item No requiere coordinación global de orden.
+    \item Funciona en escenarios donde no se sabe a priori el
+        conjunto de locks.
+\end{itemize}
+
+\paragraph{Desventajas.}
+\begin{itemize}[leftmargin=*,nosep]
+    \item Más complejo de implementar.
+    \item Puede generar \textbf{livelock}: dos hilos que se ceden
+        mutuamente y nunca progresan. Requiere \emph{back-off
+        aleatorio} para mitigarlo.
+    \item Lecturas/escrituras parciales en estructura compartida
+        si no se cuida con \texttt{release} oportuno.
+\end{itemize}
+
+\subsection*{Comparación}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lp{3.5cm}p{3.5cm}p{3.5cm}@{}}
+\toprule
+& \textbf{Orden global} & \textbf{Un solo lock} & \textbf{Trylock + back-off} \\
+\midrule
+Complejidad        & Baja                       & Mínima                 & Alta \\
+Concurrencia       & Buena (locks separados)   & Mala (serialización)   & Buena (intentos no bloquean) \\
+Riesgo de deadlock & 0 si se respeta el orden  & 0                      & 0, pero hay livelock \\
+Aplicabilidad      & Cuando los locks se conocen estáticamente & Siempre & Cuando los locks son dinámicos \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{respuesta}
+La solución estándar es \textbf{imponer un orden global de
+adquisición}: ambos módulos toman primero \texttt{a.lock} y luego
+\texttt{b.lock} (o el orden inverso, pero consistente). Esto elimina
+la espera circular sin sacrificar concurrencia. La desventaja es que
+exige disciplina del programador para mantener el orden a lo largo
+de toda la base de código.
+\end{respuesta}
+
+% =====================================================================
+\section{Ejercicio 6 --- Traducción de direcciones lógicas a físicas}
+% =====================================================================
+
+\textbf{Enunciado.} Dado el mapa de memoria mostrado, determinar las
+direcciones físicas correspondientes a:
+\textbf{a)} \texttt{0x00000320}
+\textbf{b)} \texttt{0x00002FFA}
+\textbf{c)} \texttt{0x00400200}.
+También determinar el rango de direcciones lógicas que mapean al
+\textbf{frame 3}.
+
+\subsection*{Análisis: estructura del mapa}
+
+El diagrama muestra paginación de \textbf{dos niveles} estilo x86 32
+bits (4\,KB páginas):
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Page directory con entradas $0, 1, 2, \ldots$
+    \item Page table 1 con dos entradas: \texttt{0x2000} $\to$
+        frame 1 y \texttt{0xA000} $\to$ frame 3.
+    \item Page table 2 con una entrada: \texttt{0x5000} $\to$
+        frame 2.
+\end{itemize}
+
+Las flechas del diagrama indican:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{pgdir[0]} $\to$ Page Table 1.
+    \item \texttt{pgdir[1]} $\to$ Page Table 2.
+    \item PT1 [0] = \texttt{0x2000} \texttt{| flags} $\to$ frame 1
+        en físico \texttt{0x02000000}.
+    \item PT1 [2] = \texttt{0xA000} \texttt{| flags} $\to$ frame 3
+        en físico \texttt{0x0A000000}.
+    \item PT2 [0] = \texttt{0x5000} \texttt{| flags} $\to$ frame 2
+        en físico \texttt{0x05000000}.
+\end{itemize}
+
+\textbf{Codificación de direcciones} (32 bits, páginas de 4\,KB):
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item bits 31--22: \texttt{pgdir} index (10 bits).
+    \item bits 21--12: \texttt{pgtable} index (10 bits).
+    \item bits 11--0: \texttt{offset} (12 bits).
+\end{itemize}
+
+\textbf{Interpretación del PTE}: el valor del PTE (e.g.,
+\texttt{0x2000}) representa el \textbf{frame number} (PPN); la
+dirección física del frame es PPN $\times$ 4\,KB. Así:
+\texttt{0x2000} $\to$ físico \texttt{0x2000} $\times$
+\texttt{0x1000} $=$ \texttt{0x02000000}.
+
+\subsection*{6.a --- Dirección lógica \texttt{0x00000320}}
+
+Descomposición:
+
+\quad \texttt{0x00000320} $=$ \texttt{0000\_0000\_00}\ %
+\texttt{00\_0000\_0000}\ \texttt{0011\_0010\_0000}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{pgdir} = $0$
+    \item \texttt{pgtable} = $0$
+    \item \texttt{offset} = \texttt{0x320}
+\end{itemize}
+
+Camino: \texttt{pgdir[0]} $\to$ PT1; \texttt{PT1[0]} = \texttt{0x2000}
+$\to$ frame en físico \texttt{0x02000000}.
+
+\quad \textbf{Físico = $\texttt{0x02000000} + \texttt{0x320} =
+\texttt{0x02000320}$.}
+
+\subsection*{6.b --- Dirección lógica \texttt{0x00002FFA}}
+
+Descomposición:
+
+\quad \texttt{0x00002FFA} $=$ \texttt{0000\_0000\_00}\ %
+\texttt{00\_0000\_0010}\ \texttt{1111\_1111\_1010}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{pgdir} = $0$
+    \item \texttt{pgtable} = $2$
+    \item \texttt{offset} = \texttt{0xFFA}
+\end{itemize}
+
+Camino: \texttt{pgdir[0]} $\to$ PT1; \texttt{PT1[2]} = \texttt{0xA000}
+$\to$ frame en físico \texttt{0x0A000000}.
+
+\quad \textbf{Físico = $\texttt{0x0A000000} + \texttt{0xFFA} =
+\texttt{0x0A000FFA}$.}
+
+\subsection*{6.c --- Dirección lógica \texttt{0x00400200}}
+
+Descomposición:
+
+\quad \texttt{0x00400200} $=$ \texttt{0000\_0000\_01}\ %
+\texttt{00\_0000\_0000}\ \texttt{0010\_0000\_0000}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{pgdir} = $1$
+    \item \texttt{pgtable} = $0$
+    \item \texttt{offset} = \texttt{0x200}
+\end{itemize}
+
+Camino: \texttt{pgdir[1]} $\to$ PT2; \texttt{PT2[0]} = \texttt{0x5000}
+$\to$ frame en físico \texttt{0x05000000}.
+
+\quad \textbf{Físico = $\texttt{0x05000000} + \texttt{0x200} =
+\texttt{0x05000200}$.}
+
+\subsection*{6.d --- Rango lógico que mapea al frame 3}
+
+\begin{importante}
+\textbf{El rango original \texttt{[0x00400000, 0x0040BFFF]} estaba
+incorrecto.} El razonamiento dado (``\texttt{pgdir[1]} +
+\texttt{pgtable[0]}'') apuntaba al frame 2, no al frame 3.
+\end{importante}
+
+\textbf{Razonamiento correcto.} El frame 3 se alcanza a través de
+\texttt{pgdir[0]} (que apunta a PT1) y \texttt{pgtable[2]} (entrada
+\texttt{0xA000} de PT1). Esto es \emph{coherente} con la respuesta de
+6.b: \texttt{0x00002FFA} mapeó a frame 3.
+
+Por lo tanto, las direcciones lógicas que caen en frame 3 son
+aquellas con:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item bits 31--22 (\texttt{pgdir}) $= 0$
+    \item bits 21--12 (\texttt{pgtable}) $= 2$
+    \item bits 11--0 (\texttt{offset}) $\in [0, \texttt{0xFFF}]$
+\end{itemize}
+
+Composición:
+
+\quad mínimo: \texttt{0000\_0000\_00\_00\_0000\_0010\_0000\_0000\_0000}
+$=$ \texttt{0x00002000}
+
+\quad máximo: \texttt{0000\_0000\_00\_00\_0000\_0010\_1111\_1111\_1111}
+$=$ \texttt{0x00002FFF}
+
+\begin{respuesta}
+\textbf{Direcciones físicas:}
+
+\begin{center}
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+Lógica           & \texttt{pgdir} & \texttt{pgtable[idx]} & Física \\
+\midrule
+\texttt{0x00000320} & 0 & PT1[0] = 0x2000 & \textbf{\texttt{0x02000320}} \\
+\texttt{0x00002FFA} & 0 & PT1[2] = 0xA000 & \textbf{\texttt{0x0A000FFA}} \\
+\texttt{0x00400200} & 1 & PT2[0] = 0x5000 & \textbf{\texttt{0x05000200}} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Rango lógico del frame 3}: \boxed{\texttt{[0x00002000,~0x00002FFF]}}
+(4\,KB consecutivos, accedidos vía \texttt{pgdir[0] + pgtable[2]}).
+\end{respuesta}
+
+% =====================================================================
+\section{Ejercicio 7 --- Diagrama del mapa de memoria de un proceso xv6}
+% =====================================================================
+
+\textbf{Enunciado.} Diagrame el mapa (directorio + tablas de páginas)
+para un proceso xv6 que usa 15\,KB de código, 3\,KB de datos
+(y el stack correspondiente).
+
+\subsection*{Análisis: layout que produce \texttt{exec} en xv6}
+
+xv6 (versión del libro) coloca en el espacio de direcciones del
+proceso, comenzando en \texttt{0}:
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item Las páginas de \textbf{código (\texttt{text})}.
+    \item Las páginas de \textbf{datos} (\texttt{data} + \texttt{bss}).
+    \item Una \textbf{página de guarda} con \texttt{V = 0} (para
+        detectar \emph{stack overflow}).
+    \item Una \textbf{página de stack} (el código de \texttt{exec}
+        en xv6 asigna 1 página de stack utilizable, en
+        \texttt{exec.c}: \emph{``Allocate two pages \ldots\ make the
+        first inaccessible \ldots\ use the second as the user
+        stack''}).
+\end{enumerate}
+
+\subsection*{Cuentas previas}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Código (15\,KB)}: $\lceil 15 / 4 \rceil = 4$
+        páginas (la última con 1\,KB de \emph{padding}).
+        $\to$ vpns \textbf{0, 1, 2, 3}.
+    \item \textbf{Datos (3\,KB)}: $\lceil 3 / 4 \rceil = 1$
+        página (con 1\,KB sin usar). $\to$ vpn \textbf{4}.
+    \item \textbf{Guarda}: $1$ página con \texttt{V = 0}. $\to$ vpn
+        \textbf{5}.
+    \item \textbf{Stack}: $1$ página. $\to$ vpn \textbf{6}.
+\end{itemize}
+
+Total: \textbf{7 vpns}, de las cuales \textbf{6 están mapeadas}
+(la guarda es inválida). Todas caen en los primeros 28\,KB del
+espacio de direcciones; todas pertenecen al primer entrada del page
+directory (\texttt{pgdir[0]}, que cubre los primeros 4\,MB).
+
+\subsection*{Diagrama del directorio + tabla de páginas}
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    pde/.style={draw,fill=c1!25,minimum width=3.2cm,minimum height=0.55cm,align=center},
+    pte/.style={draw,fill=c3!20,minimum width=4cm,minimum height=0.5cm,align=center},
+    inv/.style={draw,fill=cred!15,minimum width=4cm,minimum height=0.5cm,align=center,font=\ttfamily\scriptsize},
+    page/.style={draw,minimum width=2.6cm,minimum height=0.5cm,align=center}
+]
+
+% Page directory
+\node[font=\bfseries\small] at (-3.7,6) {Page Directory};
+\node[pde] (pd0) at (-3.7,5.3) {[0] $\to$ \texttt{PT0}};
+\node[inv,minimum width=3.2cm] (pdrest) at (-3.7,4.75) {[1]..[511] $V=0$};
+\node[inv,minimum width=3.2cm,fill=c4!15] (pdkern) at (-3.7,4.2) {[512]..[1023] kernel};
+
+% Page Table 0
+\node[font=\bfseries\small] at (2,6) {Page Table 0 (\texttt{PT0})};
+\node[pte] (p0) at (2,5.3) {[0] $\to$ F$_0$ (code, R+X)};
+\node[pte,below=0pt of p0] (p1) {[1] $\to$ F$_1$ (code, R+X)};
+\node[pte,below=0pt of p1] (p2) {[2] $\to$ F$_2$ (code, R+X)};
+\node[pte,below=0pt of p2] (p3) {[3] $\to$ F$_3$ (code, R+X)};
+\node[pte,below=0pt of p3,fill=c2!25] (p4) {[4] $\to$ F$_4$ (data, R+W)};
+\node[inv,below=0pt of p4] (p5) {[5] (guarda, $V=0$)};
+\node[pte,below=0pt of p5,fill=c4!25] (p6) {[6] $\to$ F$_5$ (stack, R+W)};
+\node[inv,below=0pt of p6] (prest) {[7]..[1023] $V=0$};
+
+% Frames físicos
+\node[font=\bfseries\small] at (8.5,6) {Frames físicos};
+\node[page,fill=c3!20] (f0) at (8.5,5.3) {F$_0$ (4\,KB)};
+\node[page,fill=c3!20,below=0pt of f0] (f1) {F$_1$ (4\,KB)};
+\node[page,fill=c3!20,below=0pt of f1] (f2) {F$_2$ (4\,KB)};
+\node[page,fill=c3!20,below=0pt of f2] (f3) {F$_3$ (4\,KB)};
+\node[page,fill=c2!25,below=0pt of f3] (f4) {F$_4$ (4\,KB)};
+\node[page,fill=c4!25,below=0.4cm of f4] (f5) {F$_5$ (4\,KB)};
+
+\draw[->,thick] (pd0.east) -- (p0.west);
+
+\draw[->,thick] (p0.east) -- (f0.west);
+\draw[->,thick] (p1.east) -- (f1.west);
+\draw[->,thick] (p2.east) -- (f2.west);
+\draw[->,thick] (p3.east) -- (f3.west);
+\draw[->,thick] (p4.east) -- (f4.west);
+\draw[->,thick] (p6.east) -- (f5.west);
+
+\end{tikzpicture}
+\end{center}
+
+\subsection*{Tabla detallada de entradas válidas}
+
+\begin{center}
+\small
+\begin{tabular}{@{}cclccp{3.5cm}@{}}
+\toprule
+vpn & rango virtual              & PT0[idx]   & V & permisos & Área \\
+\midrule
+0   & \texttt{[0x0000, 0x1000)}  & F$_0$      & 1 & R+X      & código (pág.\ 1) \\
+1   & \texttt{[0x1000, 0x2000)}  & F$_1$      & 1 & R+X      & código (pág.\ 2) \\
+2   & \texttt{[0x2000, 0x3000)}  & F$_2$      & 1 & R+X      & código (pág.\ 3) \\
+3   & \texttt{[0x3000, 0x4000)}  & F$_3$      & 1 & R+X      & código (pág.\ 4, 1\,KB padding) \\
+4   & \texttt{[0x4000, 0x5000)}  & F$_4$      & 1 & R+W      & datos (3\,KB + 1\,KB pad) \\
+5   & \texttt{[0x5000, 0x6000)}  & ---        & 0 & ---      & \textbf{guarda (stack overflow)} \\
+6   & \texttt{[0x6000, 0x7000)}  & F$_5$      & 1 & R+W      & stack \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+El resto del \texttt{Page Table 0} (entradas 7 a 1023), así como el
+resto del \texttt{Page Directory} (entradas 1 a 511 para usuario),
+quedan con \texttt{V = 0}. Las entradas 512 a 1023 del PD están
+mapeadas al kernel (\texttt{KERNBASE} $=$ 2\,GB en xv6 x86).
+
+\begin{respuesta}
+El proceso usa \textbf{6 frames físicos} (4 de código, 1 de datos,
+1 de stack) más \textbf{1 página de guarda} (sin frame asociado).
+Todo el layout cabe en los primeros 28\,KB del espacio virtual:
+una sola entrada del \texttt{Page Directory} (\texttt{PD[0]}) que
+apunta a un único \texttt{Page Table} (\texttt{PT0}) con 7 entradas
+relevantes (de las cuales una es inválida).
+\end{respuesta}
+
+% =====================================================================
+\section{Ejercicio 8 --- Segmentación y paginado}
+% =====================================================================
+
+\textbf{Enunciado.} Marcar las respuestas verdaderas.
+
+\subsection*{8.a --- ``Los segmentos representan porciones lógicas de un proceso''}
+
+\begin{respuesta}
+\textbf{V}. Es justamente la idea fundamental de la segmentación:
+dividir el espacio de direcciones de un proceso en porciones
+\emph{con significado lógico} (código, datos, stack, heap, librería
+compartida\ldots), cada una con su propio tamaño, base y permisos.
+\end{respuesta}
+
+\subsection*{8.b --- ``Un segmento o una página sólo puede contener instrucciones o datos, nunca ambos''}
+
+\begin{respuesta}
+\textbf{F}. Una \textbf{página} no distingue ``instrucciones de
+datos'': es una unidad puramente física (4\,KB de memoria). Una sola
+página puede contener instrucciones y datos mezclados (de hecho, el
+último byte de un binario regularmente combina código y datos en
+la misma página por alineamiento).
+
+En \textbf{segmentación pura}, sí hay segmentos especializados
+(segmento de código vs.\ segmento de datos), pero incluso ahí el
+segmento de código puede contener constantes (\texttt{.rodata}). La
+afirmación absoluta es falsa.
+\end{respuesta}
+
+\subsection*{8.c --- ``El paginado es comúnmente usado para implementar memoria virtual''}
+
+\begin{respuesta}
+\textbf{V}. La paginación es \emph{la} técnica estándar para
+memoria virtual en SO modernos. Sus ventajas: páginas de tamaño
+fijo (swap simple), sin fragmentación externa, soporte natural para
+demand paging y copy-on-write.
+\end{respuesta}
+
+\subsection*{8.d --- ``En x86 las páginas pueden ser de un nivel o de dos niveles''}
+
+\begin{respuesta}
+\textbf{V}. x86 32-bit admite dos modos de paginación:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{2 niveles}: PD + PT, páginas de \textbf{4\,KB}. La
+        configuración estándar.
+    \item \textbf{1 nivel}: sólo el PD con páginas de \textbf{4\,MB}
+        (extensión PSE, \emph{Page Size Extension}). Cada entrada del
+        PD apunta directamente a una página de 4\,MB. Útil para
+        mapear regiones grandes del kernel.
+\end{itemize}
+
+x86 64-bit usa 4 ó 5 niveles, pero en el contexto de x86 32-bit
+(que es lo que cubre la cátedra), la afirmación es V.
+\end{respuesta}
+
+\subsection*{8.e --- ``En xv6 (original) al ocurrir un page fault, el proceso finaliza (\texttt{exit})''}
+
+\begin{respuesta}
+\textbf{V}. xv6 \emph{no implementa} demand paging, COW ni
+crecimiento dinámico del stack. Cualquier page fault en modo usuario
+es tratado como un acceso ilegal: \texttt{trap.c} marca
+\texttt{p->killed = 1}, lo que provoca que el proceso termine en su
+próximo \texttt{trapret}.
+
+En SO más sofisticados (Linux), un page fault es un \emph{mecanismo
+útil} para implementar varias optimizaciones; sólo se mata el
+proceso si la dirección no pertenece a ningún VMA. Pero en xv6
+original, \textbf{todo} page fault de usuario es fatal.
+\end{respuesta}
+
+\subsection*{Resumen Ej.\ 8}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+Ítem & Respuesta & Marcar como verdadera \\
+\midrule
+a    & V         & \checkmark \\
+b    & F         &           \\
+c    & V         & \checkmark \\
+d    & V         & \checkmark \\
+e    & V         & \checkmark \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% =====================================================================
+\section{Ejercicio 9 --- Una sola tabla de páginas en x86 para 4 GB}
+% =====================================================================
+
+\textbf{Enunciado.} Si se usa una única tabla de páginas en x86
+(32 bits). Para describir 4\,GB se requiere que:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item[(a)] sus entradas describan páginas de \textbf{4\,KB}.
+    \item[(b)] sus entradas describan páginas de \textbf{4\,MB}.
+\end{itemize}
+
+\subsection*{Análisis}
+
+``Una única tabla de páginas'' significa paginación de \emph{un solo
+nivel} (sin Page Directory + Page Table; sólo una tabla plana).
+
+Para cubrir los $2^{32}$ bytes (4\,GB) del espacio de direcciones,
+las entradas de la tabla y el offset deben sumar 32 bits. Si cada
+entrada cubre una página de tamaño $P$, hace falta una tabla con
+$2^{32} / P$ entradas.
+
+\textbf{Caso (a) páginas de 4\,KB:} la tabla tendría
+$2^{32} / 2^{12} = 2^{20} = 1\,048\,576$ entradas. Cada entrada
+ocupa $4$ bytes $\to$ \textbf{$4$\,MB} de tabla por proceso. Además,
+en x86 esto no se hace ``en una sola tabla''; el hardware del
+procesador requiere PD + PT (2 niveles) para páginas de 4\,KB.
+
+\textbf{Caso (b) páginas de 4\,MB:} la tabla tendría
+$2^{32} / 2^{22} = 2^{10} = 1024$ entradas. Cada entrada ocupa
+$4$ bytes $\to$ \textbf{$4$\,KB} de tabla por proceso (cabe en una
+sola página). \textbf{x86 lo soporta de forma nativa} mediante el
+bit PS (Page Size) en las entradas del Page Directory: si está
+encendido, la entrada apunta directamente a una página de 4\,MB en
+lugar de a otro nivel.
+
+\begin{respuesta}
+La respuesta correcta es \textbf{(b) páginas de 4\,MB}. Una única
+tabla de 1024 entradas (4\,KB de tamaño) cubre los 4\,GB con
+páginas de 4\,MB cada una. Páginas de 4\,KB exigirían 1\,M de
+entradas (4\,MB de tabla), y x86 no soporta esa configuración con
+una sola tabla; requiere paginación de dos niveles.
+\end{respuesta}
+
+% =====================================================================
+\section{Ejercicio 10 --- Concepto de memoria virtual}
+% =====================================================================
+
+\textbf{Enunciado.} Describir el concepto de memoria virtual.
+
+\subsection*{Definición}
+
+La \textbf{memoria virtual} es una abstracción provista
+conjuntamente por el hardware (MMU) y el SO que desacopla la
+\emph{dirección lógica} (la que un proceso emite cuando lee o
+escribe memoria) de la \emph{dirección física} (la que en realidad
+selecciona una celda de la RAM).
+
+Esto permite que cada proceso tenga su \textbf{propio espacio de
+direcciones virtuales} independiente, que puede ser \emph{más
+grande} que la RAM física disponible y que el SO administre
+dinámicamente.
+
+\subsection*{Mecanismo básico}
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item Cada proceso tiene su propia \textbf{tabla de páginas}
+        que el SO mantiene.
+    \item Cuando el proceso emite una dirección virtual, la
+        \textbf{MMU} la consulta en la tabla y la traduce a la
+        dirección física correspondiente.
+    \item Si la página no está en RAM (\texttt{V = 0}), la MMU
+        genera un \emph{page fault}. El SO atiende el fault, decide
+        qué hacer (cargar la página de disco, asignar una nueva,
+        copiar, matar al proceso, etc.) y reanuda la instrucción.
+\end{enumerate}
+
+\subsection*{Funcionalidades que habilita}
+
+\paragraph{1) Procesos más grandes que la RAM.}
+\textbf{Swapping}: páginas no usadas recientemente se mueven a una
+zona de \emph{swap} en disco. Cuando se vuelven a referenciar, el
+SO las trae de vuelta (vía page fault). Permite ejecutar procesos
+que en conjunto exceden la RAM, al costo de latencia de disco.
+
+\paragraph{2) Demand paging.}
+Las páginas se cargan en RAM \textbf{sólo cuando se accede a ellas
+por primera vez}. Esto acelera el arranque de programas grandes:
+no hay que leer el ejecutable entero al disco al hacer \texttt{exec},
+sólo las páginas que se ejecutan.
+
+\paragraph{3) Aislamiento entre procesos.}
+Como cada proceso ve solo su tabla de páginas, no puede acceder a la
+memoria de otro. Es la base de la seguridad multi-usuario.
+
+\paragraph{4) Copy-on-Write (COW).}
+\texttt{fork} no copia la memoria del padre. Las páginas se
+comparten físicamente con permiso de \texttt{lectura}; el primer
+\texttt{write} dispara un page fault que el kernel resuelve copiando
+sólo la página afectada. Hace \texttt{fork+exec} extremadamente
+eficiente.
+
+\paragraph{5) Memory-mapped files (\texttt{mmap}).}
+Un archivo se ``mapea'' al espacio de direcciones del proceso. Las
+páginas se cargan bajo demanda; lecturas y escrituras se traducen
+automáticamente en operaciones sobre el archivo. Es la base de
+cargar ejecutables eficientemente.
+
+\paragraph{6) Memoria compartida entre procesos.}
+Dos procesos pueden mapear las mismas páginas físicas a (posiblemente
+distintas) direcciones virtuales. Es la base de \texttt{shm}, IPC
+de alto rendimiento y librerías compartidas.
+
+\paragraph{7) Páginas de guarda.}
+El SO puede dejar páginas con \texttt{V = 0} entre regiones críticas
+(e.g., entre el stack y el heap) para detectar overflows
+inmediatamente.
+
+\paragraph{8) Address Space Layout Randomization (ASLR).}
+La MMU permite cargar el binario en direcciones aleatorias en cada
+ejecución, dificultando ataques que dependen de direcciones
+conocidas.
+
+\subsection*{Costos}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Overhead de traducción}: cada acceso pasa por la
+        MMU. Para mitigar, las CPUs tienen un \textbf{TLB} (cache
+        de traducciones).
+    \item \textbf{Page faults} cuestan miles de ciclos. Si se
+        dispara mucho (\emph{thrashing}, working set $>$ RAM), el
+        sistema se cae a pique.
+    \item \textbf{Memoria de la tabla de páginas} (algunos MB por
+        proceso en x86-64), aunque el árbol jerárquico mitiga
+        cuando hay grandes huecos.
+\end{itemize}
+
+\begin{respuesta}
+\textbf{Memoria virtual} es la abstracción que da a cada proceso un
+espacio de direcciones lógicas independiente, posiblemente mayor
+que la RAM física, gestionado por el SO con ayuda de la MMU. Sus
+funcionalidades clave: aislamiento de procesos, swapping,
+\emph{demand paging}, \emph{copy-on-write}, \emph{memory-mapped
+files}, memoria compartida entre procesos, ASLR y páginas de guarda.
+
+La idea unificadora: la tabla de páginas es una indirección
+flexible entre lo que el proceso ``ve'' y lo que la RAM ``es'', y
+el SO la usa para implementar todas las features anteriores con un
+único mecanismo (resolver el page fault apropiadamente).
+\end{respuesta}
+
+% =====================================================================
+\section*{Resumen del parcial}
+\addcontentsline{toc}{section}{Resumen del parcial}
+% =====================================================================
+
+\begin{center}
+\footnotesize
+\begin{tabular}{@{}clp{9cm}@{}}
+\toprule
+\# & Tema & Respuesta sintética \\
+\midrule
+1  & Diseño de SO        & a:V, b:F, c:V, \textbf{d:V} (microkernel distribuible), e:F \\
+2  & Gestión de procesos & a:V, b:F (zombie ya finalizó), c:F (exec no crea), \textbf{d:F}, \textbf{e:F} \\
+3  & \texttt{fork} + \texttt{exec} & Ventana para configurar el ambiente del hijo: redirecciones, pipes, env, privilegios, dir.\ de trabajo, signal handlers \\
+4  & xv6                 & a:V (spinlock), b:F (sin monitor), c:V (\texttt{sleep}/\texttt{wakeup}), d:F, e:F \\
+5  & Solución a deadlock & Orden global de adquisición; alternativas: lock único o trylock+backoff \\
+6  & Traducción de direcciones & a:\texttt{0x02000320}, b:\texttt{0x0A000FFA}, c:\texttt{0x05000200}; frame 3: \textbf{\texttt{[0x00002000, 0x00002FFF]}} \\
+7  & Mapa xv6 (15K + 3K) & PD[0] $\to$ PT0; PT0[0..3]=code, [4]=data, [5]=guarda (V=0), [6]=stack \\
+8  & Segmentación/paginado & a:V, b:F, c:V, d:V, e:V \\
+9  & Tabla única para 4\,GB & b: páginas de 4\,MB (1024 entradas, 4\,KB de tabla) \\
+10 & Memoria virtual     & Abstracción para aislamiento, swap, demand paging, COW, mmap, shared mem, ASLR, guard pages \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{importante}
+\textbf{Correcciones respecto de las respuestas originales:}
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item \textbf{Ej 1.d}: era \textbf{V} (microkernel distribuible),
+        no ``no sé''.
+    \item \textbf{Ej 2.d, 2.e}: ambas \textbf{F}; estaban
+        incompletas.
+    \item \textbf{Ej 4.b}: \textbf{F} (xv6 no tiene monitores como
+        construcción explícita; tiene los componentes por separado).
+    \item \textbf{Ej 6.d (rango del frame 3)}: corregido a
+        \texttt{[0x00002000, 0x00002FFF]}. El rango original
+        \texttt{[0x00400000, 0x0040BFFF]} era inconsistente con las
+        respuestas (a), (b) y (c).
+\end{enumerate}
+\end{importante}
+
+\end{document}

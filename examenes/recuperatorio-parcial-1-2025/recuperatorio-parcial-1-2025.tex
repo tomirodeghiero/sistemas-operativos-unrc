@@ -1,0 +1,945 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- Encoding ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands]{babel}
+\usepackage{lmodern}
+
+% --- Layout ---
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{parskip}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em plus 0.2em minus 0.1em}
+
+% --- Tables and graphics ---
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{positioning,shapes.geometric,arrows.meta,fit,backgrounds,calc,decorations.pathreplacing}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{amsmath,amssymb}
+
+% --- Soporte para caracteres Unicode usados en formulas en texto plano ---
+\usepackage{newunicodechar}
+\newunicodechar{→}{\ensuremath{\rightarrow}}
+\newunicodechar{≥}{\ensuremath{\geq}}
+\newunicodechar{≤}{\ensuremath{\leq}}
+\newunicodechar{×}{\ensuremath{\times}}
+\newunicodechar{÷}{\ensuremath{\div}}
+\newunicodechar{≈}{\ensuremath{\approx}}
+\newunicodechar{⌈}{\ensuremath{\lceil}}
+\newunicodechar{⌉}{\ensuremath{\rceil}}
+\newunicodechar{✓}{\ensuremath{\checkmark}}
+
+% --- Code listings ---
+\usepackage{listings}
+\definecolor{codegray}{rgb}{0.96,0.96,0.96}
+\definecolor{codeborder}{rgb}{0.85,0.85,0.85}
+\definecolor{codecomment}{rgb}{0.30,0.55,0.30}
+\definecolor{codekeyword}{rgb}{0.10,0.30,0.70}
+\definecolor{codestring}{rgb}{0.65,0.15,0.10}
+
+\lstdefinestyle{cstyle}{
+    language=C,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+}
+
+\lstdefinestyle{shellstyle}{
+    language=bash,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+    upquote=true,
+}
+
+\lstdefinestyle{textstyle}{
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstset{style=textstyle}
+
+% --- Definition / Idea / Important boxes ---
+\usepackage[most]{tcolorbox}
+\newtcolorbox{idea}[1][]{
+    colback=orange!5!white,
+    colframe=orange!60!black,
+    fonttitle=\bfseries,
+    title=Idea intuitiva,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{importante}[1][]{
+    colback=red!5!white,
+    colframe=red!50!black,
+    fonttitle=\bfseries,
+    title=Importante,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{respuesta}[1][]{
+    colback=green!5!white,
+    colframe=green!40!black,
+    fonttitle=\bfseries,
+    title=Respuesta,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+
+% --- Hyperlinks ---
+\usepackage[colorlinks=true,
+            linkcolor=blue!60!black,
+            urlcolor=blue!50!black,
+            citecolor=blue!60!black]{hyperref}
+
+% --- Color palette ---
+\definecolor{c1}{HTML}{4C72B0}
+\definecolor{c2}{HTML}{DD8452}
+\definecolor{c3}{HTML}{55A868}
+\definecolor{c4}{HTML}{8172B2}
+\definecolor{cred}{HTML}{C44E52}
+\definecolor{cfree}{HTML}{8C8C8C}
+
+% --- Title block ---
+\title{
+    \vspace{-2.5em}
+    \textbf{Recuperatorio del Parcial 1 --- 2025} \\[0.3em]
+    \large Sistemas Operativos
+}
+\author{
+    Tomás Rodeghiero \\
+    \small UNRC --- Universidad Nacional de Río Cuarto
+}
+\date{2025}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent
+Resolución completa del Recuperatorio del Parcial 1 del año 2025 de
+la cátedra de Sistemas Operativos (UNRC). El parcial consta de cinco
+ejercicios: (i) descripción detallada del flujo de una
+interrupción/excepción y el rol del \emph{trapframe}; (ii)
+implementación en pseudo-código de un \texttt{lock} reentrante (que
+evita \emph{self-lock} cuando el mismo dueño lo invoca repetidamente);
+(iii) comparación entre los algoritmos de planificación FIFO y Round
+Robin; (iv) verdadero/falso sobre paginación, segmentación,
+\emph{copy-on-write} y \texttt{mmap}; (v) cálculos sobre una
+arquitectura de 32 bits con páginas de 4\,KB, incluyendo construcción
+de la tabla de páginas de un proceso y determinación de page faults.
+Cada ejercicio se desarrolla con la estructura \textbf{Enunciado
+$\to$ Análisis $\to$ Desarrollo $\to$ Respuesta}.
+\end{abstract}
+
+\tableofcontents
+\bigskip
+
+% =====================================================================
+\section{Ejercicio 1 --- Interrupciones, excepciones y \emph{trapframe} (2 ptos)}
+% =====================================================================
+
+\textbf{Enunciado.} Describa de forma general los pasos que sigue la
+CPU y el código de un SO en una interrupción o excepción hasta su
+retorno. En particular, describa el rol del \emph{trapframe}.
+
+\subsection*{Análisis: qué es un \emph{trap}}
+
+Una \textbf{trap} es cualquier evento que interrumpe la ejecución
+normal de un proceso y transfiere el control al kernel. Hay tres
+familias:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Interrupción}: viene de un dispositivo externo
+        (timer, disco, red, teclado). Es \emph{asincrónica}: ocurre
+        en cualquier punto de la ejecución.
+    \item \textbf{Excepción}: se origina en la propia instrucción
+        que está ejecutando la CPU (page fault, división por cero,
+        instrucción ilegal, acceso a memoria fuera de rango).
+        \emph{Sincrónica} con la ejecución.
+    \item \textbf{Trap explícita / syscall}: una instrucción
+        especial (\texttt{syscall} en x86, \texttt{ecall} en
+        RISC-V, \texttt{svc} en ARM) que el proceso ejecuta para
+        pedir al kernel un servicio.
+\end{itemize}
+
+Las tres usan el \emph{mismo} mecanismo de hardware: la CPU detecta
+el evento, salva el estado mínimo y salta a un punto fijo del kernel.
+
+\subsection*{Flujo completo paso a paso}
+
+\paragraph{Fase 1 --- Hardware atiende el trap.}
+
+\begin{enumerate}[leftmargin=*]
+    \item Si las interrupciones están habilitadas, la CPU acepta el
+        evento.
+    \item \textbf{Salva en registros especiales} el estado mínimo:
+        el \texttt{PC} actual (para saber a dónde volver), el modo
+        de ejecución previo (user/kernel), y la causa del trap
+        (\texttt{scause} en RISC-V, vector number en x86).
+    \item Cambia a \textbf{modo supervisor} si no estaba ya.
+    \item Salta a una dirección fija del kernel definida en el
+        \emph{trap vector} (\texttt{stvec} en RISC-V, IDT en x86,
+        \texttt{VBAR} en ARM).
+\end{enumerate}
+
+\paragraph{Fase 2 --- Trampolín y guardado completo del contexto.}
+
+El primer código que se ejecuta del kernel es un pequeño
+\emph{trampolín} en assembly (\texttt{uservec} en xv6). Su tarea es:
+
+\begin{enumerate}[leftmargin=*]
+    \item Conmutar a un stack del kernel (no del proceso).
+    \item Salvar \textbf{todos los registros} del CPU (de propósito
+        general, de estado, etc.) en una estructura llamada
+        \textbf{\texttt{trapframe}} en el stack del kernel.
+    \item Cargar la tabla de páginas del kernel (si era una trap
+        desde modo usuario).
+    \item Saltar a una función C principal (e.g., \texttt{usertrap}).
+\end{enumerate}
+
+\paragraph{Fase 3 --- Despacho según la causa.}
+
+La función C principal lee el campo de causa (e.g., \texttt{scause})
+y despacha al \emph{handler} correspondiente:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Syscall $\to$ \texttt{syscall()}, que extrae el número
+        de syscall del trapframe y llama a la función
+        correspondiente (\texttt{sys\_read}, \texttt{sys\_write},
+        \texttt{sys\_fork}, etc.).
+    \item Page fault $\to$ \texttt{page\_fault\_handler()}.
+    \item Timer / IRQ de disco $\to$ ISR del driver correspondiente.
+    \item Excepción no recuperable (división por cero, etc.) $\to$
+        enviar \texttt{SIGSEGV}/\texttt{SIGFPE} al proceso.
+\end{itemize}
+
+\paragraph{Fase 4 --- Posible cambio de proceso.}
+
+Después del manejo, el kernel puede invocar al scheduler:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Si fue interrupción del timer y el proceso usó su quantum
+        $\to$ \texttt{yield()}: el scheduler elige otro proceso.
+        Cambio de contexto.
+    \item Si fue un syscall bloqueante (\texttt{read} sobre disco):
+        el proceso pasa a \texttt{SLEEPING} y el scheduler elige
+        otro.
+\end{itemize}
+
+Eventualmente, el scheduler vuelve a planificar el proceso original
+(en algún momento futuro).
+
+\paragraph{Fase 5 --- Retorno.}
+
+Cuando es momento de regresar al proceso interrumpido:
+
+\begin{enumerate}[leftmargin=*]
+    \item Se carga la tabla de páginas del proceso.
+    \item Se ejecuta el trampolín de retorno (\texttt{userret} en
+        xv6), que restaura todos los registros desde el trapframe.
+    \item Se ejecuta la instrucción atómica de retorno
+        (\texttt{sret} en RISC-V, \texttt{iret} en x86,
+        \texttt{eret} en ARM). Esta instrucción restaura el
+        \texttt{PC} desde \texttt{sepc}, el modo a usuario y
+        rehabilita las interrupciones, todo en un solo paso.
+\end{enumerate}
+
+El proceso reanuda como si nada hubiera pasado.
+
+\subsection*{El rol del \emph{trapframe}}
+
+El \texttt{trapframe} es una \textbf{estructura de datos en el stack
+del kernel} del proceso, asociada al PCB, que conserva el estado
+completo del proceso al momento de la trap.
+
+\textbf{Estructura típica} (xv6/RISC-V):
+
+\begin{lstlisting}[style=cstyle]
+struct trapframe {
+    uint64 kernel_satp;   // dir.  tabla de paginas del kernel
+    uint64 kernel_sp;     // stack pointer del kernel
+    uint64 kernel_trap;   // direccion de usertrap()
+    uint64 epc;           // PC en el momento del trap (sepc)
+    uint64 kernel_hartid; // CPU actual
+
+    /* Registros de proposito general */
+    uint64 ra, sp, gp, tp;
+    uint64 t0, t1, t2, t3, t4, t5, t6;
+    uint64 s0, s1, ..., s11;
+    uint64 a0, a1, ..., a7;
+};
+\end{lstlisting}
+
+\textbf{Funciones del trapframe:}
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Salvar el estado del proceso}: cuando ocurre un
+        trap, el trampolín copia todos los registros al trapframe.
+        Esto permite que el handler del kernel use los registros
+        libremente sin perder el estado del proceso.
+
+    \item \textbf{Pasar argumentos al handler}: en una syscall, los
+        argumentos del usuario están en registros (\texttt{a0--a7}
+        en RISC-V). El handler los lee del trapframe.
+
+    \item \textbf{Devolver resultados al proceso}: para que una
+        syscall retorne un valor, el handler escribe el resultado en
+        el campo correspondiente del trapframe (e.g., \texttt{a0}).
+        Cuando el trampolín de retorno restaura los registros, el
+        proceso ``ve'' el resultado en su registro \texttt{a0}.
+
+    \item \textbf{Soportar cambios de contexto}: si el handler decide
+        cambiar de proceso, el trapframe del proceso saliente queda
+        guardado; al volver a planificarlo, se restaura desde su
+        propio trapframe.
+
+    \item \textbf{Auditoría / debugging}: el contenido del trapframe
+        contiene exactamente la \emph{imagen registral} del proceso
+        en el momento de la trap, útil para diagnóstico (e.g.,
+        para reportar el \texttt{PC} donde ocurrió un page fault).
+\end{enumerate}
+
+\subsection*{Diagrama del flujo}
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small,align=center},
+    box/.style={draw,rounded corners,minimum width=3.2cm,minimum height=0.85cm},
+    user/.style={box,fill=c1!25},
+    hw/.style={box,fill=c2!25},
+    kern/.style={box,fill=c3!25},
+    arr/.style={->,thick}
+]
+\node[user] (P1) at (0,3) {Proceso \\ ejecutando};
+\node[hw]   (HW) at (0,1.5) {Hardware salva: \\ \scriptsize PC, modo, causa};
+\node[kern] (TR) at (0,0)   {Trampolín: \\ \scriptsize guarda regs en trapframe};
+\node[kern] (HD) at (5,0)   {usertrap(): \\ \scriptsize despacha handler};
+\node[kern] (SC) at (5,1.5) {sys\_X() o \\ page\_fault\_handler() o ISR};
+\node[kern] (RT) at (5,3)   {trampolín retorno: \\ \scriptsize restaura regs};
+\node[user] (P2) at (0,4.5) {Proceso \\ reanuda};
+
+\draw[arr] (P1) -- node[right,font=\scriptsize]{trap} (HW);
+\draw[arr] (HW) -- (TR);
+\draw[arr] (TR) -- (HD);
+\draw[arr] (HD) -- (SC);
+\draw[arr] (SC) -- (RT);
+\draw[arr] (RT) -| node[right,font=\scriptsize,xshift=-2cm]{sret/iret} (P2);
+\end{tikzpicture}
+\end{center}
+
+\begin{respuesta}
+\textbf{Pasos generales:} (1) la CPU detecta el trap, salva un
+estado mínimo (PC, modo, causa) y salta al \emph{trap vector}; (2)
+un trampolín en assembly del kernel guarda todos los registros del
+proceso en el \textbf{trapframe} (estructura asociada al PCB) y
+cambia al stack del kernel; (3) una función C en el kernel despacha
+al \emph{handler} adecuado según la causa; (4) el handler procesa
+(eventualmente cambia de contexto); (5) al volver, el trampolín de
+retorno restaura los registros desde el trapframe y ejecuta la
+instrucción atómica de retorno (\texttt{sret}/\texttt{iret}/\texttt{eret})
+que devuelve el control al proceso en modo usuario.
+
+\textbf{Rol del trapframe:} es el ``snapshot'' completo del estado
+del proceso al ocurrir el trap. Sirve para (a) que el handler del
+kernel pueda usar los registros sin perder el contexto del proceso,
+(b) leer los argumentos de una syscall, (c) escribir el resultado
+de la syscall (que será visible al proceso cuando reanude), y (d)
+soportar cambios de contexto: cada proceso tiene su propio
+trapframe asociado a su PCB.
+\end{respuesta}
+
+% =====================================================================
+\section{Ejercicio 2 --- Lock reentrante sin \emph{selflock} (2 ptos)}
+% =====================================================================
+
+\textbf{Enunciado.} Un proceso o el kernel produce un \emph{selflock}
+si invoca a \texttt{lock(\&lk)} dos veces sin que en el medio haya un
+\texttt{unlock(\&lk)}. Proponga una implementación en pseudo-código
+de \texttt{lock}/\texttt{unlock} que permita invocar repetidamente a
+\texttt{lock(\&lk)} sin que se produzca un selflock. Asuma que
+existen \texttt{cpuid()} y \texttt{pid()} que retornan el ID de la
+CPU y el PID actual.
+
+\subsection*{Análisis: lock reentrante (recursive lock)}
+
+La idea es identificar al \emph{dueño actual} del lock por la
+combinación \texttt{(cpuid, pid)} y mantener un \textbf{contador}:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Si el lock está libre, lo tomamos normalmente y guardamos
+        nuestra identidad.
+    \item Si el lock está tomado y \emph{nosotros somos el dueño},
+        simplemente incrementamos el contador y retornamos sin
+        bloquearnos.
+    \item Si el lock está tomado por \emph{otro}, esperamos
+        (\emph{spin}) como un lock normal.
+    \item \texttt{unlock} decrementa el contador. Solo cuando llega
+        a $0$ libera realmente el lock.
+\end{itemize}
+
+Esto convierte el lock en \textbf{reentrante}: el mismo dueño puede
+tomarlo varias veces de forma anidada sin selflock.
+
+\subsection*{Pseudo-código}
+
+\begin{lstlisting}[style=cstyle]
+typedef struct {
+    int        locked;       /* 0 = libre, 1 = tomado */
+    int        owner_cpu;    /* CPU del dueno actual */
+    int        owner_pid;    /* PID del dueno actual */
+    int        depth;        /* veces que el mismo dueno lo tomo */
+} lock_t;
+
+void lock(lock_t *lk) {
+    int my_cpu = cpuid();
+    int my_pid = pid();
+
+    /* 1) Si YA somos los duenos, simplemente incrementamos. */
+    if (lk->locked == 1 &&
+        lk->owner_cpu == my_cpu &&
+        lk->owner_pid == my_pid) {
+        lk->depth++;
+        return;
+    }
+
+    /* 2) No lo tenemos: intentamos adquirirlo atomicamente. */
+    while (atomic_swap(&lk->locked, 1) == 1) {
+        /* Si lo tenia otro dueno, seguimos esperando.
+         * Si lo tenia el mismo dueno, no llegamos a este while
+         * (volvimos en el if anterior). */
+        ;     /* spin-wait */
+    }
+
+    /* 3) Lo conseguimos: marcamos nuestra identidad. */
+    lk->owner_cpu = my_cpu;
+    lk->owner_pid = my_pid;
+    lk->depth     = 1;
+}
+
+void unlock(lock_t *lk) {
+    int my_cpu = cpuid();
+    int my_pid = pid();
+
+    /* Verificacion de coherencia. */
+    if (lk->locked != 1 ||
+        lk->owner_cpu != my_cpu ||
+        lk->owner_pid != my_pid) {
+        panic("unlock por un thread que no es el dueno");
+    }
+
+    lk->depth--;
+    if (lk->depth == 0) {
+        lk->owner_cpu = -1;
+        lk->owner_pid = -1;
+        lk->locked    = 0;    /* liberacion atomica */
+    }
+    /* Si depth > 0, todavia hay locks anidados del mismo dueno;
+     * el lock NO se libera. */
+}
+\end{lstlisting}
+
+\subsection*{Por qué funciona}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Sin selflock}: si el mismo \texttt{(cpu, pid)}
+        llama dos veces a \texttt{lock}, la segunda invocación cae
+        en el primer \texttt{if} y simplemente incrementa
+        \texttt{depth}. No espera en el \texttt{while}.
+    \item \textbf{Exclusión mutua con otros}: si otro
+        \texttt{(cpu, pid)} intenta tomar, ve \texttt{locked = 1}
+        con dueño distinto, no entra al \texttt{if} y se va al
+        \texttt{while}, donde espera.
+    \item \textbf{Liberación correcta}: cada \texttt{lock} hace
+        \texttt{depth++}, cada \texttt{unlock} hace
+        \texttt{depth--}. Solo cuando \texttt{depth} llega a $0$ se
+        libera \texttt{locked} de verdad.
+\end{itemize}
+
+\subsection*{Ejemplo de uso}
+
+\begin{lstlisting}[style=cstyle]
+void funcion_externa() {
+    lock(&lk);          /* depth pasa a 1 */
+    funcion_interna();
+    unlock(&lk);        /* depth pasa a 0, libera */
+}
+
+void funcion_interna() {
+    lock(&lk);          /* SAME owner; depth pasa a 2; no se bloquea */
+    /* ... */
+    unlock(&lk);        /* depth pasa a 1 */
+}
+\end{lstlisting}
+
+Sin lock reentrante, \texttt{lock(\&lk)} dentro de
+\texttt{funcion\_interna} se bloquearía contra sí misma
+(\emph{selflock}). Con el lock reentrante propuesto, funciona
+correctamente.
+
+\begin{respuesta}
+La clave es identificar al \emph{dueño actual} con \texttt{(cpuid,
+pid)} y mantener un contador \texttt{depth}. \texttt{lock} verifica
+primero si el llamante ya es dueño; si lo es, incrementa
+\texttt{depth} y retorna. \texttt{unlock} decrementa y solo libera
+realmente cuando \texttt{depth} llega a $0$.
+
+\textbf{Importante}: la operación de adquisición debe ser atómica
+(\texttt{atomic\_swap}, \texttt{cmpxchg}, LL/SC) para garantizar
+exclusión mutua con otros dueños en un multiprocesador.
+\end{respuesta}
+
+% =====================================================================
+\section{Ejercicio 3 --- FIFO vs Round Robin (2 ptos)}
+% =====================================================================
+
+\textbf{Enunciado.} Describa la diferencia entre el algoritmo de
+planificación FIFO y Round Robin.
+
+\subsection*{FIFO (First In First Out, también FCFS)}
+
+\textbf{Idea.} Una sola cola \texttt{READY}. Los procesos se
+encolan al llegar; el primero en arribar es el primero en ejecutar.
+Una vez asignada la CPU, el proceso \textbf{ejecuta hasta terminar
+o bloquearse} (no preemption).
+
+\textbf{Propiedades:}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{No-preemptivo}: ningún proceso es desalojado por
+        agotar tiempo.
+    \item Implementación: una cola simple FIFO.
+    \item Métricas: turnaround promedio depende fuertemente del
+        orden de llegada y de los tamaños de las ráfagas.
+\end{itemize}
+
+\textbf{Convoy effect.} Si un proceso CPU-bound largo llega primero,
+todos los que vienen detrás esperan hasta que termine, aunque sean
+cortos. El tiempo de espera promedio crece mucho.
+
+\textbf{Diagrama de Gantt típico} (P1: 10, P2: 1, P3: 1, en orden de
+llegada):
+
+\begin{center}
+\begin{tikzpicture}[xscale=0.5, yscale=0.7, every node/.style={font=\ttfamily\small}]
+\draw[fill=c1!50] (0,0)  rectangle (10,1) node[midway,white,font=\bfseries]{P1};
+\draw[fill=c2!50] (10,0) rectangle (11,1) node[midway,white,font=\bfseries\scriptsize]{P2};
+\draw[fill=c3!50] (11,0) rectangle (12,1) node[midway,white,font=\bfseries\scriptsize]{P3};
+\foreach \x in {0,10,11,12}
+    \draw (\x,0) -- (\x,-0.2) node[below,font=\scriptsize]{\x};
+\end{tikzpicture}
+\end{center}
+
+\noindent P2 y P3 esperan $\sim 10$ unidades aunque solo necesitaran
+$1$. Turnaround promedio: $(10 + 11 + 12)/3 \approx 11$.
+
+\subsection*{Round Robin}
+
+\textbf{Idea.} Una cola \texttt{READY}, pero a cada proceso se le
+asigna un \textbf{quantum} (\emph{time slice}, $q$). Si al expirar el
+quantum el proceso aún no terminó, se lo \textbf{desaloja} (preempt)
+y se reencola al final. El scheduler toma el siguiente.
+
+\textbf{Propiedades:}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Preemptivo}: el timer fuerza el desalojo al
+        expirar el quantum.
+    \item Implementación: cola FIFO + temporizador.
+    \item Métricas: garantiza un tiempo de respuesta acotado por
+        $N \times q$ (con $N$ procesos en \texttt{READY}).
+\end{itemize}
+
+\textbf{Sin convoy effect.} Aunque haya un proceso largo, los demás
+obtienen CPU cada $\leq N \cdot q$ unidades. Bueno para sistemas
+interactivos.
+
+\textbf{Diagrama de Gantt típico} (mismos procesos, $q = 2$):
+
+\begin{center}
+\begin{tikzpicture}[xscale=0.5, yscale=0.7, every node/.style={font=\ttfamily\small}]
+\draw[fill=c1!50] (0,0)  rectangle (2,1) node[midway,white,font=\bfseries\scriptsize]{P1};
+\draw[fill=c2!50] (2,0)  rectangle (3,1) node[midway,white,font=\bfseries\scriptsize]{P2};
+\draw[fill=c3!50] (3,0)  rectangle (4,1) node[midway,white,font=\bfseries\scriptsize]{P3};
+\draw[fill=c1!50] (4,0)  rectangle (6,1) node[midway,white,font=\bfseries\scriptsize]{P1};
+\draw[fill=c1!50] (6,0)  rectangle (8,1) node[midway,white,font=\bfseries\scriptsize]{P1};
+\draw[fill=c1!50] (8,0)  rectangle (10,1) node[midway,white,font=\bfseries\scriptsize]{P1};
+\draw[fill=c1!50] (10,0) rectangle (12,1) node[midway,white,font=\bfseries\scriptsize]{P1};
+\foreach \x in {0,2,3,4,6,8,10,12}
+    \draw (\x,0) -- (\x,-0.2) node[below,font=\scriptsize]{\x};
+\end{tikzpicture}
+\end{center}
+
+\noindent P2 termina en $t = 3$ y P3 en $t = 4$, muchísimo mejor que
+con FIFO. P1 termina al final, pero no hace esperar a los demás.
+
+\subsection*{Comparación}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{4.5cm}p{4.5cm}p{4.5cm}@{}}
+\toprule
+Característica & FIFO (FCFS) & Round Robin \\
+\midrule
+Preemptivo                    & No                    & Sí (al expirar quantum) \\
+Estructura                    & cola FIFO             & cola FIFO $+$ timer \\
+Tiempo de respuesta           & Malo (varía mucho)    & Acotado por $N \cdot q$ \\
+Convoy effect                 & Sufre                 & Lo evita \\
+Cambios de contexto           & Pocos                 & Muchos (cada quantum) \\
+Apto para interactivos        & No                    & Sí \\
+Apto para batch               & Sí                    & Solo si $q$ es grande \\
+Caso $q \to \infty$           & ---                   & Degenera en FIFO \\
+Caso $q \to 0$                & ---                   & Overhead domina \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{respuesta}
+\textbf{Diferencia esencial}: FIFO es \textbf{no preemptivo} y
+ejecuta los procesos en estricto orden de llegada hasta que
+terminen. Round Robin es \textbf{preemptivo} y le asigna a cada
+proceso un cuanto de tiempo (\emph{quantum}); al expirar el
+quantum, el proceso vuelve al final de la cola.
+
+\textbf{Consecuencia práctica}: RR evita el \emph{convoy effect} y
+garantiza tiempo de respuesta acotado, ideal para sistemas
+interactivos. FIFO es más simple y tiene menos cambios de contexto,
+ideal para sistemas \emph{batch} con cargas predecibles. El
+\emph{quantum} de RR es el parámetro que regula el compromiso
+respuesta vs.\ overhead: si $q \to \infty$, RR se vuelve FIFO; si
+$q \to 0$, el overhead de cambios de contexto domina.
+\end{respuesta}
+
+% =====================================================================
+\section{Ejercicio 4 --- V/F sobre memoria virtual (2 ptos)}
+% =====================================================================
+
+\subsection*{4.a --- ``El paginado define espacios lógicos a cada proceso; la segmentación no''}
+
+\begin{respuesta}
+\textbf{F}. \emph{Ambas} técnicas, paginado y segmentación,
+permiten definir un espacio lógico de direcciones para cada proceso.
+La diferencia es la \emph{unidad} de mapeo:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Paginado}: el espacio se divide en páginas de
+        tamaño fijo. La tabla de páginas mapea \texttt{vpn} a
+        \texttt{ppn}.
+    \item \textbf{Segmentación}: el espacio se divide en segmentos
+        de tamaño variable (código, datos, stack, etc.) con base y
+        límite. La tabla de descriptores (GDT/LDT en x86) mapea
+        cada segmento a su ubicación física.
+\end{itemize}
+
+Lo correcto sería que \emph{ambas} ofrecen aislamiento entre
+procesos. De hecho, x86 históricamente usó segmentación
+\emph{antes} de tener paginado. La segmentación pura cayó en
+desuso (es menos eficiente para memoria virtual; ver ítem b), pero
+\emph{sí} provee espacios lógicos.
+\end{respuesta}
+
+\subsection*{4.b --- ``El paginado es más adecuado que la segmentación para memoria virtual''}
+
+\begin{respuesta}
+\textbf{V}. La paginación tiene varias ventajas críticas para
+memoria virtual:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Tamaño uniforme}: todas las páginas miden lo
+        mismo. El swap-in/swap-out es de tamaño fijo, simple y
+        predecible.
+    \item \textbf{Sin fragmentación externa}: cualquier frame
+        físico libre sirve. En segmentación, segmentos de tamaño
+        variable producen huecos no aprovechables.
+    \item \textbf{Granularidad fina}: con \emph{demand paging}, se
+        carga solo lo que se accede. Con segmentación, habría que
+        traer un segmento entero (puede ser MB).
+    \item \textbf{TLB y MMU simples}: el hardware de paginado es
+        más sencillo y rápido que el de segmentación + paginado
+        combinado.
+\end{itemize}
+
+Por eso todos los SO modernos usan \textbf{paginado} (o paginado
+combinado con segmentación residual, como x86), y los segmentos
+``puros'' son cosa del pasado.
+\end{respuesta}
+
+\subsection*{4.c --- ``COW puede usarse para implementar \texttt{fork()} eficientemente''}
+
+\begin{respuesta}
+\textbf{V}. Es exactamente la motivación de \emph{copy-on-write}.
+La implementación de \texttt{fork()} con COW es:
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item Al hacer \texttt{fork()}, el kernel \emph{no copia} las
+        páginas del padre. En cambio, crea para el hijo una nueva
+        tabla de páginas que apunta a los mismos \emph{frames
+        físicos} del padre.
+    \item Las páginas se marcan como \textbf{solo lectura} en
+        ambas tablas (padre e hijo).
+    \item Mientras ambos solo lean, comparten físicamente (gratis).
+    \item Cuando uno \emph{escribe} a una página compartida, el
+        hardware levanta un \emph{page fault}. El kernel atiende:
+        copia la página afectada a un nuevo frame, actualiza la
+        tabla de quien escribió para que apunte ahí (writable), y
+        deja al otro con la copia original.
+\end{enumerate}
+
+\textbf{Por qué es eficiente}: en el caso típico (\texttt{fork +
+exec}), el hijo no escribe nada del padre antes de
+\texttt{exec()}, así que NUNCA se copia ninguna página. El costo de
+\texttt{fork} se reduce a copiar la tabla de páginas y unos
+metadatos, no varios MB de RAM.
+\end{respuesta}
+
+\subsection*{4.d --- ``\texttt{mmap()} puede usarse para implementar \texttt{exec()} eficientemente''}
+
+\begin{respuesta}
+\textbf{V}. Esto es exactamente lo que hacen los SO modernos. La
+implementación de \texttt{exec()} con \texttt{mmap}:
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item En vez de leer todo el ejecutable a memoria, \texttt{exec}
+        hace \texttt{mmap} del archivo ejecutable en el espacio de
+        direcciones del proceso.
+    \item Las páginas se marcan como ``presentes en disco'' pero
+        no en RAM (\texttt{V = 0} en la \texttt{pte}, con
+        información en otro campo de dónde leer).
+    \item Cuando el proceso empieza a ejecutar instrucciones,
+        cualquier acceso a una página todavía no cargada produce un
+        \emph{page fault}.
+    \item El kernel atiende el fault leyendo \emph{esa} página del
+        disco.
+\end{enumerate}
+
+\textbf{Por qué es eficiente}:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Solo se lee del disco lo que efectivamente se ejecuta o
+        accede. Muchas funciones del binario nunca se llaman, y sus
+        páginas nunca se cargan.
+    \item Si varias instancias del mismo binario corren en
+        paralelo, las páginas de \texttt{.text} (read-only) se
+        comparten físicamente.
+    \item El kernel administra una \emph{page cache} unificada;
+        las páginas leídas pueden quedar en RAM aunque otro proceso
+        cierre el binario, facilitando que el siguiente
+        \texttt{exec()} del mismo programa sea instantáneo.
+\end{itemize}
+\end{respuesta}
+
+% =====================================================================
+\section{Ejercicio 5 --- Paginación: tabla y page faults (2 ptos)}
+% =====================================================================
+
+\textbf{Enunciado.} En una arquitectura de 32 bits, espacio de
+direcciones de 4\,GB y páginas de 4\,KB, un proceso mapeado desde la
+dirección 0 tiene:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item $7$\,KB de código.
+    \item $3.5$\,KB de datos globales.
+    \item $2$ páginas de stack a partir de \texttt{0x7fe000}.
+\end{itemize}
+
+\textbf{(a)} Dar el esquema de la tabla de páginas del proceso.
+\textbf{(b)} ¿La dirección \texttt{0x381A} produce page fault?
+\textbf{(c)} Ídem para \texttt{0x7ff100}.
+
+\subsection*{Análisis de parámetros}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Página: $4$\,KB $= 2^{12} = $ \texttt{0x1000} bytes.
+    \item Espacio total: $4$\,GB $= 2^{32}$ bytes.
+    \item Total de páginas posibles: $2^{32} \div 2^{12} = 2^{20} =
+        1\,048\,576$ páginas. La tabla tiene $2^{20}$ entradas
+        (típicamente representadas como un árbol multinivel para no
+        ocupar $4$\,MB por proceso).
+    \item Direcciones virtuales: $20$ bits altos = vpn, $12$ bits
+        bajos = offset.
+\end{itemize}
+
+\subsection*{Layout del proceso}
+
+\textbf{Páginas por área (con padding a frontera de página, como hace
+el loader ELF):}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Código} (7\,KB): $\lceil 7 / 4 \rceil = 2$ páginas
+        $\to$ vpn $0$ y $1$ (rango virtual
+        \texttt{[0x0000, 0x2000)}).
+    \item \textbf{Datos globales} (3.5\,KB): $\lceil 3.5 / 4 \rceil
+        = 1$ página $\to$ vpn $2$ (rango \texttt{[0x2000, 0x3000)}).
+    \item \textbf{Stack}: $2$ páginas a partir de
+        \texttt{0x7fe000}. Como cada página es $0x1000$, las
+        páginas son
+        \texttt{vpn = 0x7fe000 / 0x1000 = 0x7fe} $= 2046$ y
+        \texttt{vpn = 0x7ff} $= 2047$.
+\end{itemize}
+
+\subsection*{5.a --- Esquema de la tabla de páginas}
+
+\begin{center}
+\footnotesize
+\begin{tabular}{@{}llccp{2.5cm}p{3cm}@{}}
+\toprule
+vpn (hex)    & rango virtual               & V & R/W/X & Área              & Notas \\
+\midrule
+\texttt{0x000} & \texttt{[0x0000, 0x1000)} & 1 & R + X & código pág.\ 1    & 4\,KB \\
+\texttt{0x001} & \texttt{[0x1000, 0x2000)} & 1 & R + X & código pág.\ 2    & 3\,KB + 1\,KB pad \\
+\texttt{0x002} & \texttt{[0x2000, 0x3000)} & 1 & R + W & datos globales    & 3.5\,KB + 0.5\,KB pad \\
+\texttt{0x003}--\texttt{0x7fd} & \texttt{[0x3000, 0x7fe000)} & 0 & --- & gap inválido & 2043 páginas \\
+\texttt{0x7fe} & \texttt{[0x7fe000, 0x7ff000)} & 1 & R + W & stack pág.\ 1     & \\
+\texttt{0x7ff} & \texttt{[0x7ff000, 0x800000)} & 1 & R + W & stack pág.\ 2     & \\
+$\geq$\texttt{0x800} & \texttt{[0x800000, \ldots)} & 0 & --- & inválidas         & resto \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Solo \textbf{5 entradas válidas} (vpn $0, 1, 2, 0x7fe, 0x7ff$) de
+$2^{20}$ posibles. El resto está inválido (V = 0). Esto justifica
+por qué la tabla se implementa como un árbol multinivel: solo los
+nodos correspondientes a regiones efectivamente usadas se reservan
+en RAM.
+
+\subsection*{Diagrama del espacio de direcciones}
+
+\begin{center}
+\begin{tikzpicture}[every node/.style={font=\ttfamily\small},
+    sec/.style={draw,minimum width=5cm,minimum height=0.6cm,align=center}]
+\node[sec,fill=c1!25] (code1) at (0,4.5) {vpn 0: código};
+\node[sec,fill=c1!25,below=0pt of code1] (code2) {vpn 1: código (+pad)};
+\node[sec,fill=c2!25,below=0pt of code2] (data) {vpn 2: datos (+pad)};
+\node[sec,fill=cred!15,below=0.4cm of data,minimum height=1.2cm] (gap) {GAP \\ vpn 3 a 2045 \\ (\texttt{[0x3000, 0x7fe000)})};
+\node[sec,fill=c3!25,below=0.4cm of gap] (stk1) {vpn 2046: stack};
+\node[sec,fill=c3!25,below=0pt of stk1] (stk2) {vpn 2047: stack};
+
+\node[anchor=west,xshift=0.4cm] at (code1.east)  {\texttt{0x00000000}};
+\node[anchor=west,xshift=0.4cm] at (code2.east)  {\texttt{0x00001000}};
+\node[anchor=west,xshift=0.4cm] at (data.east)   {\texttt{0x00002000}};
+\node[anchor=west,xshift=0.4cm] at (data.south east) [yshift=-2pt] {\texttt{0x00003000}};
+\node[anchor=west,xshift=0.4cm] at (stk1.east)   {\texttt{0x007fe000}};
+\node[anchor=west,xshift=0.4cm] at (stk2.east)   {\texttt{0x007ff000}};
+\node[anchor=west,xshift=0.4cm] at (stk2.south east) [yshift=-2pt] {\texttt{0x00800000}};
+\end{tikzpicture}
+\end{center}
+
+\subsection*{5.b --- ¿\texttt{0x381A} produce page fault?}
+
+\textbf{Descomposición} (20 bits vpn, 12 bits offset):
+
+\quad \texttt{0x381A} en 32 bits = \texttt{0x0000381A}
+
+\quad \texttt{0x381A} $\div$ \texttt{0x1000} $= 3$ (cociente)
+
+\quad \texttt{0x381A} $\bmod$ \texttt{0x1000} $= $ \texttt{0x81A}
+
+Por tanto: \texttt{vpn = 3}, \texttt{offset = 0x81A}.
+
+\textbf{Consulta a la tabla}: la entrada \texttt{vpn = 3} cae en el
+gap inválido (entre vpn 3 y vpn 2045). \texttt{V = 0}.
+
+\begin{respuesta}
+\textbf{(5.b) SÍ produce page fault.} La dirección \texttt{0x381A}
+está en \texttt{vpn = 3}, primera página después del área de datos.
+Esa página no está mapeada (V = 0). El hardware genera un page
+fault y el kernel envía \texttt{SIGSEGV} al proceso.
+\end{respuesta}
+
+\subsection*{5.c --- ¿\texttt{0x7ff100} produce page fault?}
+
+\textbf{Descomposición}:
+
+\quad \texttt{0x7ff100} $\div$ \texttt{0x1000} $= $ \texttt{0x7ff} $= 2047$
+
+\quad \texttt{0x7ff100} $\bmod$ \texttt{0x1000} $= $ \texttt{0x100}
+
+Por tanto: \texttt{vpn = 0x7ff} $= 2047$, \texttt{offset = 0x100}.
+
+\textbf{Consulta a la tabla}: la entrada \texttt{vpn = 0x7ff}
+corresponde a la \textbf{segunda página de stack}. Está válida
+(\texttt{V = 1}, \texttt{R + W}).
+
+\begin{respuesta}
+\textbf{(5.c) NO produce page fault.} La dirección \texttt{0x7ff100}
+está en \texttt{vpn = 0x7ff = 2047}, que es la \emph{segunda página
+del stack} del proceso (la que arranca en \texttt{0x7ff000}). Está
+mapeada, con permisos R+W. El acceso es legítimo.
+\end{respuesta}
+
+\subsection*{Verificación numérica}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Stack comienza en \texttt{0x7fe000} (\texttt{vpn 0x7fe}).
+        $0\text{x}7\text{fe} \cdot 0\text{x}1000 = 0\text{x}7\text{fe}000$. ✓
+    \item Stack ocupa $2$ páginas: \texttt{vpn 0x7fe} y
+        \texttt{vpn 0x7ff}, rango total
+        \texttt{[0x7fe000, 0x800000)}.
+    \item \texttt{0x7ff100} cae claramente dentro de ese rango. ✓
+\end{itemize}
+
+% =====================================================================
+\section*{Resumen del recuperatorio}
+\addcontentsline{toc}{section}{Resumen del recuperatorio}
+% =====================================================================
+
+\begin{center}
+\small
+\begin{tabular}{@{}clp{9cm}@{}}
+\toprule
+\# & Tema & Respuesta sintética \\
+\midrule
+1 & Traps + trapframe & Hardware salva estado mínimo, trampolín guarda regs en trapframe, dispatch a handler C, retorno con \texttt{sret}. Trapframe = snapshot completo del estado del proceso \\
+2 & Lock reentrante  & Guardar \texttt{(cpu, pid)} del dueño + contador \texttt{depth}; si soy el dueño, incremento sin bloquear; \texttt{unlock} decrementa y libera al llegar a $0$ \\
+3 & FIFO vs RR       & FIFO: no preemptivo, sufre convoy; RR: preemptivo con quantum, evita convoy, mejor para interactivos a costa de overhead de cambios de contexto \\
+4 & V/F memoria      & a:F (segmentación también define espacios), b:V (uniformidad, no frag.\ externa), c:V (COW), d:V (mmap del ejecutable con demand paging) \\
+5 & Paginación num.  & (a) 5 entradas válidas: vpn 0,1,2 + 2046, 2047; (b) \texttt{0x381A} vpn=3 (gap) → page fault; (c) \texttt{0x7ff100} vpn=2047 (stack) → NO fault \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\end{document}

@@ -1,0 +1,888 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- Encoding ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands]{babel}
+\usepackage{lmodern}
+
+% --- Layout ---
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{parskip}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em plus 0.2em minus 0.1em}
+
+% --- Tables and graphics ---
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{positioning,shapes.geometric,arrows.meta,fit,backgrounds,calc,decorations.pathreplacing,trees}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{amsmath,amssymb}
+
+% --- Soporte para caracteres Unicode usados en formulas en texto plano ---
+\usepackage{newunicodechar}
+\newunicodechar{→}{\ensuremath{\rightarrow}}
+\newunicodechar{≥}{\ensuremath{\geq}}
+\newunicodechar{≤}{\ensuremath{\leq}}
+\newunicodechar{×}{\ensuremath{\times}}
+\newunicodechar{÷}{\ensuremath{\div}}
+\newunicodechar{≈}{\ensuremath{\approx}}
+\newunicodechar{⌈}{\ensuremath{\lceil}}
+\newunicodechar{⌉}{\ensuremath{\rceil}}
+\newunicodechar{✓}{\ensuremath{\checkmark}}
+
+% --- Code listings ---
+\usepackage{listings}
+\definecolor{codegray}{rgb}{0.96,0.96,0.96}
+\definecolor{codeborder}{rgb}{0.85,0.85,0.85}
+\definecolor{codecomment}{rgb}{0.30,0.55,0.30}
+\definecolor{codekeyword}{rgb}{0.10,0.30,0.70}
+\definecolor{codestring}{rgb}{0.65,0.15,0.10}
+
+\lstdefinestyle{cstyle}{
+    language=C,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+}
+
+\lstdefinestyle{shellstyle}{
+    language=bash,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+    upquote=true,
+}
+
+\lstdefinestyle{textstyle}{
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstset{style=textstyle}
+
+% --- Definition / Idea / Important boxes ---
+\usepackage[most]{tcolorbox}
+\newtcolorbox{idea}[1][]{
+    colback=orange!5!white,
+    colframe=orange!60!black,
+    fonttitle=\bfseries,
+    title=Idea intuitiva,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{importante}[1][]{
+    colback=red!5!white,
+    colframe=red!50!black,
+    fonttitle=\bfseries,
+    title=Importante,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{respuesta}[1][]{
+    colback=green!5!white,
+    colframe=green!40!black,
+    fonttitle=\bfseries,
+    title=Respuesta,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+
+% --- Hyperlinks ---
+\usepackage[colorlinks=true,
+            linkcolor=blue!60!black,
+            urlcolor=blue!50!black,
+            citecolor=blue!60!black]{hyperref}
+
+% --- Color palette ---
+\definecolor{c1}{HTML}{4C72B0}
+\definecolor{c2}{HTML}{DD8452}
+\definecolor{c3}{HTML}{55A868}
+\definecolor{c4}{HTML}{8172B2}
+\definecolor{cred}{HTML}{C44E52}
+\definecolor{cfree}{HTML}{8C8C8C}
+
+% --- Title block ---
+\title{
+    \vspace{-2.5em}
+    \textbf{Recuperatorio del Parcial 1 --- 2026} \\[0.3em]
+    \large Sistemas Operativos / Sistemas Operativos y Redes
+}
+\author{
+    Tomás Rodeghiero \\
+    \small UNRC --- Universidad Nacional de Río Cuarto
+}
+\date{2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent
+Resolución completa del Recuperatorio del Parcial 1 del año 2026 de
+la cátedra de Sistemas Operativos (Lic.\ en Ciencias de la
+Computación, UNRC). El parcial consta de cinco ejercicios que abarcan:
+(i) verdadero/falso sobre llamadas al sistema básicas (\texttt{exec},
+\texttt{exit}, \texttt{fork}, \texttt{wait}, \texttt{printf}, traps);
+(ii) conteo de procesos creados por una cadena de \texttt{fork()} con
+un \texttt{exec()} final; (iii) análisis de un programa de
+comunicación padre/hijo con \texttt{pipe()} y propuesta de corrección;
+(iv) análisis de un escenario clásico de \emph{deadlock} con dos
+mutex tomados en orden distinto entre tareas; (v) planificación
+\emph{Round Robin} con quantum = 2 sobre tres procesos. Cada
+ejercicio se desarrolla con la estructura \textbf{Enunciado $\to$
+Análisis $\to$ Desarrollo $\to$ Respuesta}.
+\end{abstract}
+
+\tableofcontents
+\bigskip
+
+% =====================================================================
+\section{Ejercicio 1 --- V/F sobre syscalls (2 pts)}
+% =====================================================================
+
+\textbf{Enunciado.} Determinar la verdad o falsedad de las siguientes
+sentencias. Justificar las falsas en forma breve, completa y con
+claridad.
+
+\subsection*{1.A --- \texttt{exec(path, args)}}
+
+\emph{``La llamada al sistema \texttt{exec(path, args)} crea un nuevo
+proceso y carga las secciones de código y datos del programa y
+comienza su ejecución.''}
+
+\begin{respuesta}
+\textbf{F}. \texttt{exec} \textbf{no crea un nuevo proceso}.
+Lo que hace es \emph{reemplazar} la imagen del proceso \emph{actual}:
+mismo PID, mismo descriptor en el kernel, pero todo el segmento de
+código, datos y stack se reescribe con los del nuevo programa. La
+ejecución continúa en el \texttt{main} del nuevo programa.
+
+Para \emph{crear} un nuevo proceso se usa \texttt{fork()}. La
+combinación clásica es \texttt{fork + exec}: el padre hace
+\texttt{fork()} (creando un proceso hijo idéntico) y el hijo hace
+\texttt{exec()} para correr otro programa. Así es como
+\texttt{bash}, por ejemplo, lanza cualquier comando.
+\end{respuesta}
+
+\subsection*{1.B --- Inicio de la ejecución}
+
+\emph{``Un proceso siempre comienza su ejecución por la función
+\texttt{main()}.''}
+
+\begin{respuesta}
+\textbf{F}. Antes de \texttt{main()} se ejecuta el \emph{startup code}
+del runtime de C (CRT). El punto de entrada real del binario es
+\texttt{\_start} (suministrado por la libc), que se encarga de:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Preparar \texttt{argc} y \texttt{argv} desde la pila inicial.
+    \item Inicializar las variables globales en \texttt{.data} y
+        poner en cero la sección \texttt{.bss}.
+    \item Llamar a los constructores estáticos (en C++) y a las
+        funciones registradas con atributo \texttt{constructor}.
+    \item \emph{Recién entonces} invocar a \texttt{main()}.
+    \item Al volver de \texttt{main}, llamar a las funciones de
+        \texttt{atexit} y a \texttt{\_exit} con el valor de retorno.
+\end{itemize}
+
+Para el programador C, \texttt{main} \emph{parece} ser el primer
+código que se ejecuta, pero el binario en sí arranca varios pasos
+antes.
+\end{respuesta}
+
+\subsection*{1.C --- \texttt{printf} como syscall}
+
+\emph{``La función \texttt{printf(fmt, ...)} es una llamada al
+sistema.''}
+
+\begin{respuesta}
+\textbf{F}. \texttt{printf} es una función de la \textbf{biblioteca
+estándar de C} (\texttt{libc}), \emph{no} una syscall.
+Internamente:
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item Formatea los argumentos según la cadena \texttt{fmt} y los
+        coloca en un buffer interno (línea o bloque, según el tipo
+        de stream).
+    \item Eventualmente llama a la syscall real
+        \texttt{write(STDOUT\_FILENO, buffer, n)} para volcar los
+        bytes al kernel.
+\end{enumerate}
+
+Por eso es posible reemplazar \texttt{printf} con otra
+implementación (e.g.\ versiones \texttt{nano-printf} en sistemas
+embebidos) sin cambiar el kernel: la única syscall involucrada es
+\texttt{write}.
+\end{respuesta}
+
+\subsection*{1.D --- \texttt{exit(n)} y el \emph{zombie}}
+
+\emph{``La llamada al sistema \texttt{exit(n)} finaliza el proceso y
+en el descriptor del proceso queda el \texttt{exit code = n} hasta
+que el proceso padre ejecute \texttt{wait(\&c)}.''}
+
+\begin{respuesta}
+\textbf{V}. Cuando un proceso ejecuta \texttt{exit(n)}:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item El kernel libera los recursos del proceso (memoria,
+        descriptores abiertos, etc.).
+    \item \textbf{No} libera el descriptor (\texttt{task\_struct} en
+        Linux) inmediatamente: lo deja en estado \texttt{ZOMBIE}
+        guardando los $8$ bits inferiores de \texttt{n} en
+        \texttt{exit\_code}.
+    \item Le envía la señal \texttt{SIGCHLD} al padre.
+    \item Cuando el padre invoca \texttt{wait(\&c)} (o
+        \texttt{waitpid}), el kernel copia el exit code en
+        \texttt{c}, libera el descriptor del zombie y este desaparece
+        definitivamente.
+\end{itemize}
+
+Si el padre nunca llama a \texttt{wait}, el zombie queda
+indefinidamente en la tabla de procesos hasta que el padre muera y
+\texttt{init}/\texttt{systemd} adopte al huérfano y lo coseche.
+\end{respuesta}
+
+\subsection*{1.E --- \texttt{fork()}}
+
+\emph{``La llamada al sistema \texttt{fork()} copia la imagen
+(código, datos y stack) en la memoria del proceso invocante previa
+creación de un nuevo descriptor en la tabla de procesos en el kernel
+con un nuevo PID.''}
+
+\begin{respuesta}
+\textbf{F}. Hay dos problemas con la afirmación:
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{``en la memoria del proceso invocante''} está
+        confuso: la imagen se copia (lógicamente) en la memoria
+        \emph{del nuevo proceso} (el hijo), no en la del invocante
+        (que sería el padre, donde ya está la imagen original). El
+        hijo recibe su propio espacio de direcciones.
+
+    \item En la práctica, los SO modernos \textbf{no copian la
+        memoria entera} al hacer \texttt{fork}: usan
+        \textbf{copy-on-write (COW)}. El padre y el hijo comparten
+        las mismas páginas físicas marcadas como solo lectura en
+        ambos. Cuando \emph{cualquiera} de los dos intenta escribir,
+        el hardware genera un page fault, el kernel hace una copia
+        privada de esa página para el que escribe y vuelve a la
+        ejecución. Así se evita el costo de copiar todo el espacio
+        de direcciones, que muchas veces es seguido por un
+        \texttt{exec} que descarta todo.
+\end{enumerate}
+
+Una formulación correcta sería: ``fork crea un nuevo descriptor en
+la tabla de procesos con un nuevo PID y le da al nuevo proceso un
+espacio de direcciones que es una copia lógica del padre,
+implementada eficientemente con copy-on-write''.
+\end{respuesta}
+
+\subsection*{1.F --- Implementación de syscalls vía \emph{trap}}
+
+\emph{``Una llamada al sistema se implementa con una instrucción de
+trap que dispara el mecanismo de manejo de interrupciones/excepciones
+de la CPU.''}
+
+\begin{respuesta}
+\textbf{V}. Exactamente. La instrucción de \emph{trap} es la que
+permite cruzar la barrera de modo usuario $\to$ kernel:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item En x86-64: instrucción \texttt{syscall}.
+    \item En ARM (AArch64): \texttt{svc \#0}.
+    \item En RISC-V: \texttt{ecall}.
+\end{itemize}
+
+Cuando la CPU encuentra la instrucción, ejecuta el mismo mecanismo
+que ante una interrupción/excepción: salva el estado del proceso,
+cambia a modo supervisor y salta a una dirección fija (la
+\emph{trap table}) donde el kernel toma el control. El kernel
+identifica qué syscall pidió el proceso (el número va en un
+registro convenido) y la despacha a la rutina correspondiente.
+
+El hecho de reusar el mismo \emph{datapath} que las
+interrupciones/excepciones (mismo guardado de contexto, mismo
+mecanismo de retorno) es lo que hace que las syscalls sean
+\emph{rápidas}: la CPU ya tiene hardware dedicado para este flujo.
+\end{respuesta}
+
+% =====================================================================
+\section{Ejercicio 2 --- Cuántos procesos crea esta cadena de forks (2 pts)}
+% =====================================================================
+
+\textbf{Enunciado.} Dado el siguiente programa, ¿cuántos procesos se
+crean (además del proceso original)?
+
+\begin{lstlisting}[style=cstyle]
+#include <stdio.h>
+#include <unistd.h>
+int main() {
+    fork();                 // (1)
+    fork();                 // (2)
+    if (fork() == 0) {      // (3)
+        exec("myprog", NULL);
+    }
+    return 0;
+}
+\end{lstlisting}
+
+\subsection*{Análisis}
+
+Cada llamada \texttt{fork()} \emph{duplica} el proceso que la
+ejecuta: el invocante (padre) sigue después de la llamada y queda un
+nuevo proceso (hijo) que comienza a ejecutar también desde la
+instrucción siguiente a \texttt{fork}. Por lo tanto, después de cada
+\texttt{fork()} la cantidad de procesos en juego \textbf{se duplica}.
+
+Importante: \texttt{exec("myprog", NULL)} \textbf{no} crea nuevos
+procesos. Reemplaza la imagen del proceso que la invoca por la del
+binario \texttt{myprog}, sin cambiar el PID. Para contar procesos
+nuevos, \texttt{exec} no suma.
+
+\subsection*{Conteo paso a paso}
+
+\textbf{Antes de cualquier fork}: $1$ proceso (el original, ``P0'').
+
+\textbf{Después de fork (1)}: cada uno de los $1$ procesos se duplica
+$\to$ $1 \times 2 = 2$ procesos.
+
+\textbf{Después de fork (2)}: $2 \times 2 = 4$ procesos.
+
+\textbf{Después de fork (3)}: $4 \times 2 = 8$ procesos.
+
+Notar que el \texttt{if (fork() == 0)} no impide que el fork se
+ejecute: el fork sí ocurre en los $4$ procesos que llegan a esa
+línea. Los hijos creados (que reciben $0$) entran al \texttt{if} y
+ejecutan \texttt{exec}; los padres (que reciben un PID positivo)
+salen del \texttt{if} y van directo al \texttt{return 0}.
+
+\subsection*{Árbol de procesos}
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\scriptsize,
+                       draw,circle,minimum size=0.55cm,inner sep=0pt},
+    level distance=1.1cm,
+    level 1/.style={sibling distance=8cm},
+    level 2/.style={sibling distance=4cm},
+    level 3/.style={sibling distance=2cm}
+]
+\node {P0}
+    child {node {P0}
+        child {node {P0}
+            child {node {P0}}
+            child {node {P4}}
+        }
+        child {node {P2}
+            child {node {P2}}
+            child {node {P6}}
+        }
+    }
+    child {node {P1}
+        child {node {P1}
+            child {node {P1}}
+            child {node {P5}}
+        }
+        child {node {P3}
+            child {node {P3}}
+            child {node {P7}}
+        }
+    };
+\end{tikzpicture}
+\end{center}
+
+Las hojas del árbol son los $8$ procesos finales (las etiquetas a la
+izquierda muestran ``herencia''; sólo los PIDs distintos importan).
+
+\subsection*{Cálculo matemático}
+
+\quad Cantidad total de procesos = $2^k$, donde $k$ = cantidad de
+\texttt{fork} encadenados.
+
+\quad Total = $2^3 = 8$ procesos.
+
+\quad Procesos creados (sin contar el original) = $8 - 1 = 7$.
+
+\begin{respuesta}
+Se crean \textbf{$7$ procesos nuevos} (además del original). El total
+en ejecución llega a $8$ procesos.
+
+De esos $8$:
+\begin{itemize}[leftmargin=*,nosep]
+    \item $4$ son los ``hijos'' del último \texttt{fork()} (los que
+        reciben $0$) y ejecutan \texttt{exec("myprog", NULL)},
+        cambiando su imagen.
+    \item Los otros $4$ (incluido el original) salen del \texttt{if}
+        sin hacer \texttt{exec} y terminan con \texttt{return 0}.
+\end{itemize}
+
+\textbf{Importante}: \texttt{exec} no genera procesos nuevos, así que
+no suma al conteo.
+\end{respuesta}
+
+% =====================================================================
+\section{Ejercicio 3 --- Comunicación con \texttt{pipe()}: ¿correcto? (2 pts)}
+% =====================================================================
+
+\textbf{Enunciado.} Determinar si el siguiente programa es correcto
+para que los dos procesos (padre e hijo) se comuniquen mediante pipes
+y la salida sea \texttt{"OK"}. En caso de considerarlo incorrecto,
+dar una versión corregida.
+
+\begin{lstlisting}[style=cstyle]
+#include <stdio.h>
+#include <unistd.h>
+int main() {
+    int p[2]; char buffer[10];
+    pipe(p);
+    if (fork() > 0) {
+        write(p[1], "Hi", 3);   // send message
+        read(p[0], buffer, 10); // read response
+        printf("%s\n", buffer);
+    } else {
+        read(p[0], buffer, 10); // read message
+        write(p[1], "OK", 3);   // send response
+    }
+    return 0;
+}
+\end{lstlisting}
+
+\subsection*{Análisis: ¿qué está mal?}
+
+El programa \textbf{es incorrecto}. El problema central es que se
+intenta usar \textbf{un solo pipe en ambos sentidos}, pero un pipe
+de UNIX es \textbf{unidireccional}: lo que se escribe en \texttt{p[1]}
+puede ser leído por cualquier proceso que tenga acceso al extremo de
+lectura \texttt{p[0]}, incluido el propio escritor.
+
+\paragraph{Traza del fallo.}
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Padre} hace \texttt{write(p[1], "Hi", 3)}. El pipe
+        ahora contiene los bytes \texttt{H i \textbackslash 0}.
+    \item \textbf{Padre} hace \texttt{read(p[0], buffer, 10)}.
+    \item Si el padre lee \emph{antes} de que el hijo lo haga
+        (perfectamente posible, depende del scheduling), \textbf{lee
+        su propio mensaje} ``Hi'' del pipe.
+    \item El padre imprime \texttt{"Hi"} en lugar del \texttt{"OK"}
+        esperado.
+    \item Mientras tanto, el hijo se queda bloqueado en
+        \texttt{read()} esperando un mensaje que ya fue consumido por
+        el padre.
+\end{enumerate}
+
+Aún suponiendo que el hijo gane la carrera y lea primero ``Hi'',
+quedaría un segundo problema: el hijo escribe ``OK'' en el mismo
+pipe, y entonces el padre podría leer correctamente ``OK''. Pero
+\emph{esto depende del scheduling}: el programa no tiene
+\textbf{determinismo}, y bajo la mayoría de scheduling es más
+probable que el padre lea su propio mensaje.
+
+\begin{importante}
+\textbf{Regla general}: para comunicación bidireccional entre dos
+procesos hace falta \textbf{dos pipes}, uno por sentido. Un único
+pipe no alcanza porque cualquier proceso con acceso al \texttt{p[0]}
+puede consumir lo que el otro acaba de escribir.
+\end{importante}
+
+\subsection*{Versión corregida}
+
+Usar \textbf{dos pipes}: \texttt{p} para parent$\to$child y
+\texttt{q} para child$\to$parent. Cada proceso cierra los extremos
+que no va a usar para forzar \emph{EOF} cuando el otro termine.
+
+\begin{lstlisting}[style=cstyle]
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <string.h>
+
+int main() {
+    int p[2], q[2];               /* p: padre->hijo, q: hijo->padre */
+    char buffer[10];
+
+    pipe(p);
+    pipe(q);
+
+    if (fork() > 0) {
+        /* PADRE: escribe en p, lee de q */
+        close(p[0]);              /* no lee de p */
+        close(q[1]);              /* no escribe en q */
+
+        write(p[1], "Hi", 3);     /* envia mensaje */
+        close(p[1]);              /* cierra para que el hijo vea EOF */
+
+        read(q[0], buffer, 10);   /* lee respuesta */
+        printf("%s\n", buffer);
+        close(q[0]);
+
+        wait(NULL);               /* espera al hijo (evita zombie) */
+    } else {
+        /* HIJO: lee de p, escribe en q */
+        close(p[1]);              /* no escribe en p */
+        close(q[0]);              /* no lee de q */
+
+        read(p[0], buffer, 10);   /* lee mensaje */
+        close(p[0]);
+
+        write(q[1], "OK", 3);     /* envia respuesta */
+        close(q[1]);
+    }
+    return 0;
+}
+\end{lstlisting}
+
+\subsection*{Diagrama de la comunicación corregida}
+
+\begin{center}
+\begin{tikzpicture}[every node/.style={font=\ttfamily\small},
+    proc/.style={draw,rounded corners,minimum width=2.4cm,minimum height=1.2cm,align=center}]
+\node[proc,fill=c1!30] (padre) at (0,0)  {Padre};
+\node[proc,fill=c2!30] (hijo)  at (7,0)  {Hijo};
+
+\draw[->, thick, c1!60!black] (padre.north east) to[bend left=30]
+    node[midway,above,font=\small]{p: ``Hi''} (hijo.north west);
+\draw[->, thick, c2!60!black] (hijo.south west)  to[bend left=30]
+    node[midway,below,font=\small]{q: ``OK''} (padre.south east);
+\end{tikzpicture}
+\end{center}
+
+\begin{respuesta}
+\textbf{El programa NO es correcto}. Usa un único pipe en ambos
+sentidos, lo que provoca que el padre lea su propio mensaje
+``Hi'' en vez de la respuesta ``OK''. Además, el hijo puede quedar
+bloqueado indefinidamente esperando un mensaje ya consumido.
+
+\textbf{Corrección}: usar \emph{dos} pipes, uno por sentido, y cerrar
+los extremos que cada proceso no usa. La versión corregida está
+arriba.
+\end{respuesta}
+
+% =====================================================================
+\section{Ejercicio 4 --- Transferencias bancarias y \emph{deadlock} (2 pts)}
+% =====================================================================
+
+\textbf{Enunciado.} Un sistema bancario provee la siguiente función:
+
+\begin{lstlisting}[style=cstyle]
+void transfer(Account from, Account to, double amount)
+{
+    mutex lock1, lock2;
+    lock1 = get_lock(from);
+    lock2 = get_lock(to);
+    acquire(lock1);
+    acquire(lock2);
+    withdraw(from, amount);   // extract money
+    deposit(to, amount);      // deposit money
+    release(lock2);
+    release(lock1);
+}
+\end{lstlisting}
+
+¿Logra prevenir deadlocks? Si no, dar un escenario de dos tareas
+concurrentes invocando \texttt{transfer(\ldots)} en el que pueda
+ocurrir deadlock. Suponer que existen al menos las cuentas
+\texttt{accountA} y \texttt{accountB}.
+
+\subsection*{Análisis: el orden de adquisición depende de los argumentos}
+
+La función toma siempre los locks en el orden $(\texttt{lock1},
+\texttt{lock2})$, donde $\texttt{lock1}$ corresponde a la cuenta
+\texttt{from} y $\texttt{lock2}$ a la cuenta \texttt{to}.
+
+El problema: \textbf{el orden de adquisición no es global}, depende
+de cuál cuenta es \texttt{from} y cuál es \texttt{to} en cada
+invocación. Eso permite que dos invocaciones concurrentes
+\emph{intenten tomar los mismos dos locks en orden inverso}, lo que
+es exactamente la receta clásica para un deadlock.
+
+\subsection*{Escenario concreto de deadlock}
+
+Sean dos transferencias concurrentes ejecutadas por dos threads:
+
+\begin{center}
+\small
+\begin{tabular}{@{}lp{6cm}p{6cm}@{}}
+\toprule
+$t$ & \textbf{Thread T1: \texttt{transfer(A, B, 100)}} & \textbf{Thread T2: \texttt{transfer(B, A, 50)}} \\
+\midrule
+$t_1$ & \texttt{lock1 = get\_lock(A)}   & \texttt{lock1 = get\_lock(B)} \\
+$t_2$ & \texttt{lock2 = get\_lock(B)}   & \texttt{lock2 = get\_lock(A)} \\
+$t_3$ & \texttt{acquire(lock1)} $\to$ obtiene \emph{lock\_A} & \texttt{acquire(lock1)} $\to$ obtiene \emph{lock\_B} \\
+$t_4$ & \texttt{acquire(lock2)} (pide lock\_B) & \texttt{acquire(lock2)} (pide lock\_A) \\
+$t_5$ & \textbf{BLOQUEA}: lock\_B lo tiene T2 & \textbf{BLOQUEA}: lock\_A lo tiene T1 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Resultado: ambos threads quedan bloqueados, esperando un lock que
+el otro retiene. Se cumplen las cuatro condiciones de Coffman:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Exclusión mutua}: cada mutex sólo puede pertenecer
+        a un thread a la vez.
+    \item \textbf{Hold and wait}: cada thread tiene un lock y espera
+        otro.
+    \item \textbf{No preemption}: el sistema no puede quitarle el
+        mutex a un thread.
+    \item \textbf{Espera circular}:
+        T1 espera lock\_B (de T2) $\to$ T2 espera lock\_A (de T1)
+        $\to$ T1.
+\end{itemize}
+
+\subsection*{Grafo de espera}
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    proc/.style={circle,draw,minimum size=0.9cm,font=\bfseries\small},
+    res/.style={rectangle,draw,minimum size=0.9cm,font=\bfseries\small},
+    every edge/.style={draw,-{Stealth[length=2.5mm]},thick}
+]
+\node[proc] (T1) at (0, 2)    {T1};
+\node[proc] (T2) at (4, 2)    {T2};
+\node[res]  (LA) at (-1.2, 0) {lock\_A};
+\node[res]  (LB) at (5.2, 0)  {lock\_B};
+
+\draw[->,blue!60!black,thick]   (LA) -- node[left,font=\scriptsize]{tiene} (T1);
+\draw[->,blue!60!black,thick]   (LB) -- node[right,font=\scriptsize]{tiene} (T2);
+\draw[->,red!70!black,thick,dashed]   (T1) -- node[above,font=\scriptsize]{espera} (LB);
+\draw[->,red!70!black,thick,dashed]   (T2) -- node[above,font=\scriptsize]{espera} (LA);
+\end{tikzpicture}
+\end{center}
+
+\subsection*{Cómo prevenirlo}
+
+La técnica estándar es imponer un \textbf{orden global de
+adquisición} de los locks, independiente del orden de los argumentos.
+Una forma simple es comparar por identidad (por ejemplo, dirección
+de memoria o ID numérico de la cuenta) y tomar primero el menor:
+
+\begin{lstlisting}[style=cstyle]
+void transfer(Account from, Account to, double amount)
+{
+    mutex first, second;
+
+    /* Orden global: tomar primero el mutex de la cuenta con menor id */
+    if (id(from) < id(to)) {
+        first  = get_lock(from);
+        second = get_lock(to);
+    } else {
+        first  = get_lock(to);
+        second = get_lock(from);
+    }
+
+    acquire(first);
+    acquire(second);
+
+    withdraw(from, amount);
+    deposit(to, amount);
+
+    release(second);
+    release(first);
+}
+\end{lstlisting}
+
+Con esta corrección, \emph{ambos} threads ---no importa quién haga
+A$\to$B ni B$\to$A--- tomarían \emph{primero} lock\_A y \emph{después}
+lock\_B. Es imposible que se forme un ciclo.
+
+\begin{respuesta}
+\textbf{NO previene deadlocks.} El orden de adquisición de los
+mutex depende de cuál cuenta sea \texttt{from} y cuál \texttt{to};
+si dos hilos transfieren en sentidos contrarios
+(\texttt{A}$\to$\texttt{B} y \texttt{B}$\to$\texttt{A})
+simultáneamente, pueden tomar los locks en orden inverso y caer en
+una espera circular clásica.
+
+\textbf{Solución}: imponer un \emph{orden global} de adquisición de
+los locks (por ejemplo, por ID de cuenta ascendente), independiente
+de cuál cuenta sea \texttt{from} o \texttt{to}.
+\end{respuesta}
+
+% =====================================================================
+\section{Ejercicio 5 --- Round Robin con quantum = 2 (2 pts)}
+% =====================================================================
+
+\textbf{Enunciado.} Asumiendo que los procesos están encolados en
+orden P1, P2, P3, dar un diagrama de Gantt de la planificación según
+un planificador Round Robin (RR) con \texttt{quantum = 2}.
+
+\begin{center}
+\small
+\begin{tabular}{@{}cc@{}}
+\toprule
+Proceso & Ráfaga de uso de CPU \\
+\midrule
+P1 & 5 \\
+P2 & 2 \\
+P3 & 3 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{Análisis: cómo planifica RR}
+
+Round Robin mantiene una cola FIFO de procesos \texttt{READY}. El
+scheduler asigna al primero un \emph{quantum} de tiempo de CPU; al
+agotarse:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Si el proceso tiene más ráfaga restante, se lo
+        \emph{desaloja} (\emph{preempt}) y se lo encola al
+        \textbf{final} de la lista.
+    \item Si la ráfaga se completó antes o exactamente al quantum,
+        el proceso \textbf{termina} (en este ejercicio no hay I/O).
+\end{itemize}
+
+Todos los procesos arriban en $t = 0$ y entran en el orden P1, P2,
+P3 a la cola \texttt{READY}.
+
+\subsection*{Traza paso a paso}
+
+Notación: \texttt{[P:rem]} indica el proceso \texttt{P} con
+\texttt{rem} unidades de ráfaga \emph{remanentes}.
+
+\begin{center}
+\small
+\begin{tabular}{@{}clp{4cm}l@{}}
+\toprule
+Intervalo & CPU & Evento al final del intervalo & Cola \texttt{READY} \\
+\midrule
+$[0, 2)$  & P1 & cuantum agotado, queda $5-2=3$ & \texttt{[P2:2, P3:3, P1:3]} \\
+$[2, 4)$  & P2 & P2 termina exactamente (ráfaga $=2$) & \texttt{[P3:3, P1:3]} \\
+$[4, 6)$  & P3 & cuantum agotado, queda $3-2=1$ & \texttt{[P1:3, P3:1]} \\
+$[6, 8)$  & P1 & cuantum agotado, queda $3-2=1$ & \texttt{[P3:1, P1:1]} \\
+$[8, 9)$  & P3 & ráfaga termina (queda $0$), P3 \textbf{EXIT}  & \texttt{[P1:1]} \\
+$[9, 10)$ & P1 & ráfaga termina (queda $0$), P1 \textbf{EXIT}  & \texttt{[\ ]} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Verificación: la CPU está ocupada de $0$ a $10$ sin huecos, y el
+total de CPU usada es $5 + 2 + 3 = 10$. ✓
+
+\subsection*{Diagrama de Gantt}
+
+\begin{center}
+\begin{tikzpicture}[xscale=1.0,yscale=0.7,every node/.style={font=\ttfamily\small}]
+\draw[fill=c1!50] (0,0)  rectangle (2,1)  node[midway,white,font=\bfseries]{P1};
+\draw[fill=c2!50] (2,0)  rectangle (4,1)  node[midway,white,font=\bfseries]{P2};
+\draw[fill=c3!50] (4,0)  rectangle (6,1)  node[midway,white,font=\bfseries]{P3};
+\draw[fill=c1!50] (6,0)  rectangle (8,1)  node[midway,white,font=\bfseries]{P1};
+\draw[fill=c3!50] (8,0)  rectangle (9,1)  node[midway,white,font=\bfseries\small]{P3};
+\draw[fill=c1!50] (9,0)  rectangle (10,1) node[midway,white,font=\bfseries\small]{P1};
+
+\foreach \x in {0,2,4,6,8,9,10}
+    \draw (\x,0) -- (\x,-0.2) node[below,font=\small]{\x};
+\end{tikzpicture}
+\end{center}
+
+\subsection*{Métricas}
+
+Aplicando turnaround $=$ Fin $-$ Llegada y espera $=$ turnaround $-$
+ráfaga:
+
+\begin{center}
+\small
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+Proceso & Llegada & Fin & Turnaround & Ráfaga & Espera \\
+\midrule
+P1 & 0 & 10 & 10 & 5 & 5 \\
+P2 & 0 & 4  & 4  & 2 & 2 \\
+P3 & 0 & 9  & 9  & 3 & 6 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Promedios:}
+
+\quad Turnaround promedio = $(10 + 4 + 9) \div 3 = 23 \div 3 ≈ 7.67$
+
+\quad Espera promedio = $(5 + 2 + 6) \div 3 = 13 \div 3 ≈ 4.33$
+
+\begin{respuesta}
+Gantt: \texttt{P1 | P2 | P3 | P1 | P3 | P1} con marcas de tiempo
+$0, 2, 4, 6, 8, 9, 10$.
+
+Tiempos de finalización: $\textbf{P2 = 4}$, $\textbf{P3 = 9}$,
+$\textbf{P1 = 10}$. P2 (la ráfaga más corta) sale primero pese a no
+ser la primera en encolarse; P1 (la más larga) sale al final.
+
+Promedios: turnaround $≈ 7.67$, espera $≈ 4.33$.
+\end{respuesta}
+
+\begin{idea}
+RR es \textbf{justo} (\emph{fair}): nadie monopoliza la CPU porque
+los desalojos son periódicos. Pero \emph{no} optimiza el turnaround
+promedio: SJF haría P2 antes (orden P2, P3, P1) y daría mejor
+promedio. RR sacrifica eficiencia por baja latencia de respuesta,
+ideal para sistemas \emph{time-sharing} interactivos.
+\end{idea}
+
+% =====================================================================
+\section*{Resumen del recuperatorio}
+\addcontentsline{toc}{section}{Resumen del recuperatorio}
+% =====================================================================
+
+\begin{center}
+\small
+\begin{tabular}{@{}clp{8.5cm}@{}}
+\toprule
+\# & Tema & Respuesta sintética \\
+\midrule
+1 & V/F syscalls         & A:F (\texttt{exec} no crea), B:F (CRT antes de main), C:F (\texttt{printf} es libc), D:V, E:F (COW + redacción), F:V \\
+2 & Conteo de \texttt{fork} & $2^3 = 8$ procesos totales $\Rightarrow$ \textbf{7 nuevos} (sin contar el original) \\
+3 & Pipe bidireccional   & Incorrecto: un solo pipe no separa sentidos. Corrección: dos pipes, uno por sentido \\
+4 & Deadlock en \texttt{transfer} & No previene; escenario T1: A$\to$B y T2: B$\to$A. Fix: orden global de locks por ID \\
+5 & Round Robin q=2      & Gantt: P1,P2,P3,P1,P3,P1; fin P2=4, P3=9, P1=10; turnaround promedio $\approx 7.67$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\end{document}

@@ -1,0 +1,1038 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- Encoding ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands]{babel}
+\usepackage{lmodern}
+
+% --- Layout ---
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{parskip}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em plus 0.2em minus 0.1em}
+
+% --- Tables and graphics ---
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{positioning,shapes.geometric,arrows.meta,fit,backgrounds,calc,decorations.pathreplacing}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{amsmath,amssymb}
+
+% --- Soporte para caracteres Unicode usados en formulas en texto plano ---
+\usepackage{newunicodechar}
+\newunicodechar{→}{\ensuremath{\rightarrow}}
+\newunicodechar{≥}{\ensuremath{\geq}}
+\newunicodechar{≤}{\ensuremath{\leq}}
+\newunicodechar{×}{\ensuremath{\times}}
+\newunicodechar{÷}{\ensuremath{\div}}
+\newunicodechar{≈}{\ensuremath{\approx}}
+\newunicodechar{⌈}{\ensuremath{\lceil}}
+\newunicodechar{⌉}{\ensuremath{\rceil}}
+\newunicodechar{✓}{\ensuremath{\checkmark}}
+
+% --- Code listings ---
+\usepackage{listings}
+\definecolor{codegray}{rgb}{0.96,0.96,0.96}
+\definecolor{codeborder}{rgb}{0.85,0.85,0.85}
+\definecolor{codecomment}{rgb}{0.30,0.55,0.30}
+\definecolor{codekeyword}{rgb}{0.10,0.30,0.70}
+\definecolor{codestring}{rgb}{0.65,0.15,0.10}
+
+\lstdefinestyle{cstyle}{
+    language=C,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+}
+
+\lstdefinestyle{shellstyle}{
+    language=bash,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+    upquote=true,
+}
+
+\lstdefinestyle{textstyle}{
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstset{style=textstyle}
+
+% --- Definition / Idea / Important boxes ---
+\usepackage[most]{tcolorbox}
+\newtcolorbox{idea}[1][]{
+    colback=orange!5!white,
+    colframe=orange!60!black,
+    fonttitle=\bfseries,
+    title=Idea intuitiva,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{importante}[1][]{
+    colback=red!5!white,
+    colframe=red!50!black,
+    fonttitle=\bfseries,
+    title=Importante,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{respuesta}[1][]{
+    colback=green!5!white,
+    colframe=green!40!black,
+    fonttitle=\bfseries,
+    title=Respuesta,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+
+% --- Hyperlinks ---
+\usepackage[colorlinks=true,
+            linkcolor=blue!60!black,
+            urlcolor=blue!50!black,
+            citecolor=blue!60!black]{hyperref}
+
+% --- Color palette ---
+\definecolor{c1}{HTML}{4C72B0}
+\definecolor{c2}{HTML}{DD8452}
+\definecolor{c3}{HTML}{55A868}
+\definecolor{c4}{HTML}{8172B2}
+\definecolor{cred}{HTML}{C44E52}
+\definecolor{cfree}{HTML}{8C8C8C}
+\definecolor{cshare}{HTML}{4FC3C7}
+
+% --- Title block ---
+\title{
+    \vspace{-2.5em}
+    \textbf{Recuperatorio del Parcial 2 --- 2026} \\[0.3em]
+    \large Sistemas Operativos / Sistemas Operativos y Redes
+}
+\author{
+    Tomás Rodeghiero \\
+    \small UNRC --- Universidad Nacional de Río Cuarto
+}
+\date{2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent
+Resolución completa del Recuperatorio del Parcial 2 del año 2026 de
+la cátedra de Sistemas Operativos (Lic.\ en Ciencias de la
+Computación, UNRC). El parcial consta de cinco ejercicios que cubren:
+(i) verdadero/falso sobre gestión de heap, segmentación, paginación,
+swapping y código PIE; (ii) construcción de una tabla de páginas a
+partir del layout lógico/físico de un proceso; (iii) memoria
+compartida entre dos procesos con la misma área mapeada a
+direcciones lógicas distintas; (iv) representación de un sistema de
+archivos basado en inodos con un archivo de varios bloques y su
+modificación tras un \emph{append}; (v) descripción del flujo de
+\emph{login} de un usuario hasta obtener un shell y cómo
+inhabilitarlo. Cada ejercicio se desarrolla con la estructura
+\textbf{Enunciado $\to$ Análisis $\to$ Desarrollo $\to$ Respuesta}.
+\end{abstract}
+
+\tableofcontents
+\bigskip
+
+% =====================================================================
+\section{Ejercicio 1 --- V/F sobre memoria y kernel (2 pts)}
+% =====================================================================
+
+\textbf{Enunciado.} Determinar la verdad o falsedad de las siguientes
+sentencias. Justificar las falsas en forma breve, completa y con
+claridad.
+
+\subsection*{1.A --- Semi-compactación en heap de bloques variables}
+
+\emph{``Un gestor de heap de bloques con tamaño variable puede usar
+la técnica de semi-compactación para evitar una fragmentación
+excesiva.''}
+
+\begin{respuesta}
+\textbf{V}. Un gestor de heap con bloques de tamaño variable sufre
+\emph{fragmentación externa}: la memoria libre queda partida en
+huecos pequeños no contiguos. Para mitigar esto, los gestores usan
+varias técnicas, entre ellas la \textbf{coalescencia (semi-compactación)}
+de bloques libres adyacentes:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Cuando se libera un bloque, el gestor inspecciona si sus
+        vecinos (en memoria) también están libres.
+    \item Si alguno lo está, los \emph{fusiona} en un único bloque
+        más grande.
+    \item Esto reduce la fragmentación sin necesidad de mover bloques
+        ocupados (lo cual no es viable en \texttt{malloc} clásico
+        porque rompería los punteros del usuario).
+\end{itemize}
+
+Es la técnica estándar de \texttt{dlmalloc}, \texttt{ptmalloc},
+\texttt{jemalloc} y cualquier gestor moderno.
+\end{respuesta}
+
+\subsection*{1.B --- Bloques fijos y fragmentación}
+
+\emph{``En un heap con bloques de tamaño fijo ($N$) no se produce
+ningún tipo de fragmentación.''}
+
+\begin{respuesta}
+\textbf{F}. Es cierto que con bloques de tamaño fijo \textbf{no hay
+fragmentación externa}: todos los bloques son intercambiables y, si
+hay $k$ libres, alcanza con $k$ pedidos para usarlos todos.
+
+Pero \textbf{sí hay fragmentación interna}: si el usuario pide menos
+de $N$ bytes, los bytes sobrantes del bloque (entre el tamaño pedido
+y $N$) se desperdician. Por ejemplo, si $N = 64$ y el usuario pide
+$8$ bytes, $56$ bytes quedan ``adentro'' del bloque sin uso.
+
+Es exactamente el compromiso del modelo: ganamos en simplicidad de
+gestión (sin huecos externos) a costa de eficiencia (más memoria
+total se desperdicia internamente).
+\end{respuesta}
+
+\subsection*{1.C --- Cambio de contexto y registro de tabla de páginas}
+
+\emph{``En cada cambio de contexto el SO debe cambiar el registro de
+control que apunta a la tabla de páginas de la nueva tarea.''}
+
+\begin{respuesta}
+\textbf{V} (con un matiz importante). Cuando el SO conmuta de una
+tarea con un espacio de direcciones distinto, debe actualizar el
+registro de control que apunta a la \emph{tabla de páginas raíz} del
+proceso entrante. En x86 es el registro \texttt{CR3}, en ARM
+\texttt{TTBR0/TTBR1}, en RISC-V \texttt{satp}. Cargar este registro
+hace que la MMU empiece a traducir direcciones según la nueva
+tabla y, en general, invalida (o etiqueta) la TLB.
+
+\textbf{Matiz}: si la conmutación es entre dos \emph{threads del
+mismo proceso} (que comparten espacio de direcciones), el registro de
+tabla de páginas \textbf{no cambia}; sólo se actualizan los registros
+de propósito general y el stack pointer. Por eso los context switches
+entre threads son más livianos.
+
+El enunciado habla de ``nueva tarea'', interpretado en el sentido
+clásico como un nuevo proceso (espacio de direcciones distinto), así
+que la afirmación es correcta.
+\end{respuesta}
+
+\subsection*{1.D --- Registros de descriptores de segmentos}
+
+\emph{``Comúnmente una CPU con segmentación ofrece un gran número de
+registros de descriptores de segmentos similar a una tabla de
+páginas.''}
+
+\begin{respuesta}
+\textbf{F}. Las CPUs con segmentación tienen un número
+\textbf{pequeño y fijo} de registros de segmento, no una cantidad
+grande similar a una tabla de páginas:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item En x86 hay exactamente \textbf{6 registros de segmento}:
+        \texttt{CS} (código), \texttt{DS} (datos), \texttt{ES},
+        \texttt{FS}, \texttt{GS} (datos auxiliares), y \texttt{SS}
+        (stack).
+\end{itemize}
+
+Los \emph{descriptores de segmento} (la información completa: base,
+límite, permisos) sí viven en una tabla en memoria
+(\texttt{GDT}/\texttt{LDT} en x86), \emph{análoga} a una tabla de
+páginas en ese aspecto. Pero los \emph{registros} en CPU son pocos,
+y cada uno guarda solo un selector y un descriptor cacheado.
+
+El error del enunciado es confundir el número de \emph{registros}
+(pocos) con el número de \emph{descriptores en la tabla}.
+\end{respuesta}
+
+\subsection*{1.E --- Swapping con paginado vs.\ con segmentación}
+
+\emph{``Con paginado es más fácil y eficiente implementar swapping
+que con segmentación.''}
+
+\begin{respuesta}
+\textbf{V}. Hay varias razones:
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item \textbf{Tamaño uniforme.} En paginado todas las páginas
+        miden lo mismo (típicamente $4$\,KB). El swap-in/swap-out es
+        I/O de tamaño fijo, predecible y eficiente. En segmentación
+        los segmentos tienen tamaños variables, lo que complica la
+        gestión.
+    \item \textbf{Sin fragmentación externa.} Cualquier frame libre
+        sirve para alojar una página entrante; en segmentación hay
+        que encontrar un hueco contiguo del tamaño exacto del
+        segmento.
+    \item \textbf{Granularidad fina.} Con paginado se puede traer/sacar
+        una sola página a la vez (\emph{demand paging}); con
+        segmentación habría que swapear un segmento entero, posiblemente
+        de varios MB, aunque solo se necesiten unos KB.
+    \item \textbf{Hardware más simple.} El TLB y la MMU paginada son
+        soluciones bien probadas; la segmentación pura es más rara
+        en CPUs modernas (x86 mantiene segmentación por
+        retrocompatibilidad pero usa paginado para todo).
+\end{enumerate}
+\end{respuesta}
+
+\subsection*{1.F --- Código del kernel y PIE}
+
+\emph{``El código del kernel no necesita compilarse como PIE
+(\emph{position independent code}).''}
+
+\begin{respuesta}
+\textbf{V}. El código del kernel se carga siempre en \textbf{la misma
+dirección virtual fija}, conocida en tiempo de compilación. Por
+ejemplo, en Linux x86-64 el kernel vive en
+\texttt{0xFFFFFFFF80000000} y, en cada proceso, ese rango está
+mapeado a las páginas físicas del kernel. Como la dirección es
+estática, el código puede usar referencias absolutas sin necesidad
+de ser \emph{position-independent}.
+
+PIE existe precisamente porque los binarios de usuario \emph{pueden}
+cargarse en distintas direcciones (típicamente por ASLR, para
+seguridad), y necesitan funcionar igual sin importar la base. Pero
+el kernel no necesita esa flexibilidad: vive en una única posición
+prefijada.
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Matiz moderno}: para defenderse contra exploits,
+        los kernels actuales soportan \textbf{KASLR} (\emph{Kernel
+        ASLR}), aleatorizando la base del kernel en cada arranque.
+        En ese caso el código sí debe compilarse con técnicas
+        similares a PIE (relocaciones tempranas). Pero
+        \emph{conceptualmente} no es PIE estándar, sino un
+        mecanismo especial.
+\end{itemize}
+\end{respuesta}
+
+% =====================================================================
+\section{Ejercicio 2 --- Tabla de páginas (2 pts)}
+% =====================================================================
+
+\textbf{Enunciado.} Dado el siguiente esquema de la memoria de un
+proceso con páginas de $4$\,KB, dar la tabla de páginas.
+
+\begin{center}
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+Dirección lógica          & Dirección física \\
+\midrule
+código \texttt{[0x0000-0x1FFF]}  & \texttt{0x3000} \\
+datos  \texttt{[0x2000-0x2FFF]}  & \texttt{0x1000} \\
+stack  \texttt{[0xF000-0xFFFF]}  & \texttt{0xF000} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{Análisis}
+
+\textbf{Parámetros básicos.}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Tamaño de página: $4$\,KB $= 2^{12}$ bytes.
+    \item Offset dentro de la página: $12$ bits bajos.
+    \item Número de página virtual (\texttt{vpn}) = bits altos de la
+        dirección lógica.
+\end{itemize}
+
+\textbf{Tamaño de cada área en páginas.}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Código \texttt{[0x0000, 0x2000)}: $0x2000 = 8$\,KB
+        $= 2$ páginas $\to$ vpns $0$ y $1$.
+    \item Datos \texttt{[0x2000, 0x3000)}: $0x1000 = 4$\,KB
+        $= 1$ página $\to$ vpn $2$.
+    \item Stack \texttt{[0xF000, 0x10000)}: $0x1000 = 4$\,KB
+        $= 1$ página $\to$ vpn $15$.
+\end{itemize}
+
+\textbf{Frames físicos.} Las direcciones físicas dadas indican la
+\emph{dirección de inicio} en memoria de cada sección. Como el código
+ocupa $2$ páginas a partir de \texttt{0x3000}, las páginas físicas son
+\texttt{0x3000} (frame $3$) y \texttt{0x4000} (frame $4$).
+
+\quad código: ppn 3 (0x3000), ppn 4 (0x4000) \\
+\quad datos: ppn 1 (0x1000) \\
+\quad stack: ppn 15 (0xF000)
+
+\subsection*{Tabla de páginas resultante}
+
+\begin{center}
+\small
+\begin{tabular}{@{}cccccp{4cm}@{}}
+\toprule
+vpn  & rango lógico                & ppn          & V & R/W/X        & Área \\
+\midrule
+$0$  & \texttt{[0x0000, 0x0FFF]}   & $3$          & 1 & R + X        & código (página 1) \\
+$1$  & \texttt{[0x1000, 0x1FFF]}   & $4$          & 1 & R + X        & código (página 2) \\
+$2$  & \texttt{[0x2000, 0x2FFF]}   & $1$          & 1 & R + W        & datos \\
+$3$--$14$ & \texttt{[0x3000, 0xEFFF]} & ---       & 0 & ---          & inválido (gap) \\
+$15$ & \texttt{[0xF000, 0xFFFF]}   & $15$         & 1 & R + W        & stack \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{Diagrama: traducción virtual $\to$ física}
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    log/.style={draw,fill=c1!20,minimum width=2cm,minimum height=0.55cm,align=center},
+    phys/.style={draw,fill=c2!20,minimum width=2cm,minimum height=0.55cm,align=center},
+    inv/.style={draw,fill=cred!15,minimum width=2cm,minimum height=0.55cm,align=center,font=\ttfamily\scriptsize}
+]
+% Logical layout
+\node[font=\bfseries\small] at (-3, 5) {Lógico};
+\node[log] (l0) at (-3,4.3) {vpn 0: code};
+\node[log,below=0pt of l0] (l1) {vpn 1: code};
+\node[log,below=0pt of l1] (l2) {vpn 2: data};
+\node[inv,below=0pt of l2,minimum height=1.2cm] (linv) {vpn 3..14 \\ inválidos};
+\node[log,below=0pt of linv] (l15) {vpn 15: stack};
+
+% Physical layout
+\node[font=\bfseries\small] at (4, 5) {Físico};
+\node[phys] (p1) at (4, 4.3) {ppn 1: data};
+\node[phys,below=0pt of p1] (p3) {ppn 3: code};
+\node[phys,below=0pt of p3] (p4) {ppn 4: code};
+\node[phys,below=0pt of p4] (p15) {ppn 15: stack};
+
+% Arrows
+\draw[->,thick,c3!70!black] (l0.east)  -- (p3.west);
+\draw[->,thick,c3!70!black] (l1.east)  -- (p4.west);
+\draw[->,thick,c3!70!black] (l2.east)  -- (p1.west);
+\draw[->,thick,c3!70!black] (l15.east) -- (p15.west);
+\end{tikzpicture}
+\end{center}
+
+\begin{respuesta}
+\textbf{Tabla de páginas resultante:}
+
+\begin{center}
+\begin{tabular}{@{}cc@{}}
+\toprule
+vpn  & ppn (V=1)\\
+\midrule
+$0$  & $3$  \\
+$1$  & $4$  \\
+$2$  & $1$  \\
+$15$ & $15$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Las vpns $3$ a $14$ están \textbf{inválidas} ($V = 0$): cualquier
+acceso a esas direcciones genera \emph{page fault}.
+\end{respuesta}
+
+% =====================================================================
+\section{Ejercicio 3 --- Memoria compartida entre dos procesos}
+% =====================================================================
+
+\textbf{Enunciado.} Dados dos procesos $A$ y $B$ con el layout del
+ejercicio anterior. Ambos hacen
+\verb|ptr = shmem(key, 5000)| (crea un bloque de $5000$ bytes
+compartido). En $A$ retorna \texttt{ptr = 0x5000}; en $B$,
+\texttt{ptr = 0x7000}. Dar las tablas de páginas de ambos procesos.
+
+\subsection*{Análisis}
+
+\textbf{Tamaño de la región compartida.} $5000$ bytes con páginas de
+$4$\,KB:
+
+\quad $\lceil 5000 / 4096 \rceil = \lceil 1.22 \rceil = 2$ páginas.
+
+\textbf{Ubicación lógica en cada proceso.}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Proceso A}: \texttt{ptr = 0x5000}. La región ocupa
+        \texttt{[0x5000, 0x6388)}, que abarca las páginas
+        \texttt{vpn 5} y \texttt{vpn 6}.
+    \item \textbf{Proceso B}: \texttt{ptr = 0x7000}. La región ocupa
+        \texttt{[0x7000, 0x8388)}, que abarca las páginas
+        \texttt{vpn 7} y \texttt{vpn 8}.
+\end{itemize}
+
+\textbf{Lo clave de la \emph{shared memory}.} Aunque las
+\texttt{vpn} elegidas sean distintas en cada proceso, ambos
+\emph{mapean a los mismos frames físicos}. Si el SO asigna los
+frames físicos $5$ y $6$ para la región compartida, entonces:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item En A: \texttt{vpn 5 $\to$ ppn 5} y \texttt{vpn 6 $\to$ ppn 6}.
+    \item En B: \texttt{vpn 7 $\to$ ppn 5} y \texttt{vpn 8 $\to$ ppn 6}.
+\end{itemize}
+
+Una escritura del proceso A en \texttt{0x5000} es inmediatamente
+visible para el proceso B leyendo desde \texttt{0x7000}: ambas
+direcciones lógicas resuelven al mismo byte físico.
+
+\textbf{Asignación de frames}. Asumimos que A y B son procesos
+distintos (no comparten ni código ni datos ni stack). Reutilizamos
+los frames de A según el Ej 2 y elegimos otros para B:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item A: código $\to$ frames $3,4$; datos $\to$ frame $1$; stack $\to$ frame $15$.
+    \item Shared memory $\to$ frames $5, 6$ (asignados por el SO en \texttt{shmem}).
+    \item B: código $\to$ frames $7,8$; datos $\to$ frame $9$; stack $\to$ frame $14$.
+\end{itemize}
+
+\subsection*{Tabla de páginas del proceso A}
+
+\begin{center}
+\small
+\begin{tabular}{@{}ccccp{4.2cm}@{}}
+\toprule
+vpn      & rango lógico                 & ppn & V & Área \\
+\midrule
+$0$      & \texttt{[0x0000, 0x0FFF]}    & $3$  & 1 & código \\
+$1$      & \texttt{[0x1000, 0x1FFF]}    & $4$  & 1 & código \\
+$2$      & \texttt{[0x2000, 0x2FFF]}    & $1$  & 1 & datos \\
+$3$, $4$ & \texttt{[0x3000, 0x4FFF]}    & ---  & 0 & inválidas \\
+$\boldsymbol{5}$ & \texttt{[0x5000, 0x5FFF]} & $\boldsymbol{5}$ & 1 & \textbf{compartida (frame X)} \\
+$\boldsymbol{6}$ & \texttt{[0x6000, 0x6FFF]} & $\boldsymbol{6}$ & 1 & \textbf{compartida (frame Y)} \\
+$7$--$14$ & \texttt{[0x7000, 0xEFFF]}   & ---  & 0 & inválidas \\
+$15$     & \texttt{[0xF000, 0xFFFF]}    & $15$ & 1 & stack \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{Tabla de páginas del proceso B}
+
+\begin{center}
+\small
+\begin{tabular}{@{}ccccp{4.2cm}@{}}
+\toprule
+vpn      & rango lógico                 & ppn & V & Área \\
+\midrule
+$0$      & \texttt{[0x0000, 0x0FFF]}    & $7$  & 1 & código \\
+$1$      & \texttt{[0x1000, 0x1FFF]}    & $8$  & 1 & código \\
+$2$      & \texttt{[0x2000, 0x2FFF]}    & $9$  & 1 & datos \\
+$3$--$6$ & \texttt{[0x3000, 0x6FFF]}    & ---  & 0 & inválidas \\
+$\boldsymbol{7}$ & \texttt{[0x7000, 0x7FFF]} & $\boldsymbol{5}$ & 1 & \textbf{compartida (frame X)} \\
+$\boldsymbol{8}$ & \texttt{[0x8000, 0x8FFF]} & $\boldsymbol{6}$ & 1 & \textbf{compartida (frame Y)} \\
+$9$--$14$ & \texttt{[0x9000, 0xEFFF]}   & ---  & 0 & inválidas \\
+$15$     & \texttt{[0xF000, 0xFFFF]}    & $14$ & 1 & stack \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{Diagrama: las dos tablas apuntan a los mismos frames}
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    log/.style={draw,fill=c1!20,minimum width=1.8cm,minimum height=0.55cm,align=center},
+    sh/.style={draw,fill=cshare!50,minimum width=1.8cm,minimum height=0.55cm,align=center},
+    phys/.style={draw,fill=c2!20,minimum width=2.0cm,minimum height=0.55cm,align=center},
+    shp/.style={draw,fill=cshare!50,minimum width=2.0cm,minimum height=0.55cm,align=center}
+]
+% Process A
+\node[font=\bfseries\small] at (-4.5,4.7) {Proceso A};
+\node[sh] (a5) at (-4.5,3.0) {vpn 5};
+\node[sh,below=0pt of a5] (a6) {vpn 6};
+
+% Process B
+\node[font=\bfseries\small] at (4.5,4.7) {Proceso B};
+\node[sh] (b7) at (4.5,3.0) {vpn 7};
+\node[sh,below=0pt of b7] (b8) {vpn 8};
+
+% Shared physical frames
+\node[font=\bfseries\small] at (0,4.7) {Memoria física};
+\node[shp] (fx) at (0,3.0) {ppn 5 (X)};
+\node[shp,below=0pt of fx] (fy) {ppn 6 (Y)};
+
+% Arrows from A
+\draw[->,thick,cshare!70!black] (a5.east) -- (fx.west);
+\draw[->,thick,cshare!70!black] (a6.east) -- (fy.west);
+% Arrows from B
+\draw[->,thick,cshare!70!black] (b7.west) -- (fx.east);
+\draw[->,thick,cshare!70!black] (b8.west) -- (fy.east);
+\end{tikzpicture}
+\end{center}
+
+\begin{respuesta}
+La región compartida ocupa $2$ páginas físicas (frames $X = 5$ e
+$Y = 6$). En las dos tablas de páginas, las entradas correspondientes
+apuntan a esos mismos frames, pero a \textbf{vpns distintas}:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Proceso A: \texttt{vpn 5 $\to$ ppn 5}, \texttt{vpn 6 $\to$ ppn 6}.
+    \item Proceso B: \texttt{vpn 7 $\to$ ppn 5}, \texttt{vpn 8 $\to$ ppn 6}.
+\end{itemize}
+
+Una escritura de A en \texttt{0x5000} es inmediatamente visible para
+B en \texttt{0x7000}: ambas direcciones lógicas resuelven al mismo
+byte físico vía la MMU.
+\end{respuesta}
+
+\begin{idea}
+La \emph{shared memory} es el mecanismo IPC más eficiente: una vez
+mapeada, los accesos no pasan por el kernel; son lecturas/escrituras
+de memoria normales. La sincronización entre procesos (mutex,
+semáforos) se construye encima.
+
+\textbf{Nota sobre fragmentación interna}: $5000$ bytes ocupan $2$
+páginas $= 8192$ bytes. Se desperdician $3192$ bytes en la segunda
+página. Es la fragmentación interna inherente a la paginación.
+\end{idea}
+
+% =====================================================================
+\section{Ejercicio 4 --- Filesystem basado en inodos}
+% =====================================================================
+
+\textbf{Enunciado.} Dado un sistema de archivos basado en inodos con
+bloques de $512$ bytes, donde el directorio raíz tiene un único
+archivo \texttt{README} que ocupa $900$ bytes:
+
+\textbf{(A)} Diagramar su imagen.
+\textbf{(B)} Mostrar la modificación luego de agregar (\emph{append})
+$500$ bytes a \texttt{README}.
+
+\subsection*{Análisis: estructura de un FS de inodos}
+
+\textbf{Componentes:}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Superblock}: metadata global del FS (tamaño de
+        bloque, número de inodos, etc.).
+    \item \textbf{Tabla de inodos}: un inodo por archivo/directorio,
+        con metadata (tipo, tamaño, permisos, punteros a bloques).
+    \item \textbf{Bloques de datos}: contenido real de archivos y
+        directorios.
+\end{itemize}
+
+\textbf{Estructura típica de un inodo (estilo Unix clásico):}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lp{8.5cm}@{}}
+\toprule
+Campo                & Significado \\
+\midrule
+\texttt{i\_mode}     & tipo (file, dir, link) + permisos \\
+\texttt{i\_size}     & tamaño del archivo en bytes \\
+\texttt{i\_uid, gid} & dueño y grupo \\
+\texttt{i\_atime, mtime, ctime} & timestamps \\
+\texttt{direct[0..11]} & punteros directos a $12$ bloques de datos \\
+\texttt{indirect}    & puntero a un bloque que contiene más punteros (indirecto simple) \\
+\texttt{double, triple} & indirección doble y triple para archivos grandes \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{4.A --- Imagen inicial}
+
+\textbf{Cuentas previas.}
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{README} ocupa $900$ bytes.
+        $\lceil 900 / 512 \rceil = 2$ bloques.
+        Bloque 1: bytes $0$--$511$ (lleno).
+        Bloque 2: bytes $512$--$899$ ($388$ bytes ocupados, $124$
+        bytes de relleno).
+    \item Directorio raíz: contiene $3$ entradas (\texttt{.},
+        \texttt{..}, \texttt{README}). Asumiendo $32$ bytes por
+        entrada: $3 \times 32 = 96$ bytes, cabe en $1$ bloque.
+\end{itemize}
+
+\textbf{Asignación.} Inodos $1$ (root) y $2$ (README). Bloques de
+datos: $B_1$ (root dir), $B_2$ y $B_3$ (datos de README).
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    inode/.style={draw,minimum width=4.5cm,minimum height=0.55cm,align=center},
+    block/.style={draw,minimum width=4cm,minimum height=0.55cm,align=center}
+]
+\node[font=\bfseries\small] at (-2.5, 5.5) {Tabla de inodos};
+
+\node[inode,fill=c1!20] (i1) at (-2.5, 4.5)
+    {\textbf{inode 1}: DIR, size=96, direct[0]=$B_1$};
+
+\node[inode,fill=c2!20,below=0.05cm of i1] (i2)
+    {\textbf{inode 2}: REG, size=\textbf{900}, \\ direct[0]=$B_2$, direct[1]=$B_3$};
+
+\node[font=\bfseries\small] at (4, 5.5) {Bloques de datos};
+
+\node[block,fill=c3!20] (b1) at (4, 4.5)
+    {$B_1$: \{.: 1, ..: 1, README: 2\}};
+
+\node[block,fill=c4!30,below=0.05cm of b1] (b2)
+    {$B_2$: bytes 0--511 de README};
+
+\node[block,fill=c4!30,below=0.05cm of b2] (b3)
+    {$B_3$: bytes 512--899 (+ padding)};
+
+% Arrows
+\draw[->,thick] (i1.east) -- (b1.west);
+\draw[->,thick] (i2.east) to[bend left=5] (b2.west);
+\draw[->,thick] (i2.east) to[bend right=10] (b3.west);
+\end{tikzpicture}
+\end{center}
+
+\textbf{Descripción del estado inicial:}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{inode 1} (directorio raíz): \texttt{type = DIR},
+        \texttt{size = 96}, \texttt{direct[0] = $B_1$}.
+    \item Bloque $B_1$ (contenido del directorio raíz):
+        $\{$ \texttt{.}\,$\to$\,inode~$1$,
+        \texttt{..}\,$\to$\,inode~$1$,
+        \texttt{README}\,$\to$\,inode~$2$ $\}$.
+    \item \texttt{inode 2} (\texttt{README}): tipo \texttt{REG},
+        tamaño $900$, punteros \texttt{direct[0]} $= B_2$ y
+        \texttt{direct[1]} $= B_3$; los demás punteros son nulos.
+    \item Los bloques $B_2$ y $B_3$ contienen los $900$ bytes del
+        archivo (más relleno al final del segundo bloque).
+\end{itemize}
+
+\subsection*{4.B --- Modificación tras \texttt{append} de 500 bytes}
+
+\textbf{Nuevo tamaño}: $900 + 500 = 1400$ bytes.
+
+\quad $\lceil 1400 / 512 \rceil = 3$ bloques.
+
+Ya tenemos $2$ bloques ($B_2$ y $B_3$); hace falta uno más
+($B_4$) para alojar los bytes $1024$--$1399$.
+
+\textbf{Distribución del contenido tras append:}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item $B_2$: bytes $0$--$511$ (lleno, no cambia).
+    \item $B_3$: bytes $512$--$1023$ (antes tenía $512$--$899$;
+        ahora los bytes $900$--$1023$ se completan con los primeros
+        $124$ bytes del append).
+    \item $B_4$ \textbf{(nuevo)}: bytes $1024$--$1399$ (los
+        restantes $376$ bytes del append; bytes $1400$--$1535$
+        quedan como padding).
+\end{itemize}
+
+\textbf{Cambios en la imagen del FS:}
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item Se asigna un bloque libre $B_4$ desde la \emph{free list}
+        del FS.
+    \item Se actualiza el inodo de \texttt{README}:
+        \texttt{i\_size} pasa de $900$ a $\mathbf{1400}$, y
+        \texttt{direct[2]} pasa de \emph{nulo} a $B_4$.
+    \item Los bloques $B_2$ y $B_3$ se reescriben con los datos
+        actualizados.
+    \item Se actualiza \texttt{i\_mtime} y \texttt{i\_ctime}.
+    \item \textbf{El inodo del directorio raíz NO cambia}: ni el
+        nombre ni el inodo de \texttt{README} cambiaron; sólo cambió
+        su contenido.
+\end{enumerate}
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    inode/.style={draw,minimum width=5.0cm,minimum height=0.55cm,align=center},
+    block/.style={draw,minimum width=4cm,minimum height=0.55cm,align=center}
+]
+\node[font=\bfseries\small] at (-2.5, 5.8) {Tabla de inodos};
+
+\node[inode,fill=c1!20] (i1) at (-2.5, 4.8)
+    {\textbf{inode 1}: DIR, size=96, direct[0]=$B_1$};
+
+\node[inode,fill=c2!20,below=0.05cm of i1] (i2)
+    {\textbf{inode 2}: REG, size=\textbf{1400}, \\ direct[0]=$B_2$, direct[1]=$B_3$, direct[2]=$\boldsymbol{B_4}$};
+
+\node[font=\bfseries\small] at (4, 5.8) {Bloques de datos};
+
+\node[block,fill=c3!20] (b1) at (4, 4.8)
+    {$B_1$: \{.: 1, ..: 1, README: 2\}};
+
+\node[block,fill=c4!30,below=0.05cm of b1] (b2)
+    {$B_2$: bytes 0--511};
+
+\node[block,fill=c4!30,below=0.05cm of b2] (b3)
+    {$B_3$: bytes 512--1023};
+
+\node[block,fill=c4!50,below=0.05cm of b3] (b4)
+    {$\boldsymbol{B_4}$: bytes 1024--1399};
+
+% Arrows
+\draw[->,thick] (i1.east) -- (b1.west);
+\draw[->,thick] (i2.east) to[bend left=5] (b2.west);
+\draw[->,thick] (i2.east) to[bend right=5] (b3.west);
+\draw[->,thick,cred!70!black] (i2.east) to[bend right=20] (b4.west);
+\end{tikzpicture}
+\end{center}
+
+\begin{respuesta}
+\textbf{Cambios tras el \emph{append} de 500 bytes a README:}
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{i\_size} del inodo 2 (README): \textbf{$900 \to 1400$}.
+    \item Se agrega \texttt{direct[2] = $B_4$} (bloque nuevo).
+    \item $B_3$ se completa (antes tenía $388$ bytes; ahora $512$).
+    \item $B_4$ se asigna desde la free list y guarda los últimos
+        $376$ bytes ($+$ padding).
+    \item El \textbf{inodo de la raíz no cambia}: el directorio sigue
+        teniendo la misma entrada hacia el mismo inodo 2.
+\end{itemize}
+
+\textbf{Crucial}: el atributo del archivo (su inodo) es el que mueve
+el tamaño y agrega el bloque; el directorio raíz \emph{no se entera
+del cambio}, sólo conoce el nombre y el número de inodo. Esto es lo
+que permite que \emph{múltiples nombres} (hard links) compartan el
+mismo archivo.
+\end{respuesta}
+
+% =====================================================================
+\section{Ejercicio 5 --- Login de un usuario y cómo inhabilitarlo}
+% =====================================================================
+
+\textbf{Enunciado.} Describir brevemente el proceso de login de un
+usuario en un sistema hasta que obtiene un shell. ¿Cómo podríamos
+inhabilitar su login?
+
+\subsection*{Análisis: anatomía del login}
+
+El login es la cadena de pasos que transforma un usuario humano
+sentado frente a una terminal en un \texttt{shell} ejecutando con
+sus privilegios. Recorre desde \texttt{init}/\texttt{systemd} hasta
+la línea de comandos del usuario.
+
+\subsection*{Proceso paso a paso}
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Arranque del sistema y \texttt{init}.}
+        Al iniciar la máquina, el kernel monta el FS raíz y ejecuta
+        \texttt{init} (PID 1: \texttt{systemd} en Linux moderno).
+        \texttt{init} es el padre de todos los procesos de usuario.
+
+    \item \textbf{Lanzamiento de \texttt{getty} en cada TTY.}
+        Para cada terminal (TTY, p.\,ej.\ \texttt{tty1},
+        \texttt{tty2}\ldots), \texttt{systemd} lanza un proceso
+        \texttt{getty} (\emph{get tty}) que abre el dispositivo,
+        configura velocidad/paridad e imprime el prompt
+        ``\texttt{login:}''.
+
+    \item \textbf{Lectura del nombre de usuario.}
+        \texttt{getty} lee la línea ingresada. Cuando el usuario
+        teclea su nombre y presiona Enter, \texttt{getty} hace
+        \texttt{exec("login", username, \ldots)}: reemplaza su imagen
+        por el binario \texttt{login}, conservando el mismo PID y la
+        TTY ya abierta.
+
+    \item \textbf{Lectura de la contraseña.}
+        \texttt{login} imprime ``\texttt{Password:}'' y lee con echo
+        \emph{deshabilitado} (vía \texttt{ioctl} sobre el termios).
+
+    \item \textbf{Autenticación vía PAM} (\emph{Pluggable
+        Authentication Modules}).
+        \texttt{login} delega la validación a PAM, que:
+        \begin{enumerate}[label=\alph*),nosep]
+            \item Busca al usuario en \texttt{/etc/passwd} (campo:
+                login, UID, GID, GECOS, home, shell).
+            \item Lee el hash de \texttt{/etc/shadow}.
+            \item Aplica la misma función hash (con salt) a la
+                contraseña ingresada y compara.
+            \item Verifica reglas adicionales: cuenta no caducada,
+                horario permitido, no bloqueada por
+                \texttt{pam\_faillock} tras varios intentos
+                fallidos, etc.
+        \end{enumerate}
+
+    \item \textbf{Si autentica correctamente}: \texttt{login}
+        configura el proceso para que ``sea'' el usuario:
+        \begin{itemize}[nosep]
+            \item \texttt{setgid(gid)} y \texttt{setgroups(\ldots)} para
+                grupo primario y suplementarios.
+            \item \texttt{setuid(uid)}, perdiendo definitivamente los
+                privilegios root.
+            \item \texttt{chdir(home)} al directorio personal.
+            \item \texttt{setenv}: \texttt{HOME}, \texttt{USER},
+                \texttt{LOGNAME}, \texttt{SHELL}, \texttt{PATH},
+                \texttt{TERM}, \texttt{MAIL}.
+        \end{itemize}
+
+    \item \textbf{Exec del shell.}
+        Como último paso, \texttt{login} hace
+        \texttt{exec(pw\_shell)} con el shell del usuario (campo 7
+        de \texttt{/etc/passwd}, e.g.\ \texttt{/bin/bash}). El proceso
+        ahora corre \texttt{bash} como ese usuario.
+
+    \item \textbf{El shell arranca}: lee
+        \texttt{/etc/profile}, \texttt{\textasciitilde/.bash\_profile}
+        o \texttt{\textasciitilde/.bashrc}, exporta variables,
+        configura aliases y muestra el prompt. El usuario está adentro.
+\end{enumerate}
+
+\subsection*{Diagrama del flujo}
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small,align=center},
+    box/.style={draw,rounded corners,minimum width=2.4cm,minimum height=0.8cm,fill=c1!20},
+    arr/.style={->, thick}
+]
+\node[box] (init)  at (0,0) {init / \\ systemd};
+\node[box,right=0.4cm of init] (getty) {getty};
+\node[box,right=0.4cm of getty] (login) {login};
+\node[box,right=0.4cm of login,fill=c3!30] (shell) {bash};
+
+\draw[arr] (init.east) -- node[above,font=\scriptsize]{fork+exec} (getty.west);
+\draw[arr] (getty.east) -- node[above,font=\scriptsize]{exec}
+                          node[below,font=\scriptsize]{(usuario tipea)} (login.west);
+\draw[arr] (login.east) -- node[above,font=\scriptsize]{exec}
+                          node[below,font=\scriptsize]{(autentica + setuid)} (shell.west);
+\end{tikzpicture}
+\end{center}
+
+\textbf{Observación clave}: el shell del usuario \textbf{hereda el
+PID} del \texttt{getty} original (a través de los sucesivos
+\texttt{exec}). El usuario nunca causa un \texttt{fork}; toda la
+cadena son reemplazos de imagen sobre el mismo proceso.
+
+\subsection*{Cómo inhabilitar el login de un usuario}
+
+Hay varias técnicas, en orden creciente de severidad:
+
+\paragraph{Opción A: cambiar el shell del usuario a \texttt{nologin}.}
+La técnica estándar. En \texttt{/etc/passwd}, el séptimo campo es el
+shell. Si se pone \texttt{/sbin/nologin} o \texttt{/usr/sbin/nologin}:
+
+\begin{lstlisting}[style=shellstyle]
+sudo usermod -s /sbin/nologin USUARIO
+\end{lstlisting}
+
+El binario \texttt{/sbin/nologin} imprime el texto de
+\texttt{/etc/nologin.txt} (\emph{``This account is currently not
+available''}) y termina con \texttt{exit(1)}. Resultado: el usuario
+\emph{puede autenticarse} pero al hacer \texttt{exec()} del shell el
+proceso muere instantáneamente y se vuelve al prompt.
+
+\paragraph{Opción B: bloquear la contraseña.}
+Modificar el hash en \texttt{/etc/shadow} para que ninguna entrada
+del usuario pueda hashearse al mismo valor:
+
+\begin{lstlisting}[style=shellstyle]
+sudo passwd -l USUARIO        # antepone "!" al hash
+# o
+sudo usermod -L USUARIO
+\end{lstlisting}
+
+PAM ya no autentica y el login falla en el paso $5$. Reversible con
+\texttt{passwd -u USUARIO}.
+
+\paragraph{Opción C: expirar la cuenta.}
+
+\begin{lstlisting}[style=shellstyle]
+sudo chage -E 0 USUARIO            # cuenta expirada hace tiempo
+sudo usermod --expiredate 1 USUARIO
+\end{lstlisting}
+
+PAM detecta la expiración y rechaza el login.
+
+\paragraph{Opción D: borrar al usuario.}
+
+\begin{lstlisting}[style=shellstyle]
+sudo userdel USUARIO            # mantiene home
+sudo userdel -r USUARIO         # borra home también
+\end{lstlisting}
+
+Definitivo. No tiene reverso.
+
+\paragraph{Opción E: regla PAM.}
+En \texttt{/etc/pam.d/login} agregar:
+
+\begin{lstlisting}[style=textstyle]
+auth required pam_listfile.so onerr=succeed item=user \
+              sense=deny file=/etc/login.deny
+\end{lstlisting}
+
+\noindent y poner el nombre del usuario en \texttt{/etc/login.deny}.
+
+\begin{respuesta}
+El login de un usuario es la cadena
+\textbf{init/systemd $\to$ getty $\to$ login $\to$ shell},
+encadenada por sucesivos \texttt{exec()} sobre el mismo PID, con
+autenticación vía PAM contra \texttt{/etc/passwd} y
+\texttt{/etc/shadow}, y un \texttt{setuid/setgid} al final que baja
+los privilegios al usuario.
+
+\textbf{Para inhabilitar} el login de un usuario, las técnicas
+estándar son:
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item \texttt{sudo usermod -s /sbin/nologin USUARIO} (cambia el
+        shell a uno que sale inmediatamente). \emph{La más usada.}
+    \item \texttt{sudo passwd -l USUARIO} (bloquea la contraseña).
+    \item \texttt{sudo chage -E 0 USUARIO} (expira la cuenta).
+    \item \texttt{sudo userdel USUARIO} (borrado total).
+    \item Reglas en \texttt{pam.d} (\texttt{pam\_listfile} con un
+        archivo de denegados).
+\end{enumerate}
+
+La elección depende de si se quiere \textbf{reversibilidad}
+(opciones 1, 2, 3, 5) o no (opción 4), y de si el usuario tiene
+servicios automatizados (cron, sshd con keys) que también deban
+desactivarse.
+\end{respuesta}
+
+% =====================================================================
+\section*{Resumen del recuperatorio}
+\addcontentsline{toc}{section}{Resumen del recuperatorio}
+% =====================================================================
+
+\begin{center}
+\small
+\begin{tabular}{@{}clp{8.8cm}@{}}
+\toprule
+\# & Tema & Respuesta sintética \\
+\midrule
+1 & V/F memoria/kernel & A:V (coalescing), B:F (frag.\ interna), C:V (con matiz threads), D:F (pocos registros), E:V (uniformidad), F:V (kernel en dir.\ fija) \\
+2 & Tabla de páginas   & vpn 0$\to$3, 1$\to$4, 2$\to$1, 15$\to$15; resto V=0 \\
+3 & Shared memory      & A: vpn 5,6 $\to$ ppn 5,6; B: vpn 7,8 $\to$ ppn 5,6 (mismos frames físicos) \\
+4 & FS de inodos       & (A) inode README size=900, direct[0,1]; (B) tras append size=1400, direct[2]=$B_4$ nuevo \\
+5 & Login y bloqueo    & init$\to$getty$\to$login$\to$shell con PAM y setuid. Bloquear con \texttt{usermod -s /sbin/nologin}, \texttt{passwd -l}, \texttt{chage -E 0}, etc. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\end{document}

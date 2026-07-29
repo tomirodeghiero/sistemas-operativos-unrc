@@ -1,29 +1,69 @@
 \documentclass[11pt,a4paper]{article}
 
-% --- Encoding ---
+% =====================================================================
+% Codificación e idioma
+% =====================================================================
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage[spanish,es-noshorthands]{babel}
 \usepackage{lmodern}
+\usepackage{textcomp}
 
-% --- Layout ---
+% =====================================================================
+% Layout
+% =====================================================================
 \usepackage[margin=2.5cm]{geometry}
 \usepackage{parskip}
 \setlength{\parindent}{0pt}
-\setlength{\parskip}{0.5em plus 0.2em minus 0.1em}
+\setlength{\parskip}{0.55em plus 0.2em minus 0.1em}
 
-% --- Tables and graphics ---
+% =====================================================================
+% Tablas, listas, color, gráficos
+% =====================================================================
 \usepackage{booktabs}
 \usepackage{array}
 \usepackage{enumitem}
 \usepackage{xcolor}
 \usepackage{graphicx}
 \usepackage{tikz}
-\usetikzlibrary{positioning}
+\usetikzlibrary{positioning, arrows.meta, shapes.geometric}
 \usepackage{caption}
 \usepackage{subcaption}
+\usepackage{tcolorbox}
+\tcbuselibrary{skins, breakable}
 
-% --- Code listings ---
+\definecolor{kerncolor}{rgb}{0.85,0.10,0.10}
+\definecolor{usercolor}{rgb}{0.10,0.40,0.85}
+\definecolor{noteborder}{rgb}{0.30,0.45,0.70}
+\definecolor{notebg}{rgb}{0.94,0.96,1.00}
+\definecolor{warnborder}{rgb}{0.75,0.45,0.10}
+\definecolor{warnbg}{rgb}{1.00,0.97,0.90}
+
+% Cuadro "idea / observación"
+\newtcolorbox{idea}[1][]{
+    enhanced, breakable,
+    colback=notebg, colframe=noteborder,
+    boxrule=0.5pt, arc=2pt,
+    left=8pt, right=8pt, top=4pt, bottom=4pt,
+    title={\bfseries #1}, fonttitle=\bfseries,
+    coltitle=noteborder, colbacktitle=notebg,
+    boxed title style={frame hidden, colback=notebg}
+}
+
+% Cuadro "advertencia / detalle fino"
+\newtcolorbox{ojo}[1][]{
+    enhanced, breakable,
+    colback=warnbg, colframe=warnborder,
+    boxrule=0.5pt, arc=2pt,
+    left=8pt, right=8pt, top=4pt, bottom=4pt,
+    title={\bfseries #1}, fonttitle=\bfseries,
+    coltitle=warnborder, colbacktitle=warnbg,
+    boxed title style={frame hidden, colback=warnbg}
+}
+
+% =====================================================================
+% Listings de código
+% =====================================================================
 \usepackage{listings}
 \definecolor{codegray}{rgb}{0.96,0.96,0.96}
 \definecolor{codeborder}{rgb}{0.85,0.85,0.85}
@@ -36,6 +76,7 @@
     backgroundcolor=\color{codegray},
     basicstyle=\ttfamily\small,
     breaklines=true,
+    breakatwhitespace=false,
     frame=single,
     rulecolor=\color{codeborder},
     showstringspaces=false,
@@ -45,6 +86,8 @@
     aboveskip=1em,
     belowskip=1em,
     columns=fullflexible,
+    upquote=true,
+    literate={\`}{{\textasciigrave}}1
 }
 
 \lstdefinestyle{cstyle}{
@@ -63,20 +106,37 @@
     numbersep=8pt,
     aboveskip=1em,
     belowskip=1em,
+    columns=fullflexible,
+    upquote=true,
+}
+
+\lstdefinestyle{outstyle}{
+    backgroundcolor=\color{white},
+    basicstyle=\ttfamily\small,
+    frame=single,
+    rulecolor=\color{codeborder},
+    breaklines=true,
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
 }
 
 \lstset{style=shellstyle}
 
-% --- Hyperlinks ---
+% =====================================================================
+% Hyperref
+% =====================================================================
 \usepackage[colorlinks=true,
             linkcolor=blue!60!black,
             urlcolor=blue!50!black,
             citecolor=blue!60!black]{hyperref}
 
-% --- Title block ---
+% =====================================================================
+% Portada
+% =====================================================================
 \title{
     \vspace{-2.5em}
-    \textbf{Práctico 1} \\[0.3em]
+    \textbf{Resolución del Práctico 1} \\[0.3em]
     \large Comandos, redirección, pipes, señales y llamadas al sistema
 }
 \author{
@@ -91,133 +151,221 @@
 
 \begin{abstract}
 \noindent
-Este documento presenta la resolución integral del Práctico 1 de la
-materia Sistemas Operativos (UNRC, 2026). Cada ejercicio se justifica con
-la teoría de los capítulos 1, 2 y 3 de las \emph{Notas del curso}
-(Marcelo Arroyo) y del capítulo 1 de \emph{Modern Operating Systems}
-(Tannenbaum \& Bos). El objetivo es transparentar el modelo
-\texttt{fork()}/\texttt{exec()}/\texttt{wait()} junto con los mecanismos de
-redirección, pipes, señales y llamadas al sistema que provee la API POSIX.
-Todo el código fue compilado con \texttt{gcc -Wall -Wextra} y verificado en
-una distribución tipo UNIX.
+Este documento es la resolución comentada del Práctico 1 de Sistemas
+Operativos (UNRC, 2026). Cada ejercicio se justifica con la teoría de
+los capítulos 1, 2 y 3 de las \emph{Notas del curso} (Marcelo Arroyo) y
+del capítulo 1 de \emph{Modern Operating Systems} (Tanenbaum \& Bos).
+El objetivo es transparentar el modelo
+\texttt{fork()}/\texttt{exec()}/\texttt{wait()} junto con los
+mecanismos de redirección, pipes, señales y llamadas al sistema que
+provee la API POSIX. La meta es que un estudiante pueda leer este PDF
+de corrido y entender no solo \emph{qué} comando se usó, sino
+\emph{por qué}. Todo el código fue compilado con
+\texttt{gcc -Wall -Wextra} y verificado en distribuciones tipo UNIX
+(Linux y macOS); donde corresponda se aclaran las pocas diferencias
+entre ambos sistemas.
 \end{abstract}
 
 \tableofcontents
 \bigskip
 
 % =====================================================================
-\section{Introducción}
+\section{Introducción: por qué necesitamos un Sistema Operativo}
 % =====================================================================
 
-Un \textbf{sistema operativo (SO)} es la capa de software que abstrae el
-hardware, administra los recursos disponibles (CPU, memoria, dispositivos
-de E/S) y ofrece servicios a las aplicaciones mediante \emph{llamadas al
-sistema}. Tannenbaum y Bos, en el capítulo 1 de \emph{Modern Operating
-Systems}, lo presentan a la vez como \emph{máquina extendida}---que oculta
-la fealdad del hardware tras abstracciones uniformes---y como
-\emph{administrador de recursos}, que multiplexa CPU y memoria en tiempo y
-en espacio entre múltiples programas.
+Antes de entrar a los ejercicios conviene fijar el vocabulario que va a
+aparecer en todo el práctico, porque muchas respuestas dependen de
+distinguir bien qué está haciendo el \textbf{kernel} y qué está haciendo
+el \textbf{proceso de usuario}.
 
-Las Notas del curso enfatizan tres elementos transversales a este
-práctico:
+Un \textbf{sistema operativo (SO)} es la capa de software que abstrae
+el hardware, administra los recursos disponibles (CPU, memoria,
+dispositivos de E/S) y ofrece servicios a las aplicaciones mediante
+\emph{llamadas al sistema}. Tanenbaum y Bos, en el capítulo 1 de
+\emph{Modern Operating Systems}, lo presentan a la vez como:
 
 \begin{itemize}[leftmargin=*]
-    \item \textbf{Modo kernel y modo usuario.} La CPU ejecuta el código
-        del SO con privilegios totales (modo supervisor) y los procesos de
-        usuario en modo restringido. El cambio se realiza vía
-        \emph{traps} (syscalls) o interrupciones.
-    \item \textbf{Proceso.} Instancia de un programa en ejecución, con
-        espacio de direcciones propio (código, datos globales, pila),
-        descriptor en el kernel (PCB) y archivos abiertos heredados.
-    \item \textbf{Multitarea / multiprogramación.} El SO mantiene varios
-        procesos en memoria y multiplexa la CPU mediante \emph{context
-        switches} (pre-emptive en sistemas de tiempo compartido).
+    \item \textbf{Máquina extendida}: oculta la fealdad del hardware
+        (controladores de disco, registros de DMA, interrupciones)
+        detrás de abstracciones uniformes (archivos, procesos, sockets).
+    \item \textbf{Administrador de recursos}: multiplexa CPU y memoria
+        en \emph{tiempo} y en \emph{espacio} entre múltiples programas
+        que corren simultáneamente.
 \end{itemize}
 
-Sobre estas bases, el shell se entiende como un intérprete REPL que
-compone procesos mediante operadores de redirección (\texttt{<},
-\texttt{>}, \texttt{>>}), secuencia (\texttt{;}), condicionales
-(\texttt{\&\&}, \texttt{||}), pipes (\texttt{|}) y ejecución concurrente
-(\texttt{\&}). Cada operador encuentra una traducción directa en
-combinaciones de las syscalls \texttt{fork()}, \texttt{exec()},
-\texttt{wait()}, \texttt{pipe()}, \texttt{dup2()} y
-\texttt{open/close/read/write}.
+Las Notas del curso enfatizan tres ideas transversales a este práctico:
+
+\begin{description}[leftmargin=*, style=nextline]
+    \item[Modo kernel y modo usuario]
+        La CPU ejecuta el código del SO con privilegios totales (modo
+        supervisor) y los procesos de usuario en modo restringido. El
+        cambio se realiza vía \emph{traps} (syscalls) o interrupciones.
+        Una syscall no es una llamada a función común: es una
+        instrucción especial que pide al hardware ``deja lo que estás
+        haciendo y entrá en modo privilegiado para atender este
+        servicio''.
+    \item[Proceso]
+        Instancia de un programa en ejecución, con espacio de
+        direcciones propio (código, datos globales, pila), descriptor
+        en el kernel (PCB: \emph{Process Control Block}) y archivos
+        abiertos heredados de su padre.
+    \item[Multitarea / multiprogramación]
+        El SO mantiene varios procesos en memoria y multiplexa la CPU
+        mediante \emph{context switches}. En un SO de tiempo
+        compartido el planificador es \emph{preemptive}: puede
+        sacarle la CPU a un proceso aunque éste no la libere
+        voluntariamente.
+\end{description}
+
+\begin{idea}[Cómo se llama el kernel desde el código de usuario]
+Cuando un programa C invoca \texttt{read()}, no salta a una función
+del propio binario: ejecuta una instrucción de \emph{trap} (en x86,
+\texttt{syscall}; en ARM, \texttt{svc}). La CPU cambia automáticamente
+a modo kernel, salva el estado del proceso y entrega el control a la
+tabla de syscalls del SO. Cuando el servicio termina, otra instrucción
+retorna a modo usuario en la línea siguiente al \texttt{trap}. Todo el
+modelo \texttt{fork}/\texttt{exec}/\texttt{pipe}/\texttt{signal} que
+recorre este práctico funciona así por dentro.
+\end{idea}
+
+Sobre estas bases, el shell se entiende como un \textbf{intérprete
+REPL} (Read--Eval--Print Loop) que compone procesos mediante operadores
+de redirección (\texttt{<}, \texttt{>}, \texttt{>>}), secuencia
+(\texttt{;}), condicionales (\texttt{\&\&}, \texttt{||}), pipes
+(\texttt{|}) y ejecución concurrente (\texttt{\&}). Cada uno de esos
+operadores tiene traducción directa en combinaciones de syscalls POSIX:
+\texttt{fork}, \texttt{exec}, \texttt{wait}, \texttt{pipe},
+\texttt{dup2} y la familia \texttt{open}/\texttt{close}/\texttt{read}/\texttt{write}.
+Buena parte del práctico consiste, justamente, en hacer explícita esa
+correspondencia.
 
 % =====================================================================
 \section{Ejercicio 1 --- Comandos del shell}
 % =====================================================================
 
+Los incisos de este ejercicio piden lo mismo: investigar el sistema con
+comandos básicos. Lo interesante no es la sintaxis (es trivial), sino
+\emph{qué información del SO} está exponiendo cada comando. En cada
+inciso aclaramos esto último.
+
 \subsection*{1.a Procesos en ejecución y PID del primer proceso}
+
+\textbf{Planteo.} Hay que listar los procesos vivos del sistema e
+identificar al primer proceso de usuario.
 
 \begin{lstlisting}
 ps -e -o pid,ppid,state,comm | head -n 20
 \end{lstlisting}
 
-\texttt{ps -e} lista todos los procesos del sistema. La opción
-\texttt{-o} permite seleccionar las columnas relevantes (PID, PPID,
-estado y nombre). El proceso con \textbf{PID 1} es el primer proceso
-lanzado por el kernel apenas concluye la inicialización del SO; en Linux
-suele ser \texttt{systemd} (o \texttt{init} en variantes clásicas), en
-macOS \texttt{launchd}. Las Notas del curso lo describen como ``el primer
-proceso de usuario preconfigurado'' que se lanza al final de la rutina de
-arranque.
+\texttt{ps -e} lista todos los procesos del sistema (no solo los del
+usuario actual). La opción \texttt{-o} elige las columnas: PID (id del
+proceso), PPID (id del padre), estado y nombre del comando. El proceso
+con \textbf{PID 1} es \emph{siempre} el primer proceso lanzado por el
+kernel apenas concluye la inicialización del SO: el kernel lo crea ``a
+mano'' (no por \texttt{fork}) y a partir de ahí todos los demás
+procesos descienden de él.
+
+\textbf{Conclusión.} En Linux moderno PID 1 suele ser \texttt{systemd}
+(o \texttt{init} en variantes clásicas); en macOS es \texttt{launchd}.
+Las Notas del curso lo describen como ``el primer proceso de usuario
+preconfigurado'', y es la raíz del árbol de procesos: si \texttt{ps}
+muestra alguno con PPID 0, ese es el kernel mismo (no es un proceso de
+usuario, sino un \emph{kernel thread}).
 
 \subsection*{1.b Usuarios conectados y usuario actual}
 
+\textbf{Planteo.} Mostrar todos los usuarios con sesión activa y, en
+particular, quién soy yo.
+
 \begin{lstlisting}
-who
-who am i
-whoami
+who          # todas las sesiones abiertas
+who am i     # solo la sesion asociada a esta terminal
+whoami       # UID efectivo del shell actual
 \end{lstlisting}
 
-\texttt{who} lista todas las sesiones abiertas, \texttt{who am i} muestra
-únicamente la asociada a la terminal actual y \texttt{whoami} imprime el
-\emph{UID efectivo} del proceso shell. La diferencia ilustra la
-naturaleza multiusuario de UNIX: el SO mantiene una tabla de sesiones
-(\texttt{utmp}/\texttt{wtmp}) que asocia terminales con usuarios
-autenticados.
+\textbf{Razonamiento.} La diferencia entre los tres comandos ilustra la
+naturaleza multiusuario de UNIX:
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{who} consulta la base de sesiones del sistema
+        (\texttt{utmp}/\texttt{wtmp} en Linux,
+        \texttt{/var/run/utmpx} en macOS) y lista \emph{todas} las
+        sesiones que el SO considera activas.
+    \item \texttt{who am i} filtra esa misma tabla por la terminal
+        actual.
+    \item \texttt{whoami} no mira la tabla de sesiones: imprime
+        directamente el \emph{UID efectivo} del proceso shell, que es
+        el identificador de usuario con el que el kernel evalúa los
+        permisos.
+\end{itemize}
+
+\textbf{Conclusión.} Las tres formas conviven porque responden
+preguntas distintas: ``quién está logueado'', ``con qué sesión vine yo''
+y ``con qué identidad de usuario corre este proceso''.
 
 \subsection*{1.c Directorio corriente}
+
+\textbf{Planteo.} Mostrar el directorio actual con dos formas distintas.
 
 \begin{lstlisting}
 pwd
 echo "$PWD"
 \end{lstlisting}
 
-\texttt{pwd} consulta el directorio asociado al proceso shell, mientras
-que \texttt{\$PWD} es una variable de ambiente que el shell mantiene
-sincronizada. Ambos comandos cumplen el requisito del enunciado de usar
-\emph{al menos dos formas distintas}.
+\textbf{Razonamiento.} \texttt{pwd} consulta el \emph{current working
+directory} del proceso shell, atributo que el kernel mantiene para cada
+proceso. La variable de entorno \texttt{\$PWD}, en cambio, la mantiene
+el propio shell sincronizada cada vez que ejecuta \texttt{cd}. Ambos
+deberían coincidir, pero \texttt{\$PWD} puede quedar desactualizado si
+otro proceso modifica el árbol de directorios por debajo.
 
-\subsection*{1.d Directorio home del usuario}
+\textbf{Conclusión.} Ambos comandos satisfacen el requisito del
+enunciado de mostrar el directorio actual con al menos dos formas
+distintas; el primero pregunta al kernel, el segundo lee una variable
+del propio shell.
+
+\subsection*{1.d Directorio \emph{home} del usuario}
+
+\textbf{Planteo.} Mostrar la ruta del directorio personal.
 
 \begin{lstlisting}
 echo "$HOME"
-cd ~
-pwd
+cd ~ && pwd
 \end{lstlisting}
 
-\texttt{HOME} es una variable de ambiente fijada en el momento del
-\emph{login} a partir de \texttt{/etc/passwd}. El símbolo \texttt{\~{}}
-es un atajo que el shell expande a \texttt{\$HOME} antes de ejecutar el
-comando.
+\textbf{Razonamiento.} \texttt{HOME} es una variable de entorno fijada
+en el momento del \emph{login} a partir del séptimo campo del registro
+de \texttt{/etc/passwd} (o de la base de directorios equivalente en
+macOS). El símbolo \texttt{\~{}} es un atajo que el shell expande a
+\texttt{\$HOME} \emph{antes} de ejecutar el comando, así que ambas
+formas terminan refiriéndose al mismo lugar.
 
 \subsection*{1.e Metadatos de archivos}
 
+\textbf{Planteo.} Listar archivos con sus metadatos asociados.
+
 \begin{lstlisting}
-ls -la .
-ls -la /
-stat README.md /
+ls -la .                   # listado del directorio actual
+ls -la /                   # listado de la raiz
+stat README.md /           # metadatos detallados
 \end{lstlisting}
 
-\texttt{ls -la} muestra entradas ocultas y metadatos básicos (permisos,
-dueño, grupo, tamaño, fecha). \texttt{stat} agrega información de bajo
-nivel: inodo, cantidad de hard links, timestamps y dispositivo
-contenedor. Recordemos que en UNIX un archivo es una secuencia de bytes
-identificada por un inodo y la entrada de directorio asocia un nombre con
-ese inodo.
+\textbf{Razonamiento.} \texttt{ls -la} muestra entradas ocultas
+(\texttt{-a}) en formato largo (\texttt{-l}): permisos, dueño, grupo,
+tamaño, fecha. \texttt{stat} agrega información de bajo nivel típica
+del SO: número de inodo, cantidad de \emph{hard links}, timestamps de
+acceso/modificación/cambio y dispositivo contenedor.
 
-\subsection*{1.f Listar contenido sin editor}
+\textbf{Conclusión.} En UNIX un archivo es \emph{una secuencia de
+bytes identificada por un inodo}; la entrada de directorio asocia un
+nombre legible con ese inodo. \texttt{stat} es la herramienta correcta
+cuando queremos ver explícitamente el inodo, porque \texttt{ls} lo
+oculta por defecto (se muestra con \texttt{ls -i}).
+
+\subsection*{1.f Listar el contenido de un archivo sin abrir un editor}
+
+\textbf{Planteo.} Volcar el contenido a la terminal con tres comandos
+distintos.
 
 \begin{lstlisting}
 cat README.md
@@ -225,45 +373,87 @@ more README.md
 less README.md
 \end{lstlisting}
 
-\texttt{cat} vuelca todo el archivo a \texttt{stdout} mediante
-\texttt{read()} y \texttt{write()}. \texttt{more} y \texttt{less} agregan
-una capa de paginación; \texttt{less} es más flexible al permitir
-desplazamiento bidireccional.
+\textbf{Razonamiento.} \texttt{cat} vuelca el archivo entero a
+\texttt{stdout} mediante un bucle \texttt{read()}/\texttt{write()} en
+bloques: muy simple, sin paginación. \texttt{more} agrega paginación
+hacia adelante (presionando espacio). \texttt{less} es la versión
+moderna: paginación bidireccional, búsqueda con \texttt{/patrón} y
+navegación tipo \texttt{vi}.
+
+\textbf{Conclusión.} Para archivos cortos \texttt{cat} alcanza; para
+archivos largos conviene \texttt{less}, que además no carga el archivo
+completo en memoria.
 
 \subsection*{1.g Variables de ambiente}
+
+\textbf{Planteo.} Listar las variables de entorno del shell actual.
 
 \begin{lstlisting}
 env | sort
 \end{lstlisting}
 
-Las variables de ambiente forman parte del \emph{contexto} del proceso y
-se pasan a los hijos mediante el tercer parámetro de \texttt{main}
-(\texttt{char *envv[]}). Las más relevantes son \texttt{USER},
-\texttt{HOME}, \texttt{PWD}, \texttt{SHELL}, \texttt{PATH} y
-\texttt{LANG}.
+\textbf{Razonamiento.} Las variables de ambiente forman parte del
+\emph{contexto} del proceso: son pares clave/valor que el kernel copia
+de padre a hijo cuando se hace \texttt{fork} y que el programa recibe
+en el tercer parámetro de \texttt{main} (\texttt{char *envp[]}) o
+accede vía \texttt{getenv()}. Por convención se escriben en mayúsculas.
+
+\textbf{Las más relevantes.}
+\begin{itemize}[leftmargin=*, itemsep=0pt]
+    \item \texttt{USER}, \texttt{HOME}: identidad y directorio
+        personal del usuario.
+    \item \texttt{PWD}: directorio de trabajo, sincronizado por el
+        shell.
+    \item \texttt{SHELL}: ruta al ejecutable del shell de \emph{login}.
+    \item \texttt{PATH}: lista de directorios donde se buscan los
+        comandos (ver 1.h).
+    \item \texttt{LANG} / \texttt{LC\_*}: locale (idioma, codificación,
+        formatos numéricos).
+\end{itemize}
 
 \subsection*{1.h Directorios donde el shell busca comandos}
+
+\textbf{Planteo.} Mostrar la lista \texttt{PATH} de forma legible.
 
 \begin{lstlisting}
 echo "$PATH" | tr ':' '\n'
 \end{lstlisting}
 
-\texttt{PATH} es una lista de directorios separados por dos puntos. Al
-recibir un comando sin barras, el shell recorre esos directorios en
-orden y ejecuta el primer archivo regular con permiso de ejecución que
-coincida. Por seguridad, el directorio actual \texttt{.} no suele estar
-incluido.
+\textbf{Razonamiento.} \texttt{PATH} es una lista de directorios
+separados por dos puntos. Cuando el shell recibe un comando \emph{sin
+barras} (por ejemplo \texttt{ls}, no \texttt{./ls}), recorre esos
+directorios en orden y ejecuta el primer archivo regular con permiso
+de ejecución que coincida con el nombre. \texttt{tr ':' '\textbackslash n'}
+reemplaza los dos puntos por saltos de línea para que la lista se lea
+de corrido.
+
+\begin{ojo}[Por qué \texttt{.} no está en \texttt{PATH}]
+Por seguridad, el directorio actual (\texttt{.}) no suele estar en
+\texttt{PATH}. Si lo estuviera, un atacante podría dejar un binario
+malicioso llamado, por ejemplo, \texttt{ls} en un directorio
+público; al hacer \texttt{cd} ahí y tipear \texttt{ls}, terminarías
+ejecutando el binario malicioso en vez del comando del sistema.
+\end{ojo}
 
 \subsection*{1.i Ubicación de un comando con \texttt{which}}
+
+\textbf{Planteo.} Determinar el ejecutable concreto que se ejecutaría
+al tipear un nombre.
 
 \begin{lstlisting}
 which cat
 \end{lstlisting}
 
-\texttt{which} reporta el \emph{full path} del primer ejecutable que el
-shell encontrará para ese nombre según el \texttt{PATH} vigente.
+\textbf{Razonamiento y conclusión.} \texttt{which} reporta la
+\emph{ruta absoluta} del primer ejecutable que el shell encontrará
+para ese nombre según el \texttt{PATH} vigente. Es útil para verificar
+qué versión de un comando se está ejecutando cuando hay varias
+instaladas (típico con \texttt{python}, \texttt{node}, \texttt{gcc}).
 
-\subsection*{1.j Crear un archivo con al menos tres comandos}
+\subsection*{1.j Crear un archivo y agregarle al menos tres líneas}
+
+\textbf{Planteo.} Construir un archivo con varios comandos
+encadenados.
 
 \begin{lstlisting}
 touch archivo.txt
@@ -273,23 +463,46 @@ echo "Tercera linea" >> archivo.txt
 cat archivo.txt
 \end{lstlisting}
 
-\texttt{touch} crea (o actualiza) el archivo. El operador \texttt{>}
-trunca y reescribe; \texttt{>>} abre en modo \emph{append}. Internamente
-el shell, antes de \texttt{exec}, abre el archivo y reasigna el
-descriptor 1 con \texttt{dup2()}.
+\textbf{Razonamiento.} \texttt{touch} crea el archivo si no existe (o
+actualiza su \texttt{mtime} si ya existe). El operador \texttt{>}
+\textbf{trunca y reescribe} el archivo destino, mientras que
+\texttt{>>} lo abre en modo \emph{append}. La diferencia es crítica:
+si usáramos \texttt{>} en la tercera línea, perderíamos el contenido
+anterior.
+
+\textbf{Qué hace el shell por dentro.} Antes de invocar
+\texttt{execve()} sobre el comando, el shell ejecuta:
+\begin{enumerate}[leftmargin=*, itemsep=0pt]
+    \item Abre el archivo destino con
+        \texttt{open(path, O\_WRONLY|O\_CREAT|O\_TRUNC, 0666)}
+        (o \texttt{O\_APPEND} si era \texttt{>>}).
+    \item Reasigna el descriptor 1 (stdout) al recién abierto con
+        \texttt{dup2(fd, 1)}.
+    \item Cierra el descriptor sobrante con \texttt{close(fd)}.
+    \item Llama a \texttt{execve()} con los argumentos del comando.
+\end{enumerate}
+El programa nunca se entera de la redirección: simplemente escribe en
+\texttt{stdout}, y resulta que \texttt{stdout} apunta al archivo.
 
 \subsection*{1.k Crear un enlace simbólico}
+
+\textbf{Planteo.} Crear un \emph{symlink} y observarlo.
 
 \begin{lstlisting}
 ln -s archivo.txt archivo_link.txt
 ls -li archivo.txt archivo_link.txt
 \end{lstlisting}
 
-Un enlace simbólico es un archivo cuyo contenido es la \emph{ruta} del
-destino. Tiene su propio inodo y \texttt{ls -li} muestra la flecha
-\texttt{->} hacia el archivo real.
+\textbf{Razonamiento.} Un enlace simbólico (o \emph{soft link}) es un
+archivo cuyo contenido es la \emph{ruta} hacia el destino. Tiene su
+propio inodo y su propio tipo (\texttt{l} al inicio de la línea de
+\texttt{ls -l}). \texttt{ls -li} muestra el número de inodo a la
+izquierda y la flecha \texttt{->} hacia el archivo real.
 
-\subsection*{1.l Eliminar el enlace y comparar con hard link}
+\subsection*{1.l Eliminar el symlink y compararlo con un hard link}
+
+\textbf{Planteo.} Borrar el enlace simbólico, crear un \emph{hard
+link} y comparar ambos comportamientos.
 
 \begin{lstlisting}
 rm archivo_link.txt
@@ -297,30 +510,46 @@ ln archivo.txt archivo_hard.txt
 ls -li archivo.txt archivo_hard.txt
 \end{lstlisting}
 
-Eliminar el symlink \emph{no} afecta al original: solo se borra la
-entrada de directorio que contenía la ruta. Un \emph{hard link}, en
-cambio, crea otra entrada que comparte el mismo inodo: el archivo solo
-desaparece del disco cuando el contador \texttt{st\_nlink} llega a cero.
+\textbf{Razonamiento.} Eliminar el symlink \emph{no} afecta al
+original: solo se borra la entrada de directorio que contenía la ruta
+(o sea, el ``cartelito''). El archivo real sigue donde estaba.
+
+Un \emph{hard link} es totalmente distinto: en lugar de guardar una
+ruta, crea otra entrada de directorio que \textbf{apunta al mismo
+inodo} que el archivo original. Es decir, no hay ``original'' y
+``copia'': hay un único inodo con dos nombres. El archivo desaparece
+del disco solo cuando el contador \texttt{st\_nlink} (cantidad de
+nombres que apuntan al inodo) llega a cero \emph{y} no hay procesos
+con el archivo abierto.
 
 \begin{table}[h]
 \centering
 \small
-\begin{tabular}{p{4.5cm} p{5cm} p{5cm}}
+\begin{tabular}{p{4.5cm} p{4.8cm} p{4.8cm}}
 \toprule
 \textbf{Característica} & \textbf{Symbolic link} & \textbf{Hard link} \\
 \midrule
 Tipo de referencia & Por ruta (texto) & Por inodo \\
 Inodo propio & Sí & No (comparte) \\
-Sobrevive al rename del original & Solo si la ruta sigue válida & Sí \\
+Sobrevive al \emph{rename} del original & Solo si la ruta sigue siendo válida & Sí \\
 Sobrevive al borrado del original & No (queda \emph{roto}) & Sí \\
-Cruza filesystems & Sí & No \\
-Permitido sobre directorios & Sí & Generalmente no \\
+Puede cruzar \emph{filesystems} & Sí & No \\
+Permitido sobre directorios & Sí & No (por defecto) \\
 \bottomrule
 \end{tabular}
 \caption{Comparación entre \emph{symbolic links} y \emph{hard links}.}
 \end{table}
 
-\subsection*{1.m Programa C que muestra los argumentos}
+\textbf{Conclusión.} El symlink es flexible (cruza filesystems, sirve
+para directorios) pero frágil (se rompe si el original se mueve o se
+borra). El hard link es robusto pero está limitado al mismo filesystem
+y, salvo excepciones reservadas al kernel, no se permite sobre
+directorios (para evitar ciclos).
+
+\subsection*{1.m Programa C que muestra sus argumentos}
+
+\textbf{Planteo.} Escribir un programa que imprima
+\texttt{argc} y todos los \texttt{argv[i]}.
 
 \begin{lstlisting}[style=cstyle]
 #include <stdio.h>
@@ -334,16 +563,16 @@ int main(int argc, char *argv[]) {
 }
 \end{lstlisting}
 
-Compilación y ejecución:
+\textbf{Compilación y ejecución:}
 
 \begin{lstlisting}
 gcc -Wall -Wextra -o hello hello.c
 ./hello arg1 arg2 arg3
 \end{lstlisting}
 
-Salida:
+\textbf{Salida esperada:}
 
-\begin{lstlisting}
+\begin{lstlisting}[style=outstyle]
 argc = 4
 argv[0] = ./hello
 argv[1] = arg1
@@ -351,13 +580,16 @@ argv[2] = arg2
 argv[3] = arg3
 \end{lstlisting}
 
-\paragraph{¿Por qué \texttt{./hello arg1 ... argn}?}
-Cuando el usuario escribe un nombre sin barras, el shell asume que se
-trata de un comando externo y lo busca \emph{únicamente} en los
-directorios listados en \texttt{PATH}. El directorio actual \texttt{.} no
-suele estar incluido para evitar el ataque clásico de un binario
-malicioso colocado en \texttt{cwd}. El prefijo \texttt{./} indica una
-ruta relativa explícita y evita la búsqueda en \texttt{PATH}.
+\paragraph{¿Por qué \texttt{./hello} y no simplemente \texttt{hello}?}
+Cuando el usuario escribe un nombre \emph{sin barras}, el shell asume
+que se trata de un comando externo y lo busca \emph{únicamente} en los
+directorios listados en \texttt{PATH}. El directorio actual no suele
+estar en \texttt{PATH} (ver inciso 1.h, recuadro de seguridad), así
+que el shell no encontraría \texttt{hello}. El prefijo \texttt{./}
+indica una ruta relativa explícita: ``ejecutá el archivo
+\texttt{hello} que está en mi directorio actual''. Como la ruta tiene
+una barra, el shell salta la búsqueda en \texttt{PATH} y va directo a
+\texttt{execve()}.
 
 % =====================================================================
 \section{Ejercicio 2 --- Redirección, secuencia y filtrado}
@@ -368,108 +600,165 @@ direcciones de correo (una por línea) con duplicados intencionales.
 
 \subsection*{2.a Lista ordenada y sin duplicados con archivos temporales}
 
+\textbf{Planteo.} Combinar los dos archivos, ordenarlos y eliminar
+repetidos, pasando por archivos intermedios.
+
 \begin{lstlisting}
 cat correos1.txt correos2.txt > /tmp/correos_todos.txt
 sort /tmp/correos_todos.txt > /tmp/correos_ordenados.txt
 uniq /tmp/correos_ordenados.txt > correos_ordenados_sin_duplicados.txt
 \end{lstlisting}
 
-\texttt{cat} concatena ambos archivos; \texttt{sort} los ordena;
-\texttt{uniq} elimina duplicados \emph{consecutivos}. La combinación
-\texttt{sort | uniq} elimina globalmente cualquier repetición. Los
-temporales se ubican en \texttt{/tmp} porque el SO los purga
-periódicamente.
+\textbf{Razonamiento paso a paso.}
+\begin{enumerate}[leftmargin=*]
+    \item \texttt{cat} concatena ambos archivos y la redirección
+        \texttt{>} envía el resultado al primer temporal.
+    \item \texttt{sort} ordena alfabéticamente las líneas: este paso es
+        imprescindible porque \texttt{uniq} solo elimina duplicados
+        \emph{consecutivos}, no globales.
+    \item \texttt{uniq} colapsa las líneas idénticas adyacentes en una
+        sola.
+\end{enumerate}
+
+Los temporales se ubican en \texttt{/tmp} porque el SO purga ese
+directorio periódicamente y no contamina el directorio del trabajo.
 
 \subsection*{2.b En una sola línea con operador secuencial \texttt{;}}
+
+\textbf{Planteo.} Empaquetar los tres pasos en una única línea.
 
 \begin{lstlisting}
 cat correos1.txt correos2.txt > /tmp/correos_todos.txt ; sort /tmp/correos_todos.txt > /tmp/correos_ordenados.txt ; uniq /tmp/correos_ordenados.txt > correos_ordenados_sin_duplicados.txt
 \end{lstlisting}
 
-El operador \texttt{;} ejecuta los comandos en secuencia
-\emph{independientemente} del éxito o fracaso del anterior. Si quisiéramos
-abortar al primer error usaríamos \texttt{\&\&}, pero el enunciado pide
-explícitamente operador secuencial.
+\textbf{Razonamiento.} El operador \texttt{;} ejecuta los comandos en
+secuencia \emph{independientemente} del éxito o fracaso del anterior:
+si \texttt{sort} fallara, \texttt{uniq} se ejecutaría igual (sobre un
+archivo vacío o incompleto, generando basura). Si quisiéramos abortar
+al primer error usaríamos \texttt{\&\&} en lugar de \texttt{;}. El
+enunciado, sin embargo, pide explícitamente el operador secuencial.
 
 \subsection*{2.c Filtrar y contar direcciones de \texttt{google.com}}
+
+\textbf{Planteo.} Sobre el archivo final del inciso anterior, contar
+cuántas direcciones terminan en \texttt{@google.com}.
 
 \begin{lstlisting}
 grep -E '@google\.com$' correos_ordenados_sin_duplicados.txt | wc -l
 \end{lstlisting}
 
+\textbf{Razonamiento detallado.}
 \begin{itemize}[leftmargin=*]
     \item \texttt{grep -E} interpreta el patrón como expresión regular
         extendida.
-    \item \texttt{@google\textbackslash.com\$} fuerza coincidencia
-        literal de \texttt{@google}, un punto literal (no un comodín),
-        \texttt{com} y el ancla de fin de línea \texttt{\$}.
-    \item El pipe envía la salida de \texttt{grep} a \texttt{wc -l}, que
-        cuenta líneas.
+    \item En el patrón \texttt{@google\textbackslash.com\$}:
+        \begin{itemize}[itemsep=0pt]
+            \item \texttt{@google} pide coincidencia literal.
+            \item \texttt{\textbackslash.} escapa el punto para que
+                sea un punto literal, no el comodín ``cualquier
+                carácter''.
+            \item \texttt{com\$} ancla el match al \emph{fin de
+                línea}, así no contamos casos como
+                \texttt{usuario@google.com.ar}.
+        \end{itemize}
+    \item El pipe (\texttt{|}) envía la salida de \texttt{grep} a
+        \texttt{wc -l}, que cuenta las líneas resultantes.
 \end{itemize}
 
-Con los archivos de ejemplo provistos el resultado esperado es \texttt{3}.
+\textbf{Conclusión.} Con los archivos de ejemplo provistos en la
+cátedra, el resultado esperado es \texttt{3}.
 
 % =====================================================================
-\section{Ejercicio 3 --- Pipes, sin temporales}
+\section{Ejercicio 3 --- Pipes, sin archivos temporales}
 % =====================================================================
+
+\textbf{Planteo.} Resolver el mismo problema del ejercicio 2 pero sin
+escribir archivos intermedios en disco.
 
 \begin{lstlisting}
 cat correos1.txt correos2.txt | sort | uniq > correos_ordenados_sin_duplicados.txt
 \end{lstlisting}
 
-Las Notas del curso describen al \emph{pipe} como un buffer acotado en el
-kernel que implementa el patrón productor/consumidor. Cuando el shell ve
-\texttt{cmd1 | cmd2}:
+\textbf{Qué cambió respecto del ejercicio 2.}
+Los datos viajan por buffers en memoria del kernel (\emph{pipe
+buffers}), nunca tocan el disco como archivo regular y los tres
+procesos (\texttt{cat}, \texttt{sort}, \texttt{uniq}) corren
+\textbf{en paralelo} comunicándose por esos pipes. Solo el resultado
+final cae al archivo de salida.
+
+\textbf{Cómo lo arma el shell por dentro.} Las Notas del curso
+describen al \emph{pipe} como un buffer acotado en el kernel que
+implementa el patrón productor/consumidor. Para \texttt{cmd1 | cmd2}
+el shell hace:
 
 \begin{enumerate}[leftmargin=*]
-    \item Crea el pipe con \texttt{pipe(p)}.
-    \item Hace \texttt{fork()} para lanzar ambos procesos en paralelo.
-    \item Redirige \texttt{stdout} de \texttt{cmd1} al extremo de
-        escritura (\texttt{p[1]}) y \texttt{stdin} de \texttt{cmd2} al
-        extremo de lectura (\texttt{p[0]}) usando \texttt{dup2()}.
-    \item Cierra los descriptores que cada proceso no usa: si quedaran
-        abiertos, el lector nunca vería EOF.
+    \item Crea el pipe con \texttt{pipe(p)}: el kernel devuelve dos
+        descriptores, \texttt{p[0]} (lectura) y \texttt{p[1]}
+        (escritura).
+    \item Llama a \texttt{fork()} dos veces (uno por cada lado del
+        pipe).
+    \item En el proceso de la izquierda: \texttt{dup2(p[1], 1)} para
+        que \emph{stdout} apunte al extremo de escritura.
+    \item En el proceso de la derecha: \texttt{dup2(p[0], 0)} para
+        que \emph{stdin} apunte al extremo de lectura.
+    \item \textbf{Cierra los descriptores sobrantes en cada proceso.}
+        Si quedaran abiertos, el lector nunca vería EOF (la condición
+        de fin de archivo se dispara cuando el contador de escritores
+        del pipe llega a cero).
 \end{enumerate}
 
 \begin{center}
-\begin{tikzpicture}[node distance=1.4cm, every node/.style={font=\ttfamily\small}]
-\node[draw, rounded corners] (cat) {cat correos*.txt};
-\node[draw, rounded corners, right=of cat] (sort) {sort};
-\node[draw, rounded corners, right=of sort] (uniq) {uniq};
-\node[draw, rounded corners, right=of uniq] (out) {> archivo.txt};
-\draw[->, thick] (cat) -- node[above]{|} (sort);
-\draw[->, thick] (sort) -- node[above]{|} (uniq);
-\draw[->, thick] (uniq) -- (out);
+\begin{tikzpicture}[node distance=1.3cm,
+                    every node/.style={font=\ttfamily\small},
+                    box/.style={draw, rounded corners, minimum height=0.9cm, minimum width=2.5cm, align=center}]
+\node[box] (cat) {cat correos*.txt};
+\node[box, right=of cat] (sort) {sort};
+\node[box, right=of sort] (uniq) {uniq};
+\node[right=of uniq] (out) {> archivo.txt};
+\draw[-{Stealth[length=2.5mm]}, thick] (cat) -- node[above]{|} (sort);
+\draw[-{Stealth[length=2.5mm]}, thick] (sort) -- node[above]{|} (uniq);
+\draw[-{Stealth[length=2.5mm]}, thick] (uniq) -- (out);
 \end{tikzpicture}
 \end{center}
 
-A diferencia del ejercicio 2, los datos viajan por buffers en memoria sin
-crear archivos en el disco, los tres procesos ejecutan concurrentemente y
-no hay limpieza posterior.
+\textbf{Conclusión.} La versión con pipes es más eficiente (no toca
+disco, paraleliza) y más limpia (no deja temporales). Es la forma
+idiomática en UNIX.
 
 % =====================================================================
 \section{Ejercicio 4 --- Shell scripts y permisos}
 % =====================================================================
 
-\subsection*{4.1 Probar el script con \texttt{sh}}
+\subsection*{4.1 Probar el script ejecutándolo con \texttt{sh}}
 
-Archivo \texttt{procesar\_correos\_sin\_interprete.sh} (sin shebang):
+\textbf{Planteo.} Empaquetar el pipeline del ejercicio 3 en un script
+y ejecutarlo invocando explícitamente al intérprete.
+
+Archivo \texttt{procesar\_correos\_sin\_interprete.sh} (sin
+\emph{shebang}):
 
 \begin{lstlisting}[style=shellstyle]
 cat correos1.txt correos2.txt | sort | uniq > correos_ordenados_sin_duplicados.txt
 echo "Archivo generado: correos_ordenados_sin_duplicados.txt"
 \end{lstlisting}
 
-Invocación:
+\textbf{Invocación:}
 
 \begin{lstlisting}
 sh procesar_correos_sin_interprete.sh
 \end{lstlisting}
 
-Como \texttt{sh} se invoca explícitamente, el archivo no necesita
-permiso de ejecución; basta con poder leerlo.
+\textbf{Razonamiento.} Al invocar \texttt{sh} explícitamente, el
+intérprete que ejecutará el script es el que el usuario eligió
+(\texttt{sh}); el archivo se pasa como argumento. Por eso \textbf{no
+necesita permiso de ejecución}: alcanza con poder leerlo, ya que
+\texttt{sh} lo abrirá con \texttt{open(..., O\_RDONLY)} y lo
+interpretará línea por línea.
 
-\subsection*{4.2 Agregar shebang y permisos}
+\subsection*{4.2 Agregar \emph{shebang} y permisos de ejecución}
+
+\textbf{Planteo.} Hacer que el script se ejecute directamente,
+ya sin nombrar al intérprete.
 
 \begin{lstlisting}[style=shellstyle]
 #!/bin/sh
@@ -483,14 +772,35 @@ chmod +x procesar_correos.sh
 ./procesar_correos.sh
 \end{lstlisting}
 
-El shebang \texttt{\#!/bin/sh} le indica al kernel qué intérprete usar al
-invocar \texttt{execve()}. La opción \texttt{set -eu} aborta al primer
-error y trata como error variables sin definir; no es exigida por el
-enunciado pero es buena práctica defensiva.
+\textbf{Razonamiento detallado.}
+\begin{itemize}[leftmargin=*]
+    \item El \emph{shebang} \texttt{\#!/bin/sh} en la primera línea es
+        leído por el kernel dentro de \texttt{execve()}: cuando el
+        kernel detecta los dos primeros bytes \texttt{\#!}, sustituye
+        la ejecución del script por una ejecución del intérprete
+        indicado, pasándole el script como argumento.
+    \item \texttt{chmod +x} agrega el bit de ejecución; sin él, el
+        kernel rechaza la llamada con \texttt{EACCES} (``permission
+        denied'').
+    \item \texttt{set -eu} es una buena práctica defensiva: \texttt{-e}
+        aborta el script al primer comando que falle, \texttt{-u}
+        marca como error el uso de variables no definidas. No es
+        exigido por el enunciado pero evita errores silenciosos.
+\end{itemize}
+
+\textbf{Conclusión.} La gran diferencia conceptual con 4.1 es que aquí
+el kernel \emph{no} sabe que es un script: simplemente intenta
+ejecutar el archivo, ve el shebang y delega al intérprete. Esto es lo
+que permite que existan scripts en cualquier lenguaje
+(\texttt{\#!/usr/bin/env python3}, etc.) con la misma mecánica.
 
 % =====================================================================
 \section{Ejercicio 5 --- Programa C con \texttt{exit status}}
 % =====================================================================
+
+\textbf{Planteo.} Escribir un programa que reciba un número como
+argumento y termine con ese valor como \emph{exit status}, para luego
+combinarlo con los operadores \texttt{\&\&} y \texttt{||} del shell.
 
 \begin{lstlisting}[style=cstyle]
 #include <errno.h>
@@ -501,11 +811,13 @@ int main(int argc, char *argv[]) {
     char *endptr = NULL;
     long value;
 
+    /* Se espera exactamente 1 argumento: el codigo de salida. */
     if (argc != 2) {
         fprintf(stderr, "Uso: %s <0-255>\n", argv[0]);
         return 2;
     }
 
+    /* strtol detecta errores de conversion numerica. */
     errno = 0;
     value = strtol(argv[1], &endptr, 10);
 
@@ -514,8 +826,9 @@ int main(int argc, char *argv[]) {
         return 2;
     }
 
+    /* El shell maneja exit status en rango 0..255. */
     if (value < 0 || value > 255) {
-        fprintf(stderr, "Error: exit status valido entre 0 y 255.\n");
+        fprintf(stderr, "Error: el exit status valido esta entre 0 y 255.\n");
         return 2;
     }
 
@@ -523,47 +836,58 @@ int main(int argc, char *argv[]) {
 }
 \end{lstlisting}
 
-\paragraph{Justificación.}
+\paragraph{Por qué validamos el rango \texttt{[0,255]}.}
 Las Notas del curso describen \texttt{exit(code)} como la syscall que
-finaliza un proceso \emph{limpiamente} y entrega el código al kernel,
-quien luego se lo pasa al padre vía \texttt{wait}/\texttt{waitpid}. Por
-convención \texttt{0} significa éxito y cualquier valor distinto, error.
-El kernel solo expone los \textbf{8 bits inferiores} del exit code en la
-variable \texttt{\$?} del shell, lo que justifica la validación de rango
-\texttt{[0,255]}.
+finaliza un proceso \emph{limpiamente} y entrega el código al kernel.
+El padre puede recuperar ese código con \texttt{wait}/\texttt{waitpid}.
+Por convención \texttt{0} significa éxito y cualquier valor distinto,
+error. Sin embargo, el kernel solo expone los \textbf{8 bits
+inferiores} del exit code en la variable \texttt{\$?} del shell, lo
+que justifica restringir el argumento al rango \texttt{[0, 255]}.
 
-\subsection*{5.a Ejecutar y consultar el exit status}
+\subsection*{5.a Ejecutar y consultar el \emph{exit status}}
 
 \begin{lstlisting}
 ./myprog 7
 echo $?       # imprime 7
 \end{lstlisting}
 
-\subsection*{5.b Ejecutar otro comando si finaliza con éxito}
+La variable especial \texttt{\$?} del shell contiene el exit status
+del último comando \emph{en foreground}.
+
+\subsection*{5.b Ejecutar otro comando solo si \texttt{myprog} tuvo éxito}
 
 \begin{lstlisting}
 ./myprog 0 && echo "myprog termino con exito"
 \end{lstlisting}
 
-\texttt{\&\&} dispara el segundo comando solo si el primero retornó
-\texttt{0}.
+\textbf{Razonamiento.} El operador \texttt{\&\&} dispara el segundo
+comando \emph{solo si} el primero retornó \texttt{0}. Es la forma
+idiomática de encadenar pasos que dependen del éxito del anterior.
 
-\subsection*{5.c Ejecutar otro comando si finaliza con error}
+\subsection*{5.c Ejecutar otro comando solo si \texttt{myprog} tuvo error}
 
 \begin{lstlisting}
 ./myprog 5 || echo "myprog termino con error"
 \end{lstlisting}
 
-\texttt{||} dispara el segundo comando solo si el primero retornó un
-valor distinto de cero.
+\textbf{Razonamiento.} El operador \texttt{||} es el dual de
+\texttt{\&\&}: dispara el segundo comando solo si el primero retornó
+un valor \emph{distinto de cero}.
+
+\textbf{Conclusión.} Estos dos operadores permiten construir flujos de
+control completos a nivel shell, todo basado en un número entero
+``salida del proceso anterior'' que el kernel mantiene en el PCB del
+proceso padre.
 
 % =====================================================================
 \section{Ejercicio 6 --- Versión propia de \texttt{system()}}
 % =====================================================================
 
-La libc estándar provee \texttt{int system(const char *cmd)} como una
-abstracción sobre el patrón \texttt{fork()}/\texttt{exec()}/\texttt{wait()}.
-Una implementación equivalente es:
+\textbf{Planteo.} Reimplementar la función estándar
+\texttt{int system(const char *cmd)} usando directamente
+\texttt{fork}, \texttt{exec} y \texttt{wait}, para entender qué hay
+adentro de esa abstracción que tan a menudo se usa como caja negra.
 
 \begin{lstlisting}[style=cstyle]
 #include <errno.h>
@@ -574,18 +898,21 @@ int mysystem(const char *command) {
     pid_t pid;
     int status;
 
+    /* Convencion POSIX: system(NULL) consulta si hay shell disponible. */
     if (command == NULL) {
         return access("/bin/sh", X_OK) == 0;
     }
 
     pid = fork();
-    if (pid < 0) return -1;
+    if (pid < 0) return -1;             /* fork fallo */
 
     if (pid == 0) {
+        /* Hijo: lanza el comando a traves de /bin/sh -c "..." */
         execl("/bin/sh", "sh", "-c", command, (char *)NULL);
-        _exit(127); /* exec falló: convención "comando no ejecutable" */
+        _exit(127); /* exec fallo: convencion "comando no ejecutable" */
     }
 
+    /* Padre: espera al hijo, tolerando interrupciones por senales. */
     while (waitpid(pid, &status, 0) < 0) {
         if (errno != EINTR) return -1;
     }
@@ -593,36 +920,49 @@ int mysystem(const char *command) {
 }
 \end{lstlisting}
 
-\paragraph{Decisiones de diseño relevantes.}
+\paragraph{Decisiones de diseño.}
 \begin{itemize}[leftmargin=*]
-    \item \textbf{\texttt{/bin/sh -c <cmd>}} en lugar de \texttt{execvp}:
-        permite que el comando contenga operadores de shell (pipes,
-        redirecciones, \texttt{\&\&}, etc.).
-    \item \textbf{\texttt{\_exit(127)}} si \texttt{exec} falla: usa
-        \texttt{\_exit} y no \texttt{exit} para evitar que las funciones
-        registradas con \texttt{atexit} y los buffers de \texttt{stdio}
-        corran dos veces.
-    \item \textbf{Reintento ante \texttt{EINTR}}: una señal puede
-        interrumpir \texttt{waitpid} antes de que el hijo termine.
+    \item \textbf{\texttt{/bin/sh -c <cmd>} en lugar de \texttt{execvp}.}
+        Si hiciéramos directamente \texttt{execvp(command, ...)},
+        \texttt{command} tendría que ser un programa ejecutable; no
+        podría contener pipes, redirecciones ni operadores como
+        \texttt{\&\&}. Delegando en \texttt{/bin/sh -c} le permitimos
+        al usuario pasar cualquier expresión válida del shell.
+    \item \textbf{\texttt{\_exit(127)} si \texttt{exec} falla.} La
+        convención de \texttt{system()} es retornar 127 cuando el
+        intérprete no pudo lanzarse. Usamos \texttt{\_exit} (no
+        \texttt{exit}) para evitar que las funciones registradas con
+        \texttt{atexit} y los buffers de \texttt{stdio} corran dos
+        veces (el hijo es una copia del padre, así que hereda esos
+        buffers).
+    \item \textbf{Reintento ante \texttt{EINTR}.} Una señal puede
+        interrumpir \texttt{waitpid} antes de que el hijo termine
+        realmente; en ese caso debemos reintentar, no abortar.
 \end{itemize}
 
-El \texttt{main} de prueba decodifica el \texttt{status} con
-\texttt{WIFEXITED}/\texttt{WEXITSTATUS} para reportar el exit code. Esta
-mecánica de dos pasos (\texttt{fork} + \texttt{exec}) es exactamente la
-que el shell usa para implementar redirecciones: el padre ajusta el
-ambiente del hijo (descriptores, variables) antes de invocar al nuevo
-programa.
+\textbf{Cómo usar el status retornado.} El \texttt{main} de prueba
+decodifica \texttt{status} con las macros \texttt{WIFEXITED} (¿el hijo
+terminó normalmente?) y \texttt{WEXITSTATUS} (¿cuál fue su código?).
+Esta mecánica de dos pasos --- \texttt{fork} + \texttt{exec} --- es
+exactamente la que el shell usa para implementar redirecciones: el
+padre, antes de \texttt{exec}, ajusta el ambiente del hijo
+(descriptores con \texttt{dup2}, variables de entorno) y solo entonces
+invoca el nuevo programa.
 
 % =====================================================================
 \section{Ejercicio 7 --- Comunicación padre/hijo por \texttt{pipe()}}
 % =====================================================================
 
-\paragraph{Idea.}
-\texttt{pipe(p)} retorna dos descriptores: \texttt{p[0]} (lectura) y
-\texttt{p[1]} (escritura). Como \texttt{fork()} duplica los descriptores,
-ambos procesos los heredan; cada uno debe cerrar el extremo que no usa.
-Si el padre olvida cerrar el extremo de escritura, el hijo nunca verá
-EOF y se bloqueará indefinidamente.
+\textbf{Planteo.} El padre debe pasarle un mensaje al hijo usando un
+\emph{pipe} sin nombre. El hijo lee el mensaje y lo imprime por
+\texttt{stdout}.
+
+\textbf{Idea general.} \texttt{pipe(p)} retorna dos descriptores:
+\texttt{p[0]} (lectura) y \texttt{p[1]} (escritura). Como
+\texttt{fork()} duplica los descriptores abiertos del padre, ambos
+procesos heredan ambos extremos del pipe. Cada uno debe cerrar el
+extremo que no va a usar; si no lo hace, el lector nunca verá EOF y
+se bloqueará indefinidamente.
 
 \begin{lstlisting}[style=cstyle]
 int p[2];
@@ -630,51 +970,70 @@ pipe(p);
 pid_t pid = fork();
 
 if (pid == 0) {
-    /* Hijo: lee del pipe, imprime en stdout. */
+    /* Hijo: cierra extremo de escritura, lee del pipe e imprime. */
     close(p[1]);
     char buffer[256];
     ssize_t n;
-    printf("Hijo recibio: "); fflush(stdout);
+    printf("Hijo recibio: ");
+    fflush(stdout);
     while ((n = read(p[0], buffer, sizeof(buffer))) > 0)
         write(STDOUT_FILENO, buffer, n);
     close(p[0]);
     _exit(0);
 }
 
-/* Padre: escribe el mensaje y cierra. */
+/* Padre: cierra extremo de lectura, escribe el mensaje y cierra. */
 close(p[0]);
 write(p[1], msg, strlen(msg));
-close(p[1]);   /* dispara EOF en el hijo */
+close(p[1]);   /* este close es el que dispara EOF en el hijo */
 waitpid(pid, NULL, 0);
 \end{lstlisting}
 
-Compilación y ejecución:
+\textbf{Compilación y ejecución:}
 
 \begin{lstlisting}
 gcc -Wall -Wextra -o pipe_padre_hijo pipe_padre_hijo.c
 ./pipe_padre_hijo "Hola desde el padre"
 \end{lstlisting}
 
-Salida:
+\textbf{Salida esperada:}
 
-\begin{lstlisting}
+\begin{lstlisting}[style=outstyle]
 Hijo recibio: Hola desde el padre
 \end{lstlisting}
 
-\textbf{Limitación:} un pipe sin nombre solo sirve entre procesos
-emparentados, porque los descriptores solo se heredan vía \texttt{fork}.
-Esa limitación se resuelve en el ejercicio siguiente.
+\begin{ojo}[El cierre del extremo de escritura es lo que dispara EOF]
+\texttt{read()} devuelve \texttt{0} (EOF) en un pipe \emph{solo cuando
+no queda ningún proceso con el extremo de escritura abierto}. Por eso
+el padre tiene que cerrar \texttt{p[1]} \emph{después} de escribir, y
+el hijo tiene que cerrar su copia heredada de \texttt{p[1]} antes de
+leer. Olvidar cualquiera de los dos cierres es la causa clásica de
+``el programa queda colgado'' en este tipo de ejercicio.
+\end{ojo}
+
+\textbf{Limitación importante.} Un pipe sin nombre solo sirve entre
+procesos \textbf{emparentados}, porque los descriptores se heredan
+únicamente vía \texttt{fork()}. Si quisiéramos comunicar procesos
+arrancados de forma independiente, necesitamos un \emph{named pipe}:
+eso es exactamente lo que resuelve el ejercicio 8.
 
 % =====================================================================
-\section{Ejercicio 8 --- Comunicación por FIFO}
+\section{Ejercicio 8 --- Comunicación por FIFO (named pipe)}
 % =====================================================================
 
-Un \textbf{FIFO} (\emph{named pipe}) es un pipe con un nombre en el
-sistema de archivos. Aparece en \texttt{ls -l} con la marca \texttt{p} en
-los permisos. Se crea con la syscall \texttt{mkfifo(path, mode)} (o el
-comando equivalente) y se abre con la API estándar de archivos. Los datos
+\textbf{Planteo.} Resolver el mismo problema del ejercicio 7, pero
+con un canal de comunicación que tenga un nombre en el sistema de
+archivos, de modo que procesos no emparentados también puedan usarlo.
+
+\textbf{Qué es un FIFO.} Un FIFO (\emph{named pipe}) es un pipe con
+un nombre en el sistema de archivos. Aparece en \texttt{ls -l} con la
+letra \texttt{p} al inicio de los permisos. Se crea con la syscall
+\texttt{mkfifo(path, mode)} (o el comando equivalente del shell) y se
+abre con la API estándar de archivos (\texttt{open},
+\texttt{read}/\texttt{write}, \texttt{close}). Los datos
 \emph{no se almacenan en disco}: solo el \emph{nombre} vive en el
-filesystem; el buffer real está en el kernel, igual que un pipe común.
+filesystem; el buffer real está en el kernel, igual que en un pipe sin
+nombre.
 
 \begin{lstlisting}[style=cstyle]
 #define FIFO_PATH "/tmp/practico1_fifo_pipe"
@@ -682,78 +1041,97 @@ filesystem; el buffer real está en el kernel, igual que un pipe común.
 mkfifo(FIFO_PATH, 0600);
 
 if (fork() == 0) {
+    /* Hijo lector. */
     int fd = open(FIFO_PATH, O_RDONLY);
-    char buf[256]; ssize_t n;
+    char buf[256];
+    ssize_t n;
     printf("Hijo recibio: ");
+    fflush(stdout);
     while ((n = read(fd, buf, sizeof(buf))) > 0)
         write(STDOUT_FILENO, buf, n);
-    close(fd); _exit(0);
+    close(fd);
+    _exit(0);
 }
 
+/* Padre escritor. */
 int fd = open(FIFO_PATH, O_WRONLY);
 write(fd, msg, strlen(msg));
 close(fd);
 wait(NULL);
-unlink(FIFO_PATH);
+unlink(FIFO_PATH);   /* el FIFO no se borra solo */
 \end{lstlisting}
 
 \paragraph{Sincronización implícita.}
 \texttt{open(fifo, O\_RDONLY)} se bloquea hasta que algún proceso abra
-el otro extremo (\texttt{O\_WRONLY}), y viceversa. Esta propiedad permite
-coordinar procesos que se conocen únicamente por la ruta del FIFO.
+el otro extremo con \texttt{O\_WRONLY}, y viceversa. Esta propiedad es
+muy útil: dos procesos que no se conocen entre sí pueden coordinarse
+solo por la \emph{ruta} del FIFO.
 
-\paragraph{Limpieza.}
-El FIFO sobrevive al cierre de ambos extremos; hay que removerlo
-explícitamente con \texttt{unlink()}.
+\paragraph{Por qué hace falta limpiar.}
+A diferencia de un pipe sin nombre (que el kernel libera cuando se
+cierran sus extremos), el FIFO sobrevive como entrada del filesystem
+hasta que alguien lo borre explícitamente. Por eso al final del
+programa llamamos a \texttt{unlink()}.
 
 % =====================================================================
 \section{Ejercicio 9 --- Mini shell \texttt{minish}}
 % =====================================================================
 
-El programa \texttt{minish.c} implementa un mini shell que lee comandos
-en bucle hasta recibir \texttt{Ctrl-D} (EOF en \texttt{stdin}) y reconoce
-los siguientes operadores binarios:
+\textbf{Planteo.} Implementar un mini intérprete de comandos en C que
+soporte los operadores básicos del shell. El objetivo didáctico es
+hacer explícita la correspondencia entre cada operador y las syscalls
+POSIX subyacentes.
+
+\textbf{Funcionalidad soportada.} \texttt{minish} lee comandos en un
+bucle (REPL) hasta recibir \texttt{Ctrl-D} (EOF en \texttt{stdin}) y
+reconoce los siguientes operadores binarios:
 
 \begin{table}[h]
 \centering
 \small
 \begin{tabular}{l l}
 \toprule
-\textbf{Operador} & \textbf{Mecanismo} \\
+\textbf{Operador} & \textbf{Mecanismo POSIX} \\
 \midrule
 \texttt{cmd1 ; cmd2}     & Ejecutar \texttt{cmd1}, luego \texttt{cmd2}. \\
 \texttt{cmd1 \&\& cmd2}  & Ejecutar \texttt{cmd2} solo si \texttt{cmd1} retornó \texttt{0}. \\
 \texttt{cmd1 || cmd2}    & Ejecutar \texttt{cmd2} solo si \texttt{cmd1} retornó \texttt{!= 0}. \\
-\texttt{cmd1 \& cmd2}    & \texttt{cmd1} en background, \texttt{cmd2} en foreground. \\
+\texttt{cmd1 \& cmd2}    & \texttt{cmd1} en \emph{background}; \texttt{cmd2} en \emph{foreground}. \\
 \texttt{cmd1 | cmd2}     & \texttt{pipe(p)} + dos \texttt{fork}/\texttt{exec} + \texttt{dup2}. \\
 \texttt{cmd < archivo}   & \texttt{open(archivo, O\_RDONLY)} + \texttt{dup2(fd, 0)}. \\
 \texttt{cmd > archivo}   & \texttt{open(...,O\_WRONLY|O\_CREAT|O\_TRUNC)} + \texttt{dup2(fd, 1)}. \\
 \texttt{cmd >> archivo}  & \texttt{open(...,O\_WRONLY|O\_CREAT|O\_APPEND)} + \texttt{dup2(fd, 1)}. \\
 \bottomrule
 \end{tabular}
-\caption{Operadores reconocidos por \texttt{minish} y su mecanismo POSIX.}
+\caption{Operadores reconocidos por \texttt{minish} y su mecanismo
+POSIX subyacente.}
 \end{table}
 
-\paragraph{Estructura.}
+\textbf{Estructura del programa.}
 \begin{enumerate}[leftmargin=*]
-    \item \textbf{Loop principal} (\texttt{getline()}). Si retorna $<0$
-        (EOF) el shell sale.
-    \item \textbf{Tokenización} por espacios y tabulaciones; los tokens
-        se almacenan en un arreglo de punteros al buffer original
-        modificado in-situ con \texttt{\textbackslash 0}.
-    \item \textbf{Despacho recursivo} (\texttt{dispatch}). Busca
-        operadores en orden de prioridad baja a alta y descompone el
-        comando en \texttt{(left, op, right)} llamando recursivamente a
-        cada lado.
-    \item \textbf{Comando simple}: \texttt{fork} + (opcional
-        \texttt{dup2}) + \texttt{execvp}; el padre llama a
-        \texttt{waitpid} salvo en background.
-    \item \textbf{Pipe}: dos \texttt{fork} con un \texttt{pipe} previo;
-        el padre cierra ambos extremos para que los hijos vean EOF.
+    \item \textbf{Bucle principal.} Llama a \texttt{getline()} para
+        leer una línea. Si retorna $<0$ (EOF) el shell termina.
+    \item \textbf{Tokenización.} La línea se divide por espacios y
+        tabulaciones; los tokens se almacenan en un arreglo de
+        punteros al buffer original, modificado in situ con
+        \texttt{\textbackslash 0}.
+    \item \textbf{Despacho recursivo (\texttt{dispatch}).} Busca
+        operadores en orden de \emph{menor a mayor prioridad} y
+        descompone el comando en una terna \texttt{(left, op, right)},
+        llamándose a sí mismo sobre cada lado. Esta recursión es la
+        que respeta la precedencia natural de los operadores.
+    \item \textbf{Comando simple.} Cuando ya no hay operadores: hace
+        \texttt{fork} + opcionalmente \texttt{dup2} (para
+        redirecciones) + \texttt{execvp}. El padre llama a
+        \texttt{waitpid}, salvo en \emph{background}.
+    \item \textbf{Pipe.} Crea un \texttt{pipe} y hace dos \texttt{fork};
+        el padre cierra ambos extremos para que los hijos vean EOF
+        correctamente cuando el productor termine.
 \end{enumerate}
 
-\paragraph{Salida esperada.}
-\begin{lstlisting}
+\textbf{Salida esperada en una sesión de prueba:}
+
+\begin{lstlisting}[style=outstyle]
 $ ./minish
 minish$ echo hola ; echo mundo
 hola
@@ -770,23 +1148,32 @@ HOLA
 minish$ ^D
 \end{lstlisting}
 
-\paragraph{Limitaciones.}
-El parsing es deliberadamente simple: no soporta comillas, expansión de
-variables ni globbing. El propósito didáctico es ilustrar el modelo
-\texttt{fork/exec/wait/pipe/dup2}, no reimplementar \texttt{bash}. La
-implementación completa se encuentra en \texttt{resolucion-9/minish.c}.
+\textbf{Limitaciones intencionales.} El parsing es deliberadamente
+simple: \texttt{minish} \emph{no} soporta comillas, expansión de
+variables (\texttt{\$VAR}) ni \emph{globbing} (\texttt{*.txt}). El
+objetivo es ilustrar el modelo
+\texttt{fork}/\texttt{exec}/\texttt{wait}/\texttt{pipe}/\texttt{dup2},
+no reimplementar \texttt{bash}. La implementación completa se
+encuentra en \texttt{resolucion-9/minish.c}.
 
 % =====================================================================
 \section{Ejercicio 10 --- Captura de \texttt{SIGINT}}
 % =====================================================================
 
-\paragraph{Marco teórico.}
-Las Notas del curso describen las señales como un mecanismo básico de
-comunicación entre procesos para notificar eventos. \texttt{SIGINT}
-(interrupción) es la señal por defecto que el shell envía al proceso de
-\emph{foreground} cuando el usuario presiona \texttt{Ctrl-C}. Sin
-manejador, el kernel termina el proceso. Este ejercicio invierte ese
-comportamiento preguntando antes de finalizar.
+\textbf{Planteo.} Escribir un programa que, ante un \texttt{Ctrl-C},
+no termine de inmediato sino que pregunte al usuario si realmente
+quiere finalizar.
+
+\textbf{Marco teórico.} Las Notas del curso describen las
+\emph{señales} como un mecanismo asíncrono de notificación entre
+procesos o entre el kernel y un proceso. \texttt{SIGINT}
+(``interrupción'') es la señal que el driver de la terminal envía al
+proceso de \emph{foreground} cuando el usuario presiona
+\texttt{Ctrl-C}. Sin un manejador instalado, el comportamiento por
+defecto del kernel es terminar el proceso.
+
+Este ejercicio invierte ese comportamiento instalando un \emph{signal
+handler} que pide confirmación.
 
 \begin{lstlisting}[style=cstyle]
 #include <ctype.h>
@@ -803,7 +1190,10 @@ static void sigint_handler(int sig) {
     ssize_t nread;
     (void)sig;
 
+    /* write() es async-signal-safe; printf() no lo seria. */
     write(STDOUT_FILENO, prompt, sizeof(prompt) - 1);
+
+    /* read() puede ser interrumpida por otra senal: reintentamos. */
     do {
         nread = read(STDIN_FILENO, answer, sizeof(answer));
     } while (nread < 0 && errno == EINTR);
@@ -827,34 +1217,48 @@ int main(void) {
     sigaction(SIGINT, &sa, NULL);
 
     printf("Proceso en ejecucion. PID=%d\n", (int)getpid());
-    for (;;) pause();
+    for (;;) pause();    /* duerme hasta que llegue una senal */
 }
 \end{lstlisting}
 
+\paragraph{Por qué \texttt{sigaction} y no \texttt{signal}.}
+La API \texttt{signal()} clásica tiene comportamiento histórico
+inconsistente entre sistemas (en algunos restablece el handler por
+defecto después de la primera entrega, en otros no). \texttt{sigaction}
+es la API moderna que da control fino sobre el comportamiento del
+handler (máscara, flags como \texttt{SA\_RESTART}).
+
 \paragraph{Funciones async-signal-safe.}
-Las funciones de \texttt{<stdio.h>} no son seguras para invocar dentro de
-un handler porque usan buffers y mutexes internos. POSIX define un
-subconjunto reducido de funciones \emph{async-signal-safe} (\texttt{read},
-\texttt{write}, \texttt{\_exit}, \texttt{sigaction}, etc.) y este código
+Un handler puede ejecutarse en \emph{cualquier} momento, incluso en
+mitad de un \texttt{printf}. Si llamáramos a \texttt{printf} dentro del
+handler, podríamos engancharnos sobre un mutex interno de \texttt{stdio}
+y causar un \emph{deadlock}. POSIX define un subconjunto reducido de
+funciones que son seguras en este contexto (\texttt{read},
+\texttt{write}, \texttt{\_exit}, \texttt{sigaction}, etc.); este código
 las usa exclusivamente.
 
-\paragraph{Detalle del exit \texttt{-1}.}
-El kernel solo expone los 8 bits inferiores en \texttt{\$?}, así que
-\texttt{\_exit(-1)} se observa como \texttt{255}. El programa retorna
-lógicamente \texttt{-1}; la representación en el shell es un detalle de
-codificación.
+\paragraph{Detalle sobre \texttt{\_exit(-1)}.}
+El kernel solo expone los 8 bits inferiores del exit status en
+\texttt{\$?}, así que \texttt{\_exit(-1)} se observa desde el shell
+como \texttt{255}. El programa retorna \emph{lógicamente} \texttt{-1};
+la representación que ve el shell es solo un detalle de codificación.
 
 % =====================================================================
 \section{Ejercicio 11 --- Mínimo global con \texttt{p} hijos y un pipe}
 % =====================================================================
 
-\paragraph{Esquema.}
-El padre crea \texttt{p} procesos hijos. Cada hijo recibe un bloque de
-\texttt{N/p} elementos (la asignación se hace por simple aritmética
-\texttt{[i*chunk, (i+1)*chunk)}), calcula su \emph{mínimo local} y lo
-envía al padre por un pipe único compartido. El padre lee \texttt{p}
-mensajes, va aplicando \texttt{min}, y reporta el resultado tras esperar
-a todos los hijos con \texttt{waitpid}.
+\textbf{Planteo.} Recibir por línea de comandos un parámetro
+\texttt{p} (cantidad de hijos) y luego un arreglo de enteros, y
+calcular el mínimo global en paralelo: cada hijo se ocupa de un trozo
+del arreglo y envía su mínimo local al padre por un único pipe
+compartido.
+
+\textbf{Esquema.} El padre divide el arreglo en \texttt{p} bloques de
+\texttt{N/p} elementos (la asignación es directa: el hijo \texttt{i}
+trabaja sobre los índices \texttt{[i*chunk, (i+1)*chunk)}). Cada hijo
+calcula su mínimo local y lo envía al padre por el pipe; el padre lee
+\texttt{p} mensajes, va aplicando \texttt{min}, y reporta el resultado
+final tras esperar a todos los hijos con \texttt{waitpid}.
 
 \begin{lstlisting}[style=cstyle]
 typedef struct {
@@ -862,25 +1266,29 @@ typedef struct {
     int local_min;
 } ChildResult;
 
-/* ... validaciones de p y N ... */
+/* ... validaciones de p y N (omitidas por brevedad) ... */
 pipe(fd);
+
 for (int i = 0; i < p; i++) {
     pid_t pid = fork();
     if (pid == 0) {
-        int start = i * chunk, end = start + chunk;
+        /* Hijo i: procesa su segmento. */
+        int start = i * chunk;
+        int end   = start + chunk;
         int local_min = arr[start];
         for (int k = start + 1; k < end; k++)
             if (arr[k] < local_min) local_min = arr[k];
 
         ChildResult r = { i, local_min };
-        close(fd[0]);
-        write_full(fd[1], &r, sizeof r);
+        close(fd[0]);                       /* hijo no lee */
+        write_full(fd[1], &r, sizeof r);    /* envia al padre */
         close(fd[1]);
         _exit(0);
     }
     children[i] = pid;
 }
-close(fd[1]);
+
+close(fd[1]);   /* padre no escribe */
 
 int global_min = INT_MAX;
 for (int i = 0; i < p; i++) {
@@ -889,17 +1297,29 @@ for (int i = 0; i < p; i++) {
     if (r.local_min < global_min) global_min = r.local_min;
 }
 close(fd[0]);
+
+/* Espera prolija a todos los hijos. */
 for (int i = 0; i < p; i++) waitpid(children[i], NULL, 0);
 \end{lstlisting}
 
-\paragraph{¿Por qué un solo pipe basta?}
+\paragraph{¿Por qué un solo pipe alcanza para \texttt{p} escritores?}
 POSIX garantiza que escrituras de hasta \texttt{PIPE\_BUF} bytes son
-\textbf{atómicas} en un pipe: dos escritores nunca mezclan sus mensajes.
-Como \texttt{sizeof(ChildResult)} es muy pequeño ($<\!\!16$ bytes), el
-padre puede leer mensajes completos en cualquier orden sin corrupción.
+\textbf{atómicas} en un pipe: dos escritores nunca mezclan sus
+mensajes. Como \texttt{sizeof(ChildResult)} es muy pequeño
+($<\,16$ bytes), el padre puede leer mensajes completos en
+\emph{cualquier orden} sin que se corrompan. No hace falta un pipe
+por hijo.
 
-\paragraph{Ejemplo.}
-\begin{lstlisting}
+\paragraph{Sobre \texttt{write\_full} / \texttt{read\_full}.}
+Los wrappers existen porque \texttt{read} y \texttt{write} pueden
+devolver menos bytes de los pedidos (lecturas/escrituras parciales).
+En este programa los mensajes son chicos y el pipe es local, pero como
+defensa general estos helpers acumulan los bytes en bucle hasta
+completar el tamaño solicitado, y reintentan ante \texttt{EINTR}.
+
+\paragraph{Ejemplo de ejecución.}
+
+\begin{lstlisting}[style=outstyle]
 ./minimo_global_pipe 3 8 4 7 10 -2 5
 Hijo 0 -> minimo local = 4
 Hijo 1 -> minimo local = 7
@@ -908,19 +1328,32 @@ Minimo global = -2
 \end{lstlisting}
 
 % =====================================================================
-\section{Ejercicio 12 --- Lectura con \texttt{timeout} usando \texttt{alarm}}
+\section{Ejercicio 12 --- Lectura con \emph{timeout} usando \texttt{alarm}}
 % =====================================================================
 
-\paragraph{Marco teórico.}
-Las Notas del curso muestran (Listado 6) cómo implementar timeouts: el
-kernel envía la señal \texttt{SIGALRM} cuando vence el tiempo programado
-con \texttt{alarm(N)}. El handler asociado puede marcar una bandera y, al
-volver de la syscall bloqueante, el programa decide si retornó por dato
-disponible o por interrupción.
+\textbf{Planteo.} Leer una línea de \texttt{stdin} pero solo durante
+un máximo de \texttt{N} segundos. Si vence el tiempo sin datos, salir
+con un código de error distintivo.
+
+\textbf{Marco teórico.} Las Notas del curso muestran cómo implementar
+\emph{timeouts} con la señal \texttt{SIGALRM}: el kernel envía esa
+señal al proceso cuando vence el tiempo programado con
+\texttt{alarm(N)}. El handler asociado puede marcar una bandera y, al
+retornar la syscall bloqueante (\texttt{read}), el programa decide si
+el retorno fue por \emph{dato disponible} o por \emph{interrupción}.
 
 \begin{lstlisting}[style=cstyle]
+#include <errno.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+/* Bandera global segura para senales. */
 static volatile sig_atomic_t timed_out = 0;
 
+/* Handler de SIGALRM: solo marca el flag. */
 static void alarm_handler(int sig) {
     (void)sig;
     timed_out = 1;
@@ -933,17 +1366,24 @@ int main(int argc, char *argv[]) {
     struct sigaction sa = {0};
     sa.sa_handler = alarm_handler;
     sigemptyset(&sa.sa_mask);
-    sa.sa_flags = 0;          /* sin SA_RESTART */
+    sa.sa_flags = 0;          /* importante: SIN SA_RESTART */
     sigaction(SIGALRM, &sa, NULL);
 
     alarm(N);
     ssize_t n = read(STDIN_FILENO, buf, sizeof(buf) - 1);
-    alarm(0);
+    alarm(0);                 /* cancelar alarma si llego dato */
 
-    if (n > 0)  { buf[n] = 0; printf("Dato: %s", buf); return 0; }
-    if (n == 0) { puts("EOF"); return 0; }
+    if (n > 0) {
+        buf[n] = '\0';
+        printf("Dato recibido: %s", buf);
+        return 0;
+    }
+    if (n == 0) {
+        puts("EOF recibido (stdin cerrado).");
+        return 0;
+    }
     if (errno == EINTR && timed_out) {
-        printf("Timeout: sin datos en %d s\n", N);
+        printf("Timeout: no se recibieron datos en %d segundos.\n", N);
         return 124;
     }
     perror("read");
@@ -951,33 +1391,39 @@ int main(int argc, char *argv[]) {
 }
 \end{lstlisting}
 
-\paragraph{Por qué sin \texttt{SA\_RESTART}.}
-Si el handler se instalara con \texttt{SA\_RESTART}, el kernel reanudaría
-automáticamente la syscall \texttt{read} después de la señal y nunca
-veríamos \texttt{EINTR}. El timeout sería invisible. Sin
-\texttt{SA\_RESTART}, \texttt{read} retorna \texttt{-1} con
-\texttt{errno = EINTR} y podemos detectar la condición consultando la
-bandera \texttt{timed\_out}.
+\paragraph{Por qué \emph{sin} \texttt{SA\_RESTART}.}
+Si el handler se instalara con \texttt{SA\_RESTART}, el kernel
+reanudaría automáticamente la syscall \texttt{read} después de
+entregar la señal y nunca veríamos \texttt{EINTR}. Es decir, el
+timeout sería invisible: \texttt{read} seguiría esperando datos como
+si nada. Quitando ese flag, \texttt{read} retorna \texttt{-1} con
+\texttt{errno = EINTR}, y podemos detectar la condición consultando
+la bandera \texttt{timed\_out}.
 
 \paragraph{Por qué \texttt{volatile sig\_atomic\_t}.}
-\texttt{volatile} impide que el compilador optimice la lectura asumiendo
-que la variable no cambia entre dos accesos. \texttt{sig\_atomic\_t} es
-el tipo más amplio que el sistema garantiza poder leer y escribir
-atómicamente desde un handler.
+Un handler de señal puede modificar la bandera ``en cualquier
+momento''. \texttt{volatile} impide al compilador asumir que la
+variable no cambia entre dos accesos (sin esto, podría optimizar la
+lectura y nunca enterarse del cambio). \texttt{sig\_atomic\_t} es el
+tipo más amplio que el estándar garantiza que se puede leer y escribir
+\textbf{atómicamente} desde un handler.
 
 \paragraph{Por qué \texttt{124} como exit status.}
-\texttt{coreutils} usa \texttt{124} como convención para indicar
-finalización por timeout, igual que el comando \texttt{timeout(1)}. No es
-mágico, pero facilita scripts que distinguen este caso de otros errores.
+\texttt{coreutils} usa \texttt{124} por convención para indicar
+``terminación por timeout'', igual que el comando \texttt{timeout(1)}.
+No es un valor mágico, pero respetarlo facilita scripts que distinguen
+``vencido por tiempo'' de otros errores genéricos.
 
 \paragraph{Pruebas.}
-\begin{lstlisting}
-(sleep 1; echo "hola") | ./lee_con_timeout 5
+
+\begin{lstlisting}[style=outstyle]
+$ (sleep 1; echo "hola") | ./lee_con_timeout 5
 Dato recibido: hola
 
-(sleep 3; echo "tarde") | ./lee_con_timeout 1
+$ (sleep 3; echo "tarde") | ./lee_con_timeout 1
 Timeout: no se recibieron datos en 1 segundos.
-echo $?  # imprime 124
+$ echo $?
+124
 \end{lstlisting}
 
 % =====================================================================
@@ -986,16 +1432,31 @@ echo $?  # imprime 124
 % =====================================================================
 
 A lo largo del práctico se ejercitó la API POSIX como manifestación
-concreta de los conceptos teóricos del SO: el modelo de procesos
-(\texttt{fork}/\texttt{exec}/\texttt{wait}), la abstracción de archivos y
-descriptores (\texttt{open}/\texttt{read}/\texttt{write}/\texttt{dup2}),
-los mecanismos de comunicación (\texttt{pipe}, FIFO) y de notificación
-asíncrona (\texttt{signal}, \texttt{alarm}). Los operadores del shell
-funcionan exactamente como combinaciones de esas syscalls; el mini shell
-del ejercicio 9 hace explícita esa correspondencia. La materia en los
-prácticos siguientes profundiza en los temas de planificación de CPU,
-gestión de memoria y sistemas de archivos que se asoman aquí en su
-forma más cruda.
+concreta de los conceptos teóricos del SO:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Modelo de procesos:} \texttt{fork} / \texttt{exec} /
+        \texttt{wait}, con su semántica de hijo como copia del padre y
+        \texttt{exec} como reemplazo de la imagen de memoria.
+    \item \textbf{Abstracción de archivos y descriptores:}
+        \texttt{open} / \texttt{read} / \texttt{write} /
+        \texttt{close} / \texttt{dup2}, base de redirecciones y pipes.
+    \item \textbf{Mecanismos de comunicación entre procesos:}
+        \texttt{pipe} (sin nombre, solo entre emparentados) y FIFO
+        (con nombre en el filesystem).
+    \item \textbf{Notificación asíncrona:} \texttt{signal} /
+        \texttt{sigaction} / \texttt{alarm}, con sus restricciones
+        (funciones async-signal-safe, \texttt{volatile
+        sig\_atomic\_t}).
+\end{itemize}
+
+Los operadores del shell funcionan exactamente como combinaciones de
+esas syscalls. El mini shell del ejercicio 9 hace explícita esa
+correspondencia, y los ejercicios 10--12 muestran que aun el manejo de
+señales y timeouts, que suenan exóticos, son simplemente otra cara de
+la misma API. Los prácticos siguientes profundizan en planificación de
+CPU, gestión de memoria y sistemas de archivos, que aquí se asoman en
+su forma más cruda.
 
 % =====================================================================
 \section*{Referencias}
@@ -1003,17 +1464,18 @@ forma más cruda.
 % =====================================================================
 
 \begin{enumerate}[leftmargin=*]
-    \item Marcelo Arroyo. \emph{Notas del curso de Sistemas Operativos},
-        capítulos 1, 2 y 3. UNRC, 2026.
+    \item Marcelo Arroyo. \emph{Notas del curso de Sistemas
+        Operativos}, capítulos 1, 2 y 3. UNRC, 2026.
         \url{https://marceloarroyo.gitlab.io/cursos/SO/}
     \item Andrew S. Tanenbaum, Herbert Bos. \emph{Modern Operating
         Systems}, capítulo 1, 5\textsuperscript{a} edición. Pearson,
         2024.
     \item POSIX.1-2017 / Single UNIX Specification. The Open Group,
         2018.
-    \item Sección 2 de \texttt{man} (manuales de las syscalls): \texttt{man
-        2 fork}, \texttt{man 2 execve}, \texttt{man 2 pipe}, \texttt{man
-        2 sigaction}, etc.
+    \item Manuales de las syscalls (sección 2 de \texttt{man}):
+        \texttt{man 2 fork}, \texttt{man 2 execve},
+        \texttt{man 2 pipe}, \texttt{man 2 sigaction},
+        \texttt{man 2 waitpid}, \texttt{man 3 system}.
 \end{enumerate}
 
 \end{document}

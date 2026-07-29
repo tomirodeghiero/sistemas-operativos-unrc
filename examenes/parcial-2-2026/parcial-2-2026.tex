@@ -1,0 +1,1020 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- Encoding ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands]{babel}
+\usepackage{lmodern}
+
+% --- Layout ---
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{parskip}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em plus 0.2em minus 0.1em}
+
+% --- Tables and graphics ---
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{positioning,shapes.geometric,arrows.meta,fit,backgrounds,calc,decorations.pathreplacing}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{amsmath,amssymb}
+
+% --- Soporte para caracteres Unicode usados en formulas en texto plano ---
+\usepackage{newunicodechar}
+\newunicodechar{→}{\ensuremath{\rightarrow}}
+\newunicodechar{≥}{\ensuremath{\geq}}
+\newunicodechar{≤}{\ensuremath{\leq}}
+\newunicodechar{×}{\ensuremath{\times}}
+\newunicodechar{÷}{\ensuremath{\div}}
+\newunicodechar{≈}{\ensuremath{\approx}}
+\newunicodechar{⌈}{\ensuremath{\lceil}}
+\newunicodechar{⌉}{\ensuremath{\rceil}}
+\newunicodechar{✓}{\ensuremath{\checkmark}}
+\newunicodechar{∀}{\ensuremath{\forall}}
+\newunicodechar{∧}{\ensuremath{\wedge}}
+
+% --- Code listings ---
+\usepackage{listings}
+\definecolor{codegray}{rgb}{0.96,0.96,0.96}
+\definecolor{codeborder}{rgb}{0.85,0.85,0.85}
+\definecolor{codecomment}{rgb}{0.30,0.55,0.30}
+\definecolor{codekeyword}{rgb}{0.10,0.30,0.70}
+\definecolor{codestring}{rgb}{0.65,0.15,0.10}
+
+\lstdefinestyle{cstyle}{
+    language=C,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+}
+
+\lstdefinestyle{shellstyle}{
+    language=bash,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+    upquote=true,
+}
+
+\lstdefinestyle{textstyle}{
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstset{style=textstyle}
+
+% --- Definition / Idea / Important boxes ---
+\usepackage[most]{tcolorbox}
+\newtcolorbox{idea}[1][]{
+    colback=orange!5!white,
+    colframe=orange!60!black,
+    fonttitle=\bfseries,
+    title=Idea intuitiva,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{importante}[1][]{
+    colback=red!5!white,
+    colframe=red!50!black,
+    fonttitle=\bfseries,
+    title=Importante,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+\newtcolorbox{respuesta}[1][]{
+    colback=green!5!white,
+    colframe=green!40!black,
+    fonttitle=\bfseries,
+    title=Respuesta,
+    sharp corners=southwest,
+    rounded corners=northwest,
+    arc=2pt,
+    boxrule=0.6pt,
+    left=8pt,right=8pt,top=4pt,bottom=4pt,
+    #1
+}
+
+% --- Hyperlinks ---
+\usepackage[colorlinks=true,
+            linkcolor=blue!60!black,
+            urlcolor=blue!50!black,
+            citecolor=blue!60!black]{hyperref}
+
+% --- Color palette ---
+\definecolor{c1}{HTML}{4C72B0}
+\definecolor{c2}{HTML}{DD8452}
+\definecolor{c3}{HTML}{55A868}
+\definecolor{c4}{HTML}{8172B2}
+\definecolor{cred}{HTML}{C44E52}
+\definecolor{cfree}{HTML}{8C8C8C}
+
+% --- Title block ---
+\title{
+    \vspace{-2.5em}
+    \textbf{Parcial 2 --- 2026} \\[0.3em]
+    \large Sistemas Operativos / Sistemas Operativos y Redes
+}
+\author{
+    Tomás Rodeghiero \\
+    \small UNRC --- Universidad Nacional de Río Cuarto
+}
+\date{2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent
+Resolución completa del Parcial 2 del año 2026 de la cátedra de
+Sistemas Operativos (Lic.\ en Ciencias de la Computación, UNRC). El
+parcial consta de cinco ejercicios que cubren: (i) verdadero/falso
+sobre gestión de heap, fragmentación, \emph{best fit}, \texttt{mmap}
+y paginación; (ii) evolución de un \emph{buddy system} con una
+secuencia de \texttt{malloc}/\texttt{free}; (iii) diseño de tabla de
+páginas para un proceso, traducción de direcciones e identificación de
+una página de guarda para detectar \emph{stack overflow}; (iv)
+representación de un sistema de archivos FAT32 dado el árbol de un
+volumen pequeño con un archivo binario de 2 bloques y un directorio
+vacío; (v) verdadero/falso sobre privilegios de usuario, \texttt{sudo},
+contraseñas y permisos UGO. Cada ejercicio se desarrolla con la
+estructura \textbf{Enunciado $\to$ Análisis $\to$ Desarrollo $\to$
+Respuesta}.
+\end{abstract}
+
+\tableofcontents
+\bigskip
+
+% =====================================================================
+\section{Ejercicio 1 --- V/F sobre gestión de memoria (1.5 pts)}
+% =====================================================================
+
+\textbf{Enunciado.} Determinar la verdad o falsedad de las siguientes
+sentencias. Justificar las falsas en forma breve y con claridad.
+
+\subsection*{1.a --- Heap de bloques variables y fragmentación}
+
+\emph{``El gestor de un heap de bloques de tamaño variable tiene
+problemas de fragmentación.''}
+
+\begin{respuesta}
+\textbf{V}. Un gestor de heap con bloques de tamaño variable (como el
+\texttt{malloc} clásico, \emph{dlmalloc}, \emph{ptmalloc}) sufre
+inherentemente \textbf{fragmentación externa}: con el correr de
+muchas asignaciones y liberaciones de tamaños distintos, los huecos
+libres se fragmentan en bloques pequeños no contiguos, y puede pasar
+que la suma total de memoria libre sea grande pero no haya un único
+hueco contiguo suficiente para satisfacer un pedido.
+
+También puede haber \textbf{fragmentación interna} si el gestor
+redondea cada pedido hacia arriba (a un múltiplo del tamaño mínimo).
+\end{respuesta}
+
+\subsection*{1.b --- Bitset para bloques de tamaño fijo}
+
+\emph{``Un gestor de bloques de tamaño fijo puede manejar los bloques
+libres/ocupados con un bitset.''}
+
+\begin{respuesta}
+\textbf{V}. Cuando todos los bloques tienen el mismo tamaño, alcanza
+con \textbf{un bit por bloque} (0 = libre, 1 = ocupado). El
+\emph{bitmap} (o \emph{bitset}) es el método clásico de
+\emph{slab allocators}, asignadores de \emph{frames} de memoria
+física y administradores de \emph{inodes}/bloques de disco.
+\end{respuesta}
+
+\subsection*{1.c --- \emph{Best fit} y lista de libres ordenada}
+
+\emph{``La estrategia \emph{best fit} en un \texttt{malloc(s)} asigna
+un bloque libre $b$ con \texttt{size(b)} ≥ $s$ y $∀$ $b'$:
+\texttt{free(b')} $∧$ \texttt{size(b')} >= \texttt{size(b)}. Además
+conviene mantener la lista de bloques libres ordenadas de menor a
+mayor tamaño.''}
+
+\begin{respuesta}
+\textbf{V}. \emph{Best fit} busca, entre los bloques libres que
+satisfacen el pedido (\texttt{size(b) ≥ s}), el de \textbf{menor
+tamaño} (es decir, el que mejor ``calza''). La intuición es que esto
+deja los bloques grandes intactos para futuros pedidos grandes,
+reduciendo la probabilidad de fragmentar uno innecesariamente.
+
+Mantener la lista de libres ordenada \emph{de menor a mayor tamaño}
+es la implementación natural: se recorre la lista hasta encontrar el
+primer bloque $\geq s$ y ese es el \emph{best fit}, en tiempo
+proporcional a la cantidad de bloques de tamaño menor que $s$. (En la
+práctica se usan estructuras más eficientes, como árboles balanceados
+ordenados por tamaño, para hacerlo en $O(\log n)$.)
+\end{respuesta}
+
+\subsection*{1.d --- \texttt{mmap} carga todo el archivo a memoria}
+
+\emph{``La llamada al sistema \texttt{mmap(file, ...)} carga todo el
+archivo en memoria y retorna la dirección lógica del comienzo del
+área de memoria asignada.''}
+
+\begin{respuesta}
+\textbf{F}. \texttt{mmap} \textbf{no carga el archivo entero} en
+memoria física al momento de la llamada. Lo que hace es crear un
+\emph{mapeo} en el espacio de direcciones virtuales del proceso: se
+agregan entradas en la tabla de páginas marcadas como
+\emph{no presentes} ($P=0$) que asocian rangos virtuales con bloques
+del archivo en disco. Las páginas se traen a memoria \textbf{bajo
+demanda} (\emph{demand paging}): cuando el proceso accede a una
+dirección dentro del mapeo, el hardware genera un \emph{page fault};
+el kernel atiende la falla leyendo el bloque correspondiente del
+archivo y poblando la página.
+
+Sí es cierto que \texttt{mmap} devuelve la dirección lógica del
+comienzo del área mapeada (eso está bien). El problema de la
+afirmación es la palabra ``carga todo el archivo'': la carga es
+\emph{perezosa}, no inmediata.
+\end{respuesta}
+
+\subsection*{1.e --- Ventaja de la paginación}
+
+\emph{``La paginación tiene la ventaja que los bloques de un proceso
+en memoria (código, datos globales, stack, etc) no requieren estar
+físicamente contiguos.''}
+
+\begin{respuesta}
+\textbf{V}. Ésta es \textbf{la} ventaja característica de la
+paginación. El espacio de direcciones virtual del proceso es
+\emph{lógicamente contiguo}, pero la MMU traduce cada página virtual
+a una página física independiente: las páginas físicas de un mismo
+proceso pueden estar dispersas en cualquier parte de la RAM. Esto
+elimina la fragmentación externa que sufren las particiones
+variables y permite asignar memoria a cualquier proceso siempre que
+haya \emph{frames} libres, sin importar su distribución espacial.
+\end{respuesta}
+
+% =====================================================================
+\section{Ejercicio 2 --- Evolución de un \emph{buddy system} (2 pts)}
+% =====================================================================
+
+\textbf{Enunciado.} Mostrar la evolución de los bloques ocupados y
+libres de un \emph{buddy system} con bloques de tamaño entre $2^6$ y
+$2^9$. El tamaño del heap es de $2$\,KB. Secuencia de operaciones:
+
+\begin{enumerate}[leftmargin=*,label=\Roman*.,nosep]
+    \item \texttt{ptr1 = malloc(500)}
+    \item \texttt{ptr2 = malloc(8)}
+    \item \texttt{ptr3 = malloc(120)}
+    \item \texttt{free(ptr2)}
+    \item \texttt{ptr4 = alloc(600)}
+\end{enumerate}
+
+\subsection*{Interpretación del enunciado}
+
+El heap mide $2$\,KB $= 2^{11}$ bytes y los tamaños de bloque
+mencionados son $2^6 = 64$ y $2^9 = 512$. Tomamos esto como una
+indicación de la \emph{granularidad típica} de las asignaciones: el
+heap se inicializa como un único bloque grande de $2^{11} = 2048$
+bytes y el \emph{buddy system} puede subdividirlo recursivamente
+hasta alcanzar el mínimo de $64$ bytes, o consolidar bloques
+contiguos hasta el máximo de $2048$.
+
+\begin{idea}
+Bajo esta interpretación, el último pedido \texttt{alloc(600)} se
+satisface con un bloque de $1024 = 2^{10}$ bytes y el ejercicio
+muestra toda la mecánica del buddy. Si en cambio se interpretara
+estrictamente que el bloque máximo es $2^9 = 512$, el último pedido
+fallaría por no haber ningún bloque de $1024$ disponible; la versión
+adoptada acá es la pedagógicamente más rica.
+\end{idea}
+
+\subsection*{Algoritmo del \emph{buddy system}}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Para un pedido de tamaño $s$, se busca el menor bloque
+        libre de tamaño $2^k$ con $2^k \geq s$.
+    \item Si el bloque encontrado es \emph{demasiado grande}, se
+        divide a la mitad recursivamente hasta llegar al tamaño justo.
+    \item Al liberar un bloque, se verifica si su \emph{buddy}
+        (el bloque vecino del mismo tamaño con el bit complementario
+        de offset) está libre; si lo está, se fusionan en un bloque
+        del doble del tamaño. La fusión se repite mientras sea posible.
+\end{itemize}
+
+\subsection*{Estado inicial}
+
+Heap libre de $2048$ bytes en el offset $0$.
+
+\begin{center}
+\begin{tikzpicture}[xscale=0.13,yscale=0.6,every node/.style={font=\ttfamily\small}]
+\draw[fill=cfree!30] (0,0) rectangle (50,1) node[midway,font=\bfseries\small]{2048 (libre)};
+\draw (0,0) -- (0,-0.3) node[below,font=\scriptsize]{0};
+\draw (50,0) -- (50,-0.3) node[below,font=\scriptsize]{2048};
+\end{tikzpicture}
+\end{center}
+
+\subsection*{Paso I: \texttt{ptr1 = malloc(500)}}
+
+$500$ bytes redondeado hacia la siguiente potencia de $2$ que sea
+\(\geq 500\): es $2^9 = 512$.
+
+Necesitamos un bloque libre de $512$. El único bloque libre es de
+$2048$. Lo dividimos sucesivamente:
+
+\begin{lstlisting}[style=textstyle]
+2048 -> 1024 + 1024     (tomo el primer 1024)
+1024 -> 512 + 512       (tomo el primer 512)
+\end{lstlisting}
+
+Asigno el bloque de $512$ en offset $0$ a \texttt{ptr1}.
+
+\begin{center}
+\begin{tikzpicture}[xscale=0.13,yscale=0.6,every node/.style={font=\ttfamily\scriptsize}]
+\draw[fill=c1!50]    (0,0)    rectangle (12.5,1) node[midway,white,font=\bfseries]{ptr1: 512};
+\draw[fill=cfree!30] (12.5,0) rectangle (25,1)   node[midway,font=\bfseries]{512 libre};
+\draw[fill=cfree!30] (25,0)   rectangle (50,1)   node[midway,font=\bfseries]{1024 libre};
+\foreach \x in {0,12.5,25,50}
+    \draw (\x,0) -- (\x,-0.3) node[below]{\pgfmathprintnumber{\x}};
+\end{tikzpicture}
+\end{center}
+
+\subsection*{Paso II: \texttt{ptr2 = malloc(8)}}
+
+$8$ bytes redondeado al mínimo permitido $2^6 = 64$.
+
+El bloque libre más chico disponible es $512$ (en offset $512$).
+Subdividimos hasta llegar a $64$:
+
+\begin{lstlisting}[style=textstyle]
+512 -> 256 + 256        (tomo el primer 256, offset 512)
+256 -> 128 + 128        (tomo el primer 128, offset 512)
+128 -> 64 + 64          (tomo el primer 64, offset 512)
+\end{lstlisting}
+
+\texttt{ptr2} apunta al bloque de $64$ en offset $512$.
+
+\begin{center}
+\begin{tikzpicture}[xscale=0.13,yscale=0.6,every node/.style={font=\ttfamily\scriptsize}]
+\draw[fill=c1!50]    (0,0)     rectangle (12.5,1)   node[midway,white,font=\bfseries]{ptr1: 512};
+\draw[fill=c2!50]    (12.5,0)  rectangle (14,1)     node[midway,white,font=\bfseries]{p2: 64};
+\draw[fill=cfree!30] (14,0)    rectangle (15.5,1)   node[midway]{64};
+\draw[fill=cfree!30] (15.5,0)  rectangle (18.625,1) node[midway]{128};
+\draw[fill=cfree!30] (18.625,0) rectangle (25,1)    node[midway]{256};
+\draw[fill=cfree!30] (25,0)    rectangle (50,1)     node[midway,font=\bfseries]{1024};
+\draw (0,0)     -- (0,-0.3)     node[below]{0};
+\draw (12.5,0)  -- (12.5,-0.3)  node[below]{512};
+\draw (14,0)    -- (14,-0.3)    node[below]{576};
+\draw (15.5,0)  -- (15.5,-0.3)  node[below]{640};
+\draw (18.625,0)-- (18.625,-0.3)node[below]{768};
+\draw (25,0)    -- (25,-0.3)    node[below]{1024};
+\draw (50,0)    -- (50,-0.3)    node[below]{2048};
+\end{tikzpicture}
+\end{center}
+
+\subsection*{Paso III: \texttt{ptr3 = malloc(120)}}
+
+$120$ se redondea a $2^7 = 128$. Hay un bloque libre de $128$ en
+offset $640$ que coincide exactamente. Lo asigno a \texttt{ptr3}, sin
+necesidad de subdividir.
+
+\begin{center}
+\begin{tikzpicture}[xscale=0.13,yscale=0.6,every node/.style={font=\ttfamily\scriptsize}]
+\draw[fill=c1!50]    (0,0)     rectangle (12.5,1)   node[midway,white,font=\bfseries]{ptr1: 512};
+\draw[fill=c2!50]    (12.5,0)  rectangle (14,1)     node[midway,white,font=\bfseries]{p2: 64};
+\draw[fill=cfree!30] (14,0)    rectangle (15.5,1)   node[midway]{64};
+\draw[fill=c3!50]    (15.5,0)  rectangle (18.625,1) node[midway,white,font=\bfseries]{p3: 128};
+\draw[fill=cfree!30] (18.625,0) rectangle (25,1)    node[midway]{256};
+\draw[fill=cfree!30] (25,0)    rectangle (50,1)     node[midway,font=\bfseries]{1024};
+\draw (0,0)     -- (0,-0.3)     node[below]{0};
+\draw (12.5,0)  -- (12.5,-0.3)  node[below]{512};
+\draw (14,0)    -- (14,-0.3)    node[below]{576};
+\draw (15.5,0)  -- (15.5,-0.3)  node[below]{640};
+\draw (18.625,0)-- (18.625,-0.3)node[below]{768};
+\draw (25,0)    -- (25,-0.3)    node[below]{1024};
+\draw (50,0)    -- (50,-0.3)    node[below]{2048};
+\end{tikzpicture}
+\end{center}
+
+\subsection*{Paso IV: \texttt{free(ptr2)}}
+
+Libero el bloque de $64$ en offset $512$. El buddy de un bloque de
+tamaño $64$ en offset $512$ está en offset $512 \oplus 64 = 576$.
+El bloque en $576$ (de $64$ bytes) está libre $\to$ \textbf{fusiono}:
+
+\quad \texttt{libre 64@512 + libre 64@576 → libre 128@512}
+
+Intento volver a fusionar el nuevo bloque de $128$ en offset $512$.
+Su buddy está en offset $512 \oplus 128 = 640$. Pero en $640$ está
+\texttt{ptr3} (ocupado). \textbf{No se puede fusionar más.}
+
+\begin{center}
+\begin{tikzpicture}[xscale=0.13,yscale=0.6,every node/.style={font=\ttfamily\scriptsize}]
+\draw[fill=c1!50]    (0,0)     rectangle (12.5,1)   node[midway,white,font=\bfseries]{ptr1: 512};
+\draw[fill=cfree!30] (12.5,0)  rectangle (15.5,1)   node[midway,font=\bfseries]{128 libre};
+\draw[fill=c3!50]    (15.5,0)  rectangle (18.625,1) node[midway,white,font=\bfseries]{p3: 128};
+\draw[fill=cfree!30] (18.625,0) rectangle (25,1)    node[midway]{256};
+\draw[fill=cfree!30] (25,0)    rectangle (50,1)     node[midway,font=\bfseries]{1024};
+\draw (0,0)     -- (0,-0.3)     node[below]{0};
+\draw (12.5,0)  -- (12.5,-0.3)  node[below]{512};
+\draw (15.5,0)  -- (15.5,-0.3)  node[below]{640};
+\draw (18.625,0)-- (18.625,-0.3)node[below]{768};
+\draw (25,0)    -- (25,-0.3)    node[below]{1024};
+\draw (50,0)    -- (50,-0.3)    node[below]{2048};
+\end{tikzpicture}
+\end{center}
+
+\subsection*{Paso V: \texttt{ptr4 = alloc(600)}}
+
+$600$ se redondea a $2^{10} = 1024$. Hay un bloque libre de $1024$
+exactamente en offset $1024$. Lo asigno a \texttt{ptr4}.
+
+\begin{center}
+\begin{tikzpicture}[xscale=0.13,yscale=0.6,every node/.style={font=\ttfamily\scriptsize}]
+\draw[fill=c1!50]    (0,0)     rectangle (12.5,1)   node[midway,white,font=\bfseries]{ptr1: 512};
+\draw[fill=cfree!30] (12.5,0)  rectangle (15.5,1)   node[midway,font=\bfseries]{128 libre};
+\draw[fill=c3!50]    (15.5,0)  rectangle (18.625,1) node[midway,white,font=\bfseries]{p3: 128};
+\draw[fill=cfree!30] (18.625,0) rectangle (25,1)    node[midway]{256};
+\draw[fill=c4!50]    (25,0)    rectangle (50,1)     node[midway,white,font=\bfseries]{ptr4: 1024};
+\draw (0,0)     -- (0,-0.3)     node[below]{0};
+\draw (12.5,0)  -- (12.5,-0.3)  node[below]{512};
+\draw (15.5,0)  -- (15.5,-0.3)  node[below]{640};
+\draw (18.625,0)-- (18.625,-0.3)node[below]{768};
+\draw (25,0)    -- (25,-0.3)    node[below]{1024};
+\draw (50,0)    -- (50,-0.3)    node[below]{2048};
+\end{tikzpicture}
+\end{center}
+
+\subsection*{Estado final --- resumen}
+
+\begin{center}
+\small
+\begin{tabular}{@{}cccl@{}}
+\toprule
+Offset & Tamaño & Estado & Apunta a / nota \\
+\midrule
+$0$    & $512$  & ocupado & \texttt{ptr1} (pedido original: 500 B; frag.\ interna 12 B) \\
+$512$  & $128$  & libre   & --- (proviene de la fusión del paso IV) \\
+$640$  & $128$  & ocupado & \texttt{ptr3} (pedido: 120 B; frag.\ interna 8 B) \\
+$768$  & $256$  & libre   & --- \\
+$1024$ & $1024$ & ocupado & \texttt{ptr4} (pedido: 600 B; frag.\ interna 424 B) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{respuesta}
+\textbf{Punteros activos al final:}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{ptr1} $\to$ bloque de $512$ bytes en offset $0$.
+    \item \texttt{ptr2} $\to$ liberado (no apunta a nada válido).
+    \item \texttt{ptr3} $\to$ bloque de $128$ bytes en offset $640$.
+    \item \texttt{ptr4} $\to$ bloque de $1024$ bytes en offset $1024$.
+\end{itemize}
+
+\textbf{Bloques libres:} $128$ B en offset $512$ y $256$ B en offset
+$768$. Memoria libre total: $384$ bytes (pero \emph{ningún bloque
+contiguo} mayor a $256$).
+\end{respuesta}
+
+% =====================================================================
+\section{Ejercicio 3 --- Paginación con páginas de 2 KB (3 pts)}
+% =====================================================================
+
+\textbf{Enunciado.} CPU de 32 bits con espacio de direcciones de
+$1$\,MB $= 2^{20}$ y páginas de $2$\,KB.
+
+\subsection*{Análisis de los parámetros básicos}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Tamaño de página: $2$\,KB $= 2^{11}$ bytes.
+    \item Bits para el \texttt{offset} dentro de la página: $11$.
+    \item Bits para el \texttt{vpn} (\emph{virtual page number}):
+        $20 - 11 = 9$.
+    \item Cantidad de páginas en el espacio total: $2^{20} / 2^{11}
+        = 2^9 = 512$.
+\end{itemize}
+
+\subsection*{3.I --- Formato de la tabla de páginas}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Cantidad de entradas}: $2^9 = 512$.
+    \item Cada entrada (\texttt{pte}) almacena:
+    \begin{itemize}[nosep]
+        \item \texttt{ppn} (\emph{physical page number}): si el
+            espacio físico también es de $1$\,MB, hacen falta $9$
+            bits.
+        \item \texttt{flags}: $V$ (válida), $P$ (presente en RAM),
+            $W$ (escribible), $X$ (ejecutable). Son $4$ bits.
+    \end{itemize}
+    \item Total por entrada: $9 + 4 = 13$ bits útiles; redondeado a
+        \textbf{$16$ bits ($2$ bytes)} por motivos de alineación.
+    \item \textbf{Tamaño de la tabla}: $512 \times 2$ B $= 1024$ B $=
+        1$\,KB. Cabe holgadamente en una página.
+\end{itemize}
+
+\begin{center}
+\begin{tikzpicture}[every node/.style={font=\ttfamily\small},
+    cell/.style={draw,minimum height=0.7cm,align=center}]
+\node[cell,minimum width=2.4cm,fill=c1!20] (ppn) at (0,0) {ppn};
+\node[cell,minimum width=0.6cm,fill=c3!30,right=0pt of ppn] (V) {V};
+\node[cell,minimum width=0.6cm,fill=c3!30,right=0pt of V]   (P) {P};
+\node[cell,minimum width=0.6cm,fill=c3!30,right=0pt of P]   (W) {W};
+\node[cell,minimum width=0.6cm,fill=c3!30,right=0pt of W]   (X) {X};
+\node[cell,minimum width=1.0cm,right=0pt of X]              (res) {res.};
+\node[font=\scriptsize] at ($(ppn.north)+(0,0.25)$) {9 bits};
+\node[font=\scriptsize] at ($(V.north)+(0,0.25)$) {1};
+\node[font=\scriptsize] at ($(P.north)+(0,0.25)$) {1};
+\node[font=\scriptsize] at ($(W.north)+(0,0.25)$) {1};
+\node[font=\scriptsize] at ($(X.north)+(0,0.25)$) {1};
+\node[font=\scriptsize] at ($(res.north)+(0,0.25)$) {3};
+\end{tikzpicture}
+\end{center}
+
+\subsection*{3.II --- Interpretación de una dirección virtual}
+
+Las direcciones virtuales tienen $20$ bits útiles. La MMU las parte
+en dos campos:
+
+\begin{center}
+\begin{tikzpicture}[every node/.style={font=\ttfamily\small},
+    cell/.style={draw,minimum height=0.7cm,align=center}]
+\node[cell,minimum width=2.6cm,fill=c1!20] (vpn) at (0,0) {vpn};
+\node[cell,minimum width=4.6cm,fill=c2!20,right=0pt of vpn] (off) {offset};
+\node[font=\scriptsize] at ($(vpn.north)+(0,0.25)$) {9 bits};
+\node[font=\scriptsize] at ($(off.north)+(0,0.25)$) {11 bits};
+\node[font=\scriptsize] at ($(vpn.north west)+(0.1,-0.05)$) {19};
+\node[font=\scriptsize] at ($(vpn.north east)+(-0.15,-0.05)$) {11};
+\node[font=\scriptsize] at ($(off.north west)+(0.1,-0.05)$) {10};
+\node[font=\scriptsize] at ($(off.north east)+(-0.05,-0.05)$) {0};
+\end{tikzpicture}
+\end{center}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Los \textbf{9 bits altos} forman el \texttt{vpn}: indexan
+        una de las $512$ entradas de la tabla.
+    \item Los \textbf{11 bits bajos} son el \texttt{offset} dentro de
+        la página de $2$\,KB.
+\end{itemize}
+
+\subsection*{3.III --- Tabla de páginas de un proceso concreto}
+
+\textbf{Datos del proceso.}
+\begin{itemize}[leftmargin=*,nosep]
+    \item Espacio de direcciones: $[0, 512\text{\,KB})$. Esto son
+        $512\text{\,KB} \div 2\text{\,KB} = 256$ páginas (\texttt{vpn}
+        $0$ a $255$).
+    \item $2$ páginas de código $\to$ vpn $0$ y $1$.
+    \item $1$ página de datos globales $\to$ vpn $2$.
+    \item $2$ páginas de stack \emph{al final del espacio}
+        $\to$ vpn $254$ y $255$.
+\end{itemize}
+
+\textbf{Tabla.} Los \texttt{ppn} concretos los asigna el SO según los
+frames físicos libres; usamos valores arbitrarios como ejemplo.
+
+\begin{center}
+\small
+\begin{tabular}{@{}cccccccl@{}}
+\toprule
+\texttt{vpn} & \texttt{ppn} & V & P & W & X & U & Área \\
+\midrule
+$0$     & \texttt{0x010} & 1 & 1 & 0 & 1 & 1 & código (página 1) \\
+$1$     & \texttt{0x011} & 1 & 1 & 0 & 1 & 1 & código (página 2) \\
+$2$     & \texttt{0x020} & 1 & 1 & 1 & 0 & 1 & datos globales \\
+$3 \ldots 253$ & ---       & 0 & 0 & 0 & 0 & 0 & inválido (gap) \\
+$254$   & \texttt{0x030} & 1 & 1 & 1 & 0 & 1 & stack (página 1) \\
+$255$   & \texttt{0x031} & 1 & 1 & 1 & 0 & 1 & stack (página 2) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Justificación de las flags:}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Código}: $V=P=1$, $W=0$ (no se modifica),
+        $X=1$ (ejecutable).
+    \item \textbf{Datos / stack}: $V=P=1$, $W=1$ (escribible),
+        $X=0$ (no se ejecuta como código; protección contra
+        explotación).
+    \item \textbf{Gap (3--253)}: $V=0$. Cualquier acceso a una de
+        esas direcciones genera un \emph{page fault}.
+\end{itemize}
+
+\subsection*{3.IV --- ¿A qué página física se mapea \texttt{0x2412}?}
+
+\textbf{Procedimiento.} Decodificar \texttt{0x2412} usando los $9$
+bits altos para \texttt{vpn} y $11$ bits bajos para \texttt{offset}.
+
+\quad \texttt{0x2412} = $0000\ 0010\ 0100\ 0001\ 0010_2$ (20 bits)
+
+\quad \texttt{vpn} (9 bits altos) = $0\ 0000\ 0100_2$ = $4$
+
+\quad \texttt{offset} (11 bits bajos) = $100\ 0001\ 0010_2$ = \texttt{0x412} = $1042$
+
+Alternativa numérica:
+
+\quad \texttt{0x2412} $\div$ \texttt{0x800} = $9234 \div 2048 = 4$ (cociente)
+
+\quad \texttt{0x2412} $\bmod$ \texttt{0x800} = $9234 - 4 \times 2048 = 1042$ = \texttt{0x412}
+
+\textbf{Consulta a la tabla.} La página $\texttt{vpn} = 4$ está en el
+rango $[3, 253]$ del \emph{gap}, donde todas las entradas tienen
+$V = 0$.
+
+\begin{respuesta}
+\textbf{(3.IV)} La dirección \texttt{0x2412} \textbf{no se mapea a
+ninguna página física}: cae en \texttt{vpn} $= 4$, que pertenece al
+\textbf{gap inválido} entre los datos globales y el stack. El acceso
+generaría un \emph{page fault} (V=0) y el kernel enviaría
+\texttt{SIGSEGV} al proceso. No corresponde a código, datos ni stack.
+
+\textbf{Nota didáctica}: el ejercicio testea que el estudiante
+\emph{verifique} si la página es válida antes de asumir el área. Si la
+página fuese de $4$\,KB (no $2$\,KB), la dirección \texttt{0x2412}
+caería en \texttt{vpn} = $2$, que es la página de datos; pero con
+$2$\,KB cae en el gap.
+\end{respuesta}
+
+\subsection*{3.V --- Página de guarda para detectar stack overflow}
+
+\textbf{Idea.} Si el SO permite que el stack crezca dinámicamente
+hacia direcciones más bajas (asignando bajo demanda las páginas $253$,
+$252$, \ldots), conviene reservar una página \textbf{inmediatamente
+después} de los datos globales como \emph{guarda}: nunca se mapea
+($V=0$), y cualquier intento de tocarla provoca un page fault que el
+kernel detecta como \emph{stack overflow}.
+
+\textbf{Elección concreta.} La página de guarda más natural es
+\texttt{vpn} $= 3$, justo después de los datos (\texttt{vpn} $= 2$):
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Marcar \texttt{vpn} $= 3$ con \textbf{$V = 0$ permanentemente}.
+    \item Cuando el stack baja a \texttt{vpn} $= 4$, todavía hay
+        espacio.
+    \item Cuando intenta acceder a \texttt{vpn} $= 3$, el hardware
+        levanta un fault, el kernel reconoce que la dirección está
+        ``por debajo'' del límite válido del stack y \emph{aborta} el
+        proceso con \emph{stack overflow} \textbf{antes} de pisar los
+        datos.
+\end{itemize}
+
+\textbf{Espacio de direcciones lógicas que caen en la guarda.}
+\texttt{vpn} $= 3$ con páginas de $2$\,KB cubre el rango:
+
+\quad $[3 \times 2048, 4 \times 2048) = [6144, 8192) = $
+\texttt{[0x1800, 0x2000)}
+
+\begin{respuesta}
+\textbf{(3.V)} La entrada \texttt{vpn} $= 3$ debe quedar sin mapear
+($V = 0$) y servir como guarda. El espacio de direcciones lógicas
+inválidas asociado es:
+
+\begin{center}
+\Large \texttt{[0x1800, 0x2000)}
+\end{center}
+
+\noindent es decir, los $2$\,KB que ocuparía esa página entre el área
+de datos y la zona donde podría crecer el stack.
+\end{respuesta}
+
+% =====================================================================
+\section{Ejercicio 4 --- Sistema de archivos FAT32 (2 pts)}
+% =====================================================================
+
+\textbf{Enunciado.} Completar el diagrama del sistema de archivos
+FAT32 con bloques de datos de $512$ bytes, correspondiente al árbol:
+
+\begin{lstlisting}[style=textstyle]
+\
+|-- shell.com    (programa, 2 bloques de datos)
++-- docs         (directorio vacio)
+\end{lstlisting}
+
+\noindent Cada entrada de directorio ocupa $32$ bytes.
+
+\subsection*{Análisis previo: cuántos bloques ocupa cada cosa}
+
+\textbf{Tamaño de los datos de cada entrada del árbol.}
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{\textbackslash} (root directory): contiene $4$
+        entradas (\texttt{.}, \texttt{..}, \texttt{shell.com},
+        \texttt{docs}). $4 \times 32 = 128$ bytes. Cabe en
+        \textbf{$1$ bloque} de $512$.
+    \item \texttt{shell.com}: $750$ bytes según la tabla de root.
+        $\lceil 750 / 512 \rceil = 2$ bloques.
+    \item \texttt{docs}: directorio vacío significa que contiene
+        sólo \texttt{.} y \texttt{..}: $2 \times 32 = 64$ bytes.
+        Cabe en \textbf{$1$ bloque}.
+\end{itemize}
+
+Total ocupado: $1 + 2 + 1 = 4$ bloques (de $5$ disponibles).
+
+\subsection*{Asignación propuesta de clusters}
+
+\begin{center}
+\small
+\begin{tabular}{@{}cl@{}}
+\toprule
+\# de cluster & Contenido \\
+\midrule
+$1$ & directorio raíz (\texttt{\textbackslash}) \\
+$2$ & \texttt{shell.com}, bloque 1 (bytes $0$--$511$) \\
+$3$ & directorio \texttt{docs} \\
+$4$ & \texttt{shell.com}, bloque 2 (bytes $512$--$749$ y \emph{padding}) \\
+$5$ & libre \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{Tabla FAT completada}
+
+Cada entrada de la FAT dice qué cluster sigue al actual, o si es el
+final de la cadena (\texttt{EOC}) o si está libre ($0$).
+
+\begin{center}
+\begin{tikzpicture}[every node/.style={font=\ttfamily\small},
+    cell/.style={draw,minimum width=1.4cm,minimum height=0.8cm,align=center}]
+\node[cell,fill=c3!30] (f1) at (0,0)    {EOC};
+\node[cell,fill=c2!30,right=0pt of f1]  (f2) {$4$};
+\node[cell,fill=c4!30,right=0pt of f2]  (f3) {EOC};
+\node[cell,fill=c2!30,right=0pt of f3]  (f4) {EOC};
+\node[cell,fill=cfree!30,right=0pt of f4] (f5) {$0$};
+
+\node[font=\scriptsize] at (f1) [yshift=-0.55cm] {1};
+\node[font=\scriptsize] at (f2) [yshift=-0.55cm] {2};
+\node[font=\scriptsize] at (f3) [yshift=-0.55cm] {3};
+\node[font=\scriptsize] at (f4) [yshift=-0.55cm] {4};
+\node[font=\scriptsize] at (f5) [yshift=-0.55cm] {5};
+
+\node[font=\bfseries] at ($(f1.north west)+(-0.7,0)$) {FAT};
+\end{tikzpicture}
+\end{center}
+
+\textbf{Justificación entrada por entrada:}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{FAT[1] = EOC}: el directorio raíz ocupa exactamente
+        un bloque, así que la cadena termina en cluster $1$.
+    \item \texttt{FAT[2] = 4}: \texttt{shell.com} comienza en
+        cluster $2$ y \emph{encadena} al cluster $4$ para su segundo
+        bloque (notar que $3$ está ocupado por \texttt{docs}).
+    \item \texttt{FAT[3] = EOC}: \texttt{docs} ocupa un solo bloque.
+    \item \texttt{FAT[4] = EOC}: cluster $4$ es el último bloque de
+        \texttt{shell.com}.
+    \item \texttt{FAT[5] = 0}: cluster libre.
+\end{itemize}
+
+\subsection*{Contenido de los bloques de datos}
+
+\textbf{Cluster 1 (directorio raíz \texttt{\textbackslash}):}
+
+\begin{center}
+\small
+\begin{tabular}{@{}llc@{}}
+\toprule
+nombre & tipo / tamaño & 1.\textsuperscript{er} cluster \\
+\midrule
+\texttt{.}          & dir, size = 128 & $1$ \\
+\texttt{..}         & dir, size = 128 & $1$ \\
+\texttt{shell.com}  & file, size = 750 & $2$ \\
+\texttt{docs}       & dir, size = 64  & $3$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Notar que \texttt{..} de la raíz apunta a sí misma (cluster $1$),
+porque la raíz no tiene padre.
+
+\textbf{Cluster 2:} primeros $512$ bytes del programa \texttt{shell.com}.
+
+\textbf{Cluster 3 (directorio \texttt{docs}):}
+
+\begin{center}
+\small
+\begin{tabular}{@{}llc@{}}
+\toprule
+nombre & tipo / tamaño & 1.\textsuperscript{er} cluster \\
+\midrule
+\texttt{.}  & dir, size = 64  & $3$ \\
+\texttt{..} & dir, size = 128 & $1$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent\texttt{..} de \texttt{docs} apunta a la raíz (cluster $1$);
+\texttt{.} apunta al propio cluster del directorio.
+
+\textbf{Cluster 4:} los $238$ bytes finales de \texttt{shell.com}
+(bytes $512$--$749$) más \emph{padding} hasta completar los $512$
+bytes del cluster.
+
+\textbf{Cluster 5:} libre, sin contenido válido.
+
+\subsection*{Diagrama final del disco}
+
+\begin{center}
+\begin{tikzpicture}[every node/.style={font=\ttfamily\small},
+    cell/.style={draw,minimum width=1.9cm,minimum height=1.1cm,align=center}]
+\node[font=\bfseries] at (-1.2,0.5) {data:};
+\node[cell,fill=c3!30] (d1) at (0,0)    {raíz \\ \scriptsize(\texttt{\textbackslash})};
+\node[cell,fill=c2!30,right=0pt of d1]  (d2) {shell.com \\ \scriptsize bloque 1};
+\node[cell,fill=c4!30,right=0pt of d2]  (d3) {docs};
+\node[cell,fill=c2!30,right=0pt of d3]  (d4) {shell.com \\ \scriptsize bloque 2};
+\node[cell,fill=cfree!30,right=0pt of d4] (d5) {libre};
+\node[font=\scriptsize] at (d1.south) [yshift=-0.18cm] {1};
+\node[font=\scriptsize] at (d2.south) [yshift=-0.18cm] {2};
+\node[font=\scriptsize] at (d3.south) [yshift=-0.18cm] {3};
+\node[font=\scriptsize] at (d4.south) [yshift=-0.18cm] {4};
+\node[font=\scriptsize] at (d5.south) [yshift=-0.18cm] {5};
+
+\draw[->, c2!70!black,thick] (d2.north) to[bend left=30] (d4.north);
+\end{tikzpicture}
+\end{center}
+
+La flecha arriba muestra el encadenamiento de \texttt{shell.com}:
+cluster $2$ $\to$ cluster $4$ (saltando cluster $3$ que está ocupado
+por \texttt{docs}). Este ``salto'' es justamente la utilidad de la
+FAT: la tabla permite fragmentar archivos a lo largo del disco sin
+que el cliente se entere.
+
+\begin{respuesta}
+La tabla FAT queda \textbf{[EOC, 4, EOC, EOC, 0]} para los clusters
+$1$ a $5$. Los bloques de datos contienen, en orden: directorio raíz,
+primer bloque de \texttt{shell.com}, directorio \texttt{docs}, segundo
+bloque de \texttt{shell.com}, libre.
+\end{respuesta}
+
+\begin{idea}
+La elección de poner \texttt{docs} en el cluster $3$ (en lugar de
+poner \texttt{shell.com} consecutivo en clusters $2$--$3$) ilustra
+cómo la fragmentación natural del filesystem se gestiona con la FAT.
+En un disco real con miles de archivos creándose y borrándose, esta
+estructura permite ubicar bloques en cualquier lado y reconstruir la
+cadena en tiempo $O(\text{longitud})$ con la tabla.
+\end{idea}
+
+% =====================================================================
+\section{Ejercicio 5 --- V/F sobre usuarios y permisos (1.5 pts)}
+% =====================================================================
+
+\textbf{Enunciado.} Determinar la verdad o falsedad de las siguientes
+sentencias. Justificar las falsas.
+
+\subsection*{5.a --- ``Un proceso se ejecuta con los privilegios del
+usuario real''}
+
+\begin{respuesta}
+\textbf{F}. Un proceso se ejecuta con los privilegios del
+\textbf{usuario efectivo} (\texttt{euid}), no del real
+(\texttt{ruid}). En un proceso ``normal'' los dos coinciden, pero el
+modelo UNIX deliberadamente los separa para soportar programas con
+\textbf{bit SUID}: cuando se ejecuta un binario con \texttt{u+s}, el
+kernel pone como \texttt{euid} del proceso el dueño del archivo
+ejecutable, no el del usuario que lo lanzó.
+
+Ejemplo clásico: \texttt{/usr/bin/passwd} pertenece a root con el bit
+SUID; cuando un usuario común lo ejecuta, su \texttt{ruid} sigue
+siendo el suyo pero su \texttt{euid} pasa a ser root, lo que le
+permite escribir en \texttt{/etc/shadow}. Los chequeos de permisos
+del kernel se hacen contra \texttt{euid}, no contra \texttt{ruid}.
+\end{respuesta}
+
+\subsection*{5.b --- ``\texttt{sudo} solicita la contraseña del
+usuario ejecutor''}
+
+\emph{``El comando \texttt{sudo} permite ejecutar un programa con
+los privilegios de otro usuario y solicita la contraseña del usuario
+ejecutor.''}
+
+\begin{respuesta}
+\textbf{V}. Las dos partes son correctas:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{sudo} permite ejecutar un comando como otro usuario
+        (por default \texttt{root}; con \texttt{-u} se elige otro
+        target).
+    \item Por defecto, \texttt{sudo} pide la \textbf{contraseña del
+        usuario que lo invoca} (\emph{the user typing sudo}), no la
+        del usuario objetivo. La verificación es ``demostrame que sos
+        vos quien está pidiendo el privilegio''; el archivo
+        \texttt{/etc/sudoers} decide a quién está autorizado a
+        elevarse.
+\end{itemize}
+
+\textbf{Nota}: existe la opción \texttt{Defaults targetpw} que
+invierte el comportamiento (pide la del target), pero no es el
+default.
+\end{respuesta}
+
+\subsection*{5.c --- ``Es posible recuperar la contraseña\ldots''}
+
+\emph{``Es posible recuperar la contraseña de un usuario ya que el
+sistema la conoce.''}
+
+\begin{respuesta}
+\textbf{F}. El sistema \textbf{no conoce la contraseña en texto
+plano}. Lo que guarda en \texttt{/etc/shadow} es un \textbf{hash}
+criptográfico (típicamente \texttt{bcrypt}, \texttt{argon2},
+\texttt{sha512crypt}) con \emph{salt}. La función hash es de un solo
+sentido: dado el hash es computacionalmente inviable recuperar la
+contraseña original.
+
+Cuando el usuario hace login, el sistema toma la contraseña que
+ingresa, le aplica la misma función hash con el mismo salt, y
+compara con el hash guardado. Si coinciden, autentica.
+
+Por eso, si un usuario olvida su contraseña, el administrador no
+puede ``ver cuál era''; solo puede \textbf{asignarle una nueva}
+(\texttt{passwd <usuario>}). Esto es una propiedad de seguridad
+deliberada: aún si un atacante roba \texttt{/etc/shadow}, no
+obtiene contraseñas en claro.
+\end{respuesta}
+
+\subsection*{5.d --- Permisos \texttt{rw-rw-r-{}-}}
+
+\emph{``Un archivo con permisos \texttt{rw-rw-r-{}-} puede ser escrito
+por el dueño y cualquier usuario del grupo asignado al archivo pero
+no por el resto de usuarios.''}
+
+\begin{respuesta}
+\textbf{V}. Decodifiquemos el modo \texttt{rw-rw-r-{}-}:
+
+\begin{center}
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+Categoría & Permisos & Octal & Significado \\
+\midrule
+Owner (\texttt{u})  & \texttt{rw-} & $6$ & leer y escribir \\
+Group (\texttt{g})  & \texttt{rw-} & $6$ & leer y escribir \\
+Other (\texttt{o})  & \texttt{r-{}-} & $4$ & solo leer \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Total: $664$ en octal. Por tanto:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item El \textbf{dueño} puede escribir ($w$ en \texttt{u}).
+    \item Los miembros del \textbf{grupo asignado} al archivo pueden
+        escribir ($w$ en \texttt{g}).
+    \item Los \textbf{demás usuarios} (no dueño ni del grupo) solo
+        pueden leer.
+\end{itemize}
+
+La afirmación coincide exactamente. \textbf{V.}
+\end{respuesta}
+
+% =====================================================================
+\section*{Resumen del parcial}
+\addcontentsline{toc}{section}{Resumen del parcial}
+% =====================================================================
+
+\begin{center}
+\small
+\begin{tabular}{@{}clp{8.5cm}@{}}
+\toprule
+\# & Tema & Respuesta sintética \\
+\midrule
+1 & V/F memoria        & a:V, b:V, c:V, d:F (\texttt{mmap} es lazy), e:V \\
+2 & Buddy system        & ptr1@0 (512), ptr3@640 (128), ptr4@1024 (1024); libres: 128@512 y 256@768 \\
+3 & Paginación          & 512 ptes, vpn 9 bits + offset 11 bits; tabla con código 0--1, datos 2, stack 254--255, gap 3--253; \texttt{0x2412} cae en gap (page fault); guarda en vpn 3 con rango \texttt{[0x1800, 0x2000)} \\
+4 & FAT32               & FAT = [EOC, 4, EOC, EOC, 0]; raíz @1, shell.com @2 $\to$ 4, docs @3 \\
+5 & V/F usuarios        & a:F (\texttt{euid}, no \texttt{ruid}); b:V; c:F (hash); d:V \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\end{document}

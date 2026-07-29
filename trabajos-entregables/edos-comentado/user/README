@@ -1,0 +1,11 @@
+# User space programs
+
+Acá viven los programas de userland de EDOS, los archivos de datos y las
+utilidades para empaquetarlos.
+
+Cada programa se linkea con:
+  - `edoslib.c` (nuestra libc mínima: printf, memset, strcmp, ...).
+  - `usys.s`    (wrappers de syscalls: exit, getpid, sleep, ...).
+
+Los programas de usuario corren en su propio espacio virtual, arrancando en
+la vaddr 0. Ver `user.ld`.

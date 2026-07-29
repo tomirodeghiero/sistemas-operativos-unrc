@@ -1,0 +1,2993 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- Encoding ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands]{babel}
+\usepackage{lmodern}
+
+% --- Layout ---
+\usepackage[margin=2.4cm]{geometry}
+\usepackage{parskip}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.55em plus 0.2em minus 0.1em}
+
+% --- Tables and graphics ---
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{positioning,shapes.geometric,arrows.meta,fit,backgrounds,calc,decorations.pathreplacing}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{amsmath,amssymb}
+\usepackage{longtable}
+
+% --- Soporte para caracteres Unicode ---
+\usepackage{newunicodechar}
+\newunicodechar{→}{\ensuremath{\rightarrow}}
+\newunicodechar{≥}{\ensuremath{\geq}}
+\newunicodechar{≤}{\ensuremath{\leq}}
+\newunicodechar{×}{\ensuremath{\times}}
+\newunicodechar{÷}{\ensuremath{\div}}
+\newunicodechar{≈}{\ensuremath{\approx}}
+\newunicodechar{⌈}{\ensuremath{\lceil}}
+\newunicodechar{⌉}{\ensuremath{\rceil}}
+\newunicodechar{✓}{\ensuremath{\checkmark}}
+\newunicodechar{≠}{\ensuremath{\neq}}
+\newunicodechar{∨}{\ensuremath{\vee}}
+\newunicodechar{∧}{\ensuremath{\wedge}}
+\newunicodechar{∀}{\ensuremath{\forall}}
+\newunicodechar{—}{---}
+\newunicodechar{–}{--}
+\newunicodechar{←}{\ensuremath{\leftarrow}}
+\newunicodechar{↑}{\ensuremath{\uparrow}}
+\newunicodechar{↓}{\ensuremath{\downarrow}}
+\newunicodechar{∞}{\ensuremath{\infty}}
+\newunicodechar{²}{\ensuremath{^{2}}}
+\newunicodechar{³}{\ensuremath{^{3}}}
+\newunicodechar{⁰}{\ensuremath{^{0}}}
+\newunicodechar{¹}{\ensuremath{^{1}}}
+\newunicodechar{⁴}{\ensuremath{^{4}}}
+\newunicodechar{⁵}{\ensuremath{^{5}}}
+\newunicodechar{⁶}{\ensuremath{^{6}}}
+\newunicodechar{⁷}{\ensuremath{^{7}}}
+\newunicodechar{⁸}{\ensuremath{^{8}}}
+\newunicodechar{⁹}{\ensuremath{^{9}}}
+\newunicodechar{…}{\ldots}
+
+% --- Code listings ---
+\usepackage{listings}
+\definecolor{codegray}{rgb}{0.96,0.96,0.96}
+\definecolor{codeborder}{rgb}{0.85,0.85,0.85}
+\definecolor{codecomment}{rgb}{0.30,0.55,0.30}
+\definecolor{codekeyword}{rgb}{0.10,0.30,0.70}
+\definecolor{codestring}{rgb}{0.65,0.15,0.10}
+
+\lstdefinestyle{cstyle}{
+    language=C,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+    morekeywords={pte,vaddr,paddr,uint,uint8,uint32,uint64,size_t,address,bool,spinlock,task,trap_frame,context,cpu_state,file,link},
+}
+
+% RISC-V assembly style
+\lstdefinelanguage{riscv}{
+  morekeywords={addi,add,sub,mul,div,la,li,lw,sw,ld,sd,beq,bne,blt,bge,bltu,bgeu,j,jal,jalr,ret,call,mv,mret,sret,ecall,ebreak,wfi,csrr,csrw,csrs,csrc,csrrw,csrrs,csrrc,csrci,csrsi,fence,sfence,amoswap,unimp},
+  sensitive=true,
+  morecomment=[l]{\#},
+  morestring=[b]",
+}
+\lstdefinestyle{asmstyle}{
+    language=riscv,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstdefinestyle{shellstyle}{
+    language=bash,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    keywordstyle=\color{codekeyword}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    stringstyle=\color{codestring},
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+    upquote=true,
+}
+
+\lstdefinestyle{textstyle}{
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeborder},
+    showstringspaces=false,
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+}
+
+\lstset{style=textstyle}
+
+% --- Boxes ---
+\usepackage[most]{tcolorbox}
+\newtcolorbox{idea}[1][]{
+    colback=orange!5!white, colframe=orange!60!black,
+    fonttitle=\bfseries, title=Idea intuitiva,
+    sharp corners=southwest, rounded corners=northwest, arc=2pt,
+    boxrule=0.6pt, left=8pt, right=8pt, top=4pt, bottom=4pt, #1
+}
+\newtcolorbox{importante}[1][]{
+    colback=red!5!white, colframe=red!50!black,
+    fonttitle=\bfseries, title=Importante,
+    sharp corners=southwest, rounded corners=northwest, arc=2pt,
+    boxrule=0.6pt, left=8pt, right=8pt, top=4pt, bottom=4pt, #1
+}
+\newtcolorbox{respuesta}[1][]{
+    colback=green!5!white, colframe=green!40!black,
+    fonttitle=\bfseries, title=Respuesta,
+    sharp corners=southwest, rounded corners=northwest, arc=2pt,
+    boxrule=0.6pt, left=8pt, right=8pt, top=4pt, bottom=4pt, #1
+}
+\newtcolorbox{walkthrough}[1][]{
+    colback=blue!3!white, colframe=blue!50!black,
+    fonttitle=\bfseries, title=Recorrido del código,
+    sharp corners=southwest, rounded corners=northwest, arc=2pt,
+    boxrule=0.6pt, left=8pt, right=8pt, top=4pt, bottom=4pt, #1
+}
+
+\usepackage[colorlinks=true,linkcolor=blue!60!black,urlcolor=blue!50!black,citecolor=blue!60!black]{hyperref}
+
+% --- Color palette ---
+\definecolor{c1}{HTML}{4C72B0}
+\definecolor{c2}{HTML}{DD8452}
+\definecolor{c3}{HTML}{55A868}
+\definecolor{c4}{HTML}{8172B2}
+\definecolor{cred}{HTML}{C44E52}
+\definecolor{cfree}{HTML}{8C8C8C}
+
+\title{
+    \vspace{-2.5em}
+    \textbf{EDOS --- Resumen de estudio} \\[0.3em]
+    \large Para el examen práctico y la defensa de implementación \\
+    \small Basado en el código entregado en \texttt{08-process/}
+}
+\author{
+    Tomás Rodeghiero \\
+    \small Sistemas Operativos --- UNRC
+}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent
+Este documento es la fuente única para preparar el examen práctico
+y la defensa oral de implementación sobre EDOS, el SO educativo
+basado en RISC-V utilizado por la cátedra de Sistemas Operativos de
+la UNRC. La fuente de verdad es el código entregado en
+\texttt{trabajos-entregables/08-process/}; todas las citas a
+archivo/línea se refieren a ese árbol.
+
+El documento se organiza en cinco partes: (I) visión global de EDOS,
+arquitectura RISC-V y plataforma; (II) recorrido subsistema por
+subsistema del kernel con \emph{walkthrough} del código real; (III)
+tabla comparativa contra xv6 con la justificación pedagógica de
+cada diferencia; (IV) banco de preguntas razonables que un docente
+puede hacer en la defensa, con respuesta completa; (V)
+\emph{cheat sheet} compacto de registros, formato de PTE, secuencia
+de boot, primer \texttt{fork} y comandos útiles de QEMU + GDB.
+
+\begin{importante}
+\textbf{Aclaraciones técnicas sobre EDOS.} La consigna mencionaba
+``RISC-V 64 (rv64)'' y ``paginación Sv39''. El código entregado
+\textbf{no es así}; este documento describe lo que hay en el código:
+\begin{itemize}[nosep,leftmargin=*]
+    \item EDOS es \textbf{RISC-V 32 bits} (\texttt{-march=rv32ima
+        -mabi=ilp32}, \texttt{qemu-system-riscv32}). El ensamblador
+        usa \texttt{lw}/\texttt{sw}; los registros guardados ocupan
+        4 bytes cada uno.
+    \item La paginación es \textbf{Sv32} (dos niveles: PD 10 b +
+        PT 10 b + offset 12 b $=$ 32). PTE de 32 bits con PPN de
+        22 b y 10 b de flags (\texttt{arch.h:160-213}).
+    \item EDOS \textbf{no usa una página \emph{trampoline} separada}
+        como xv6. Los handlers \texttt{s\_trap} y \texttt{u\_trap}
+        están en el segmento \texttt{.text} del kernel, mapeado en
+        cada \texttt{pgtbl} de proceso porque \texttt{exec} copia
+        las entradas del \texttt{kernel\_pgtbl} en el inicio del
+        nuevo page directory (\texttt{task.c:386}).
+    \item EDOS sólo define las flags \textbf{V, R, W, X, U}. No
+        expone bits A, D ni G en el PTE (\texttt{arch.h:175-179}).
+\end{itemize}
+Estas diferencias son centrales para la defensa: si te preguntan
+``Sv39 vs Sv32'', tenés que poder explicar por qué EDOS adoptó
+Sv32.
+\end{importante}
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+% =====================================================================
+\part{Visión global de EDOS}
+% =====================================================================
+
+\section{Qué es EDOS y para qué sirve}
+
+EDOS (\emph{Educational Operating System}) es un kernel mínimo
+escrito en C y RISC-V assembler, mantenido por la cátedra de
+Sistemas Operativos de la UNRC y heredado en espíritu de xv6 (MIT).
+Su objetivo no es competir con un SO real: es \textbf{transparentar
+los mecanismos del SO}. Cada subsistema (gestor de memoria,
+scheduler, trap handler, sistema de archivos, syscalls) está
+implementado en la cantidad mínima de líneas que demuestren la idea
+con claridad, y vive en archivos pequeños y aislados que el
+estudiante puede leer, modificar y depurar con \texttt{gdb} en una
+tarde.
+
+\subsection*{Objetivos pedagógicos}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Hacer visible} cada paso desde que se enciende la
+        CPU hasta que un proceso de usuario corre código.
+    \item \textbf{Forzar al alumno a tocar} el código del kernel:
+        cada taller agrega un subsistema y rompe algo del anterior
+        para que sea evidente qué hay que arreglar.
+    \item \textbf{Trabajar con RISC-V}, una arquitectura abierta,
+        con manuales accesibles y un conjunto de instrucciones lo
+        suficientemente simple para que el ensamblador no oscurezca
+        las ideas.
+    \item \textbf{Apoyarse en xv6}, que comparte mucha de la filosofía
+        pero ya en RISC-V; EDOS se permite simplificar a propósito
+        donde xv6 ya es ``demasiado'' para una cursada.
+\end{itemize}
+
+\subsection*{Diferencias clave con un SO real}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item No hay un sistema de archivos persistente: \textbf{EFS}
+        es \emph{embebido en el kernel} a través de un \texttt{.c}
+        que genera \texttt{xxd} (\texttt{efsfiles.c}).
+    \item No hay \texttt{fork}/\texttt{exec} desde el espacio de
+        usuario: el único \texttt{fork} conceptual es el que el
+        kernel hace al crear \texttt{init}.
+    \item No hay \texttt{wait}/\texttt{exit} de uso general: lo
+        cubre el scheduler matando ZOMBIEs.
+    \item No hay manejo elaborado de señales, redes, ni soporte de
+        \emph{copy-on-write}.
+    \item La planificación es \textbf{round-robin puro}, sin
+        prioridades.
+\end{itemize}
+
+% ---------------------------------------------------------------------
+\section{Arquitectura objetivo: RISC-V 32}
+
+\subsection{Modos de privilegio}
+
+RISC-V define tres modos:
+
+\begin{center}
+\small
+\begin{tabular}{@{}llp{8.5cm}@{}}
+\toprule
+Modo & Sigla & Rol \\
+\midrule
+\textbf{Machine}    & M & Modo más privilegiado. Acceso total al hardware. En EDOS se usa solo durante el \emph{boot} y para reprogramar el timer del \texttt{CLINT}. \\
+\textbf{Supervisor} & S & Donde corre el kernel de EDOS después del boot. Maneja paginación (vía \texttt{satp}) y traps. \\
+\textbf{User}       & U & Donde corren los procesos. Acceso restringido por la MMU y las flags \texttt{U} de las PTEs. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+EDOS \emph{delega} casi todas las interrupciones y excepciones de
+M-mode hacia S-mode con \texttt{medeleg} y \texttt{mideleg}
+(\texttt{arch.s:41-43}). Sólo la interrupción del timer queda en
+M-mode (con \texttt{mtvec=m\_trap}), y allí se reprograma el
+\texttt{mtimecmp} y se ``rebota'' como interrupción de software en
+S-mode levantando \texttt{sip.SSIP}.
+
+\subsection{Registros CSR relevantes para el SO}
+
+\begin{center}
+\small
+\begin{longtable}{@{}llp{9.5cm}@{}}
+\toprule
+CSR & Modo & Rol en EDOS \\
+\midrule
+\texttt{mhartid} & M & ID del hart (CPU lógica). Se lee al inicio y se guarda en \texttt{tp} (\texttt{arch.s:14}). \\
+\texttt{mstatus} & M & Estado global. \texttt{MPP}=01 para volver a S-mode con \texttt{mret} (\texttt{arch.s:33-38}). \\
+\texttt{mtvec}   & M & Dirección del handler de M-mode (apunta a \texttt{m\_trap}, \texttt{arch.s:58-59}). \\
+\texttt{mepc}    & M & PC que va a usarse en el próximo \texttt{mret}. Se setea a \texttt{supervisor} (\texttt{arch.s:69-70}). \\
+\texttt{mie}     & M & Habilitación de IRQs de M-mode (\texttt{MTIE=bit 7} para timer). \\
+\texttt{mip}     & M & Pendientes de M-mode. \\
+\texttt{mtimecmp}& M & Comparador del timer (MMIO en \texttt{CLINT}). Cuando \texttt{mtime} $\geq$ \texttt{mtimecmp} dispara la IRQ. \\
+\texttt{medeleg} & M & Delega excepciones a S-mode (EDOS pone todo: \texttt{0xFFFF}). \\
+\texttt{mideleg} & M & Delega interrupciones a S-mode (\texttt{0xFFFF}). \\
+\texttt{pmpcfg0} & M & Configuración del PMP para que S/U vean toda la RAM (\texttt{arch.s:26-30}). \\
+\midrule
+\texttt{sstatus} & S & Estado de S-mode. Bit \texttt{SIE} (interrupciones), \texttt{SPP} (modo previo), \texttt{SPIE}. \\
+\texttt{stvec}   & S & Dirección del handler de S-mode. EDOS lo cambia entre \texttt{s\_trap} (mientras está en kernel) y \texttt{u\_trap} (antes de volver a user). \\
+\texttt{sepc}    & S & PC en el que ocurrió el trap (donde \texttt{sret} retornará). \\
+\texttt{scause}  & S & Causa del trap (interrupción vs.\ excepción y código). \\
+\texttt{stval}   & S & Dato auxiliar (ej.: dirección que generó un page fault). \\
+\texttt{sscratch}& S & ``Bolsillo'' del kernel. En EDOS guarda la base del kernel-stack del proceso, para que \texttt{u\_trap} pueda saltar a él en una instrucción. \\
+\texttt{satp}    & S & Page-table address pointer. Bits altos: modo (0 = bare, 1 = Sv32 en rv32). Bits bajos: PPN del directorio. \\
+\texttt{sie}     & S & Habilitación de IRQs de S-mode. \\
+\texttt{sip}     & S & Pendientes de S-mode. EDOS usa \texttt{SSIP} (software int.) como vehículo para el timer rebotado desde M-mode. \\
+\midrule
+\multicolumn{3}{@{}l@{}}{\textbf{Registros de propósito general (ABI rv32)}}\\
+\midrule
+\texttt{ra}     & --- & Return address. \\
+\texttt{sp}     & --- & Stack pointer. \\
+\texttt{tp}     & --- & ``Thread pointer''. EDOS lo abusa para guardar el \texttt{hartid} (línea \texttt{arch.s:14}: \texttt{csrr tp, mhartid}). \\
+\texttt{a0--a7} & --- & Argumentos y resultado de funciones / syscalls. \\
+\texttt{s0--s11}& --- & Callee-saved. Son los únicos guardados por \texttt{context\_switch}. \\
+\texttt{t0--t6} & --- & Caller-saved. Sólo se salvan en el trap frame. \\
+\bottomrule
+\end{longtable}
+\end{center}
+
+\subsection{Plataforma: QEMU \texttt{virt}}
+
+EDOS corre en la máquina virtual \texttt{virt} de QEMU, lanzada
+desde el \texttt{Makefile} con:
+
+\begin{lstlisting}[style=shellstyle]
+qemu-system-riscv32 -machine virt -bios none -nographic -smp 1 -kernel kernel
+\end{lstlisting}
+
+Mapa de E/S relevante (definido en \texttt{arch.h:18-41}):
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+Dispositivo & Base MMIO & Notas \\
+\midrule
+\texttt{CLINT}   & \texttt{0x02000000} & Timer + IPI por hart. \texttt{mtime} en \texttt{+0xBFF8}, \texttt{mtimecmp[h]} en \texttt{+0x4000+8h}. \\
+\texttt{PLIC}    & \texttt{0x0C000000} & Controlador de IRQs externas (UART, virtio). Tamaño 4\,MiB. \\
+\texttt{UART}    & \texttt{0x10000000} & NS16550A. Registros HR (rx/tx), LSR, IER (\texttt{console.c:6-12}). \\
+\texttt{VIRTIO0} & \texttt{0x10001000} & Disco virtio (reservado; EDOS no lo usa todavía). \\
+\midrule
+RAM (kernel + apps) & \texttt{0x80000000} & 128 MiB (\texttt{kernel.ld:35}). \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Constantes derivadas:}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{T\_INTERVAL = 5\,000\,000}: ticks del \texttt{mtime}
+        por cuanto. Aprox.\ medio segundo en QEMU
+        (\texttt{arch.h:27}).
+    \item \texttt{UART\_IRQ = 10}: número de IRQ del UART en el
+        PLIC.
+    \item \texttt{NCPU = 4}: cantidad máxima de harts soportada
+        (estructuras como \texttt{cpus\_state[]} reservan ese tamaño,
+        aunque el \texttt{Makefile} arranca QEMU con \texttt{-smp 1}).
+\end{itemize}
+
+% ---------------------------------------------------------------------
+\section{Mapa de memoria física}
+
+El linker script \texttt{kernel.ld} fija el layout en RAM:
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    sec/.style={draw,minimum width=6.5cm,minimum height=0.75cm,align=center}
+]
+\node[sec,fill=c1!25] (text)   at (0, 6) {\texttt{.text} (kernel code)};
+\node[sec,fill=c1!15,below=0pt of text] (rodata) {\texttt{.rodata}};
+\node[sec,fill=c2!25,below=0pt of rodata] (data)  {\texttt{.data}};
+\node[sec,fill=c2!15,below=0pt of data]   (bss)   {\texttt{.bss}};
+\node[sec,fill=c3!25,below=0pt of bss]    (stk)   {\texttt{\_\_stack0}: 4 stacks de 4\,KiB};
+\node[sec,fill=c4!25,below=0pt of stk,minimum height=1.5cm]   (heap) {Pool de páginas libres \\ administrado por \texttt{kalloc}};
+
+\node[anchor=west,xshift=0.5cm] at (text.east)   {\texttt{0x80000000} = \texttt{\_\_kernel\_start}};
+\node[anchor=west,xshift=0.5cm] at (rodata.east) {};
+\node[anchor=west,xshift=0.5cm] at (data.east)   {\texttt{\_\_text\_end} (alineado a 4\,KiB)};
+\node[anchor=west,xshift=0.5cm] at (bss.east)    {\texttt{\_\_bss}, \texttt{\_\_bss\_end}};
+\node[anchor=west,xshift=0.5cm] at (stk.east)    {\texttt{\_\_kernel\_end}};
+\node[anchor=west,xshift=0.5cm] at (heap.south east) {\texttt{\_\_mem\_end} = base + 128\,MiB};
+
+\end{tikzpicture}
+\end{center}
+
+\textbf{Datos importantes:}
+
+\begin{itemize}[leftmargin=*]
+    \item Las primeras dos páginas de cada hart son su stack
+        inicial. \texttt{arch.s:17-21} asigna a la CPU $h$ el rango
+        \texttt{[\_\_stack0 + h$\cdot$4\,KiB, \_\_stack0 + (h+1)$\cdot$4\,KiB)}.
+    \item Todo lo que está entre \texttt{\_\_kernel\_end} y
+        \texttt{\_\_mem\_end} es el \textbf{pool de páginas} que
+        \texttt{init\_kalloc()} encadena en su free-list
+        (\texttt{kalloc.c:43-51}).
+    \item Las regiones MMIO (\texttt{CLINT}, \texttt{UART},
+        \texttt{PLIC}, \texttt{VIRTIO0}) están \emph{fuera} de este
+        rango pero se mapean 1:1 en el \texttt{kernel\_pgtbl} para
+        que el kernel pueda leerlas/escribirlas con direcciones
+        normales (\texttt{arch.c:97-117}).
+\end{itemize}
+
+% ---------------------------------------------------------------------
+\section{Flujo de arranque end-to-end}
+
+\subsection{Del firmware/OpenSBI al kernel}
+
+QEMU arranca con \texttt{-bios none}, así que \textbf{no hay
+OpenSBI} en EDOS: el kernel mismo se carga en \texttt{0x80000000} y
+la primera instrucción que se ejecuta es \texttt{boot}
+(\texttt{arch.s:11-72}). Es un caso atípico: en hardware real o con
+firmware, OpenSBI corre primero en M-mode y delega a S-mode; en
+EDOS asumimos esa función.
+
+\subsection{Lo que hace \texttt{boot} antes de cualquier C}
+
+\begin{walkthrough}
+\textbf{\texttt{arch.s:11-72}}
+
+\begin{enumerate}[leftmargin=*,nosep,label=\arabic*.]
+    \item \texttt{csrr tp, mhartid} — guarda el id del hart en
+        \texttt{tp}. Es el único lugar donde se lee \texttt{mhartid}.
+    \item \texttt{sp = \_\_stack0 + 4\,KiB$\cdot$(hartid+1)} —
+        cada hart toma una página de stack distinta. Sin esto,
+        todos escribirían en el mismo stack y el primer
+        \texttt{call} corrompería el de los otros.
+    \item \texttt{csrw satp, x0} — \textbf{deshabilita la paginación}
+        para correr en modo \texttt{bare}. Se va a habilitar después
+        en \texttt{enable\_paging} con \texttt{satp = 0x80000000 |
+        (kernel\_pgtbl>>12)}.
+    \item \texttt{pmpcfg0 = 0x1F, pmpaddr0 = -1} — Physical Memory
+        Protection: permite a S y U-mode acceder \emph{a toda} la
+        memoria física. Sin esto, las trampas se dispararían apenas
+        bajáramos a S-mode.
+    \item Cambiar \texttt{mstatus.MPP} de 11 (M) a 01 (S) — el
+        \texttt{mret} de más abajo va a volver a S, no a M.
+    \item \texttt{medeleg = mideleg = 0xFFFF} — todas las
+        excepciones e interrupciones se atienden en S-mode. Es el
+        truco que evita escribir handlers de M-mode para cada caso.
+    \item \texttt{sstatus.SIE = 1} — habilitar IRQs de S-mode.
+    \item \texttt{sie} ← \texttt{SEIE | STIE | SSIE} — habilitar
+        las tres clases de IRQs de S-mode (externa, timer, software).
+    \item \texttt{call next\_timer\_interrupt} — agendar la primera
+        IRQ del timer (programa \texttt{mtimecmp}).
+    \item \texttt{mtvec = m\_trap} — handler de M-mode (sólo lo
+        usa el timer).
+    \item Habilitar \texttt{mstatus.MIE} y \texttt{mie.MTIE}.
+    \item \texttt{mepc = supervisor; mret} — salta a la etiqueta
+        \texttt{supervisor} \emph{ya en S-mode}.
+\end{enumerate}
+\end{walkthrough}
+
+\subsection{De \texttt{supervisor:} a \texttt{kernel\_main}}
+
+La etiqueta \texttt{supervisor} (\texttt{arch.s:77-83}) corre en
+S-mode con el mismo stack inicial. Lo único que hace es:
+
+\begin{lstlisting}[style=asmstyle]
+supervisor:
+    la      t1, s_trap
+    csrw    stvec, t1     # de aca en adelante, traps S-mode -> s_trap
+    call    kernel_main   # nunca retorna; arranca el scheduler
+\end{lstlisting}
+
+\subsection{Lo que hace \texttt{kernel\_main} (\texttt{kmain.c:10-32})}
+
+\begin{walkthrough}
+\textbf{\texttt{kmain.c:10-32}}
+
+\begin{enumerate}[leftmargin=*,nosep,label=\arabic*.]
+    \item Sólo el hart 0:
+        \begin{enumerate}[nosep,label=\alph*)]
+            \item \texttt{init\_kalloc()} — encadena la free-list
+                de páginas físicas (\texttt{kalloc.c:43-51}).
+            \item \texttt{init\_vm()} — crea el \texttt{kernel\_pgtbl}
+                y mapea kernel + MMIO 1:1 (\texttt{vm.c:6-11},
+                \texttt{arch.c:97-117}).
+            \item \texttt{create\_process("init")} — el primer
+                proceso de usuario nace acá. Lo veremos en detalle.
+            \item \texttt{ready = 1; \_\_sync\_synchronize()} —
+                publica el dato a los otros harts.
+        \end{enumerate}
+    \item Todos los harts: \texttt{while(!ready) ;} y luego
+        \texttt{enable\_paging()} (activa Sv32 en este hart) y
+        \texttt{scheduler()} (no retorna).
+\end{enumerate}
+\end{walkthrough}
+
+\begin{idea}
+La sincronización entre harts es deliberadamente cruda: una variable
+\texttt{volatile int ready} y un \texttt{\_\_sync\_synchronize()}.
+Es válido porque sólo el hart 0 escribe y todos los demás giran
+hasta verla en \texttt{1}. En xv6 hay un mecanismo equivalente
+(la espera en \texttt{started}).
+\end{idea}
+
+% =====================================================================
+\part{Subsistemas del kernel}
+% =====================================================================
+
+% ---------------------------------------------------------------------
+\section{Bootstrap y SMP (arch.s, arch.c, kmain.c)}
+
+\subsection*{Qué resuelve}
+
+Llevar a la CPU desde el reset (en M-mode, sin paginación, con
+\texttt{tp} indefinido) hasta un estado en el cual:
+
+\begin{itemize}[nosep,leftmargin=*]
+    \item Estamos en S-mode con interrupciones habilitadas.
+    \item Cada hart tiene su propio stack.
+    \item La paginación está montada con el \texttt{kernel\_pgtbl}
+        (en cada hart).
+    \item El \texttt{scheduler} de cada hart elegirá una tarea
+        \texttt{RUNNABLE} y le dará CPU.
+\end{itemize}
+
+\subsection*{Estructuras y constantes clave}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{NCPU = 4} (\texttt{arch.h:13}).
+    \item \texttt{volatile int ready} en \texttt{kmain.c:8} —
+        bandera de sincronización inter-hart.
+\end{itemize}
+
+\subsection*{Funciones principales}
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{boot} en \texttt{arch.s:11-72} — handler de
+        firmware. Configura PMP, MPP, deleg, IRQs y salta a
+        \texttt{supervisor:}.
+    \item \texttt{supervisor:} en \texttt{arch.s:77-83} — instala
+        \texttt{s\_trap} y llama \texttt{kernel\_main}.
+    \item \texttt{kernel\_main(void)} en \texttt{kmain.c:10-32} —
+        inicialización (sólo hart 0) y entrega al \texttt{scheduler}.
+    \item \texttt{init\_kalloc()}, \texttt{init\_vm()},
+        \texttt{create\_process("init")}, \texttt{enable\_paging()},
+        \texttt{scheduler()} (cada uno en su archivo).
+\end{itemize}
+
+\subsection*{Invariantes}
+
+\begin{itemize}[nosep,leftmargin=*]
+    \item Después de \texttt{boot}: cada hart está en S-mode, con
+        su propio stack y con \texttt{stvec=s\_trap}.
+    \item Sólo el hart 0 ejecuta \texttt{init\_kalloc/init\_vm}.
+        Los demás esperan.
+    \item Cuando un hart pasa el \texttt{while(!ready)}, el
+        \texttt{kernel\_pgtbl} ya existe y es seguro encender
+        \texttt{satp}.
+\end{itemize}
+
+\subsection*{Errores frecuentes al modificarlo}
+
+\begin{itemize}[nosep,leftmargin=*]
+    \item Si \texttt{ready} se asigna sin \texttt{\_\_sync\_synchronize()},
+        las escrituras al \texttt{kernel\_pgtbl} pueden no ser
+        visibles a otros harts cuando salen del busy-wait.
+    \item Si todos los harts llaman a \texttt{init\_vm}, se reescribe
+        múltiples veces el page table raíz y se generan dobles
+        liberaciones de páginas.
+    \item Si se omite el ajuste de \texttt{sp} por hartid, todos
+        comparten stack.
+\end{itemize}
+
+% ---------------------------------------------------------------------
+\section{Consola y \texttt{kprintf} (console.c, klib.c)}
+
+\subsection*{Qué resuelve}
+
+Permitir al kernel imprimir mensajes y leer caracteres por la UART,
+con un \texttt{printf} reducido (sólo \%s, \%d, \%x, \%\%) protegido
+por un spinlock para no entrelazar la salida en SMP.
+
+\subsection*{Funciones clave}
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{console\_putc(char ch)} en \texttt{console.c:24-30}
+        — espera con polling a que \texttt{UART\_LSR.TX\_IDLE} esté
+        seteado y escribe el carácter en \texttt{UART\_HR}.
+    \item \texttt{console\_puts(const char *s)} en
+        \texttt{console.c:33-39} — toma \texttt{console\_lock},
+        recorre la cadena llamando a \texttt{console\_putc}, libera.
+    \item \texttt{console\_read\_char()} en \texttt{console.c:44-52}
+        — chequea \texttt{LSR.RX\_READY}; si hay byte, lo lee. Si
+        no, devuelve 0. (\emph{No bloquea}; es un polling oportunista.)
+    \item \texttt{printf(fmt, \ldots)} en \texttt{klib.c:52-112} —
+        adquiere el lock una sola vez para toda la línea, formatea
+        y llama \texttt{putchar} (alias de \texttt{console\_putc}).
+\end{itemize}
+
+\subsection*{Walkthrough: cómo se imprime un \%x}
+
+\begin{walkthrough}
+\textbf{\texttt{klib.c:94-99}}
+
+\begin{lstlisting}[style=cstyle]
+case 'x': {
+    int value = va_arg(vargs, int);
+    for (int i = 7; i >= 0; i--) {
+        int nibble = (value >> (i * 4)) & 0xf;
+        putchar("0123456789abcdef"[nibble]);
+    }
+}
+\end{lstlisting}
+
+Es la implementación más simple posible: imprime los 8 nibbles del
+entero en orden, sin omitir ceros a la izquierda. Es por eso que
+todos los logs de EDOS tienen el formato \texttt{0x80004000}.
+\end{walkthrough}
+
+\subsection*{Polling vs.\ interrupciones}
+
+EDOS usa \textbf{polling} para el TX (esperamos en un \texttt{while}
+a que el bit \texttt{TX\_IDLE} esté en 1). Para el RX, hay un
+\emph{hook} de IRQ del UART (\texttt{UART\_IRQ=10} en el PLIC) pero
+en la versión 08-process no se activa el path: \texttt{console.c}
+no llama a \texttt{console\_interrupt\_handler}, y
+\texttt{init\_external\_interrupts/init\_external\_irqs\_in\_cpu}
+están comentados en \texttt{kmain.c:17,29}.
+
+\begin{idea}
+\textbf{¿Por qué polling en TX?} Porque el UART de QEMU vacía
+inmediatamente: la espera nunca dura más de un par de ciclos. En
+hardware real (a 115\,200 bps) esto sería inaceptable; ahí se
+usaría una cola circular + IRQ TX.
+\end{idea}
+
+\subsection*{Por qué el lock es \emph{caller-side}}
+
+\texttt{console\_putc} \textbf{no} toma el lock; sólo
+\texttt{console\_puts} y \texttt{printf} lo hacen. Esto permite que
+el \texttt{printf} adquiera el lock una vez por línea y no caer en
+un patrón ``char a char con un lock por carácter'' que haría que
+dos \texttt{printf} concurrentes se intercalaran a nivel de byte.
+
+% ---------------------------------------------------------------------
+\section{Spinlocks (spinlock.c)}
+
+\subsection*{Qué resuelve}
+
+Exclusión mutua \textbf{en multiprocesador} sobre estructuras del
+kernel (tabla de procesos, free-list de páginas, consola, ticks).
+Un spinlock funciona porque las CPUs comparten memoria coherente y
+porque RISC-V provee instrucciones atómicas (extensión A).
+
+\subsection*{Tipo y API}
+
+\begin{lstlisting}[style=cstyle]
+typedef unsigned int spinlock;     // 0 = libre, 1 = tomado
+
+void acquire(spinlock *lk);
+void release(spinlock *lk);
+\end{lstlisting}
+
+El tipo es un simple entero. Hay dos primitivas auxiliares no
+exportadas:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{push\_irq\_off(void)} en \texttt{spinlock.c:7-17}
+        — deshabilita interrupciones y mantiene un contador de
+        anidamiento (\texttt{cpus\_state[cpu].noff}) más el estado
+        previo de \texttt{sstatus.SIE}.
+    \item \texttt{pop\_irq\_off(void)} en \texttt{spinlock.c:19-25}
+        — decrementa \texttt{noff} y, sólo si llega a 0, restaura
+        las IRQs si estaban habilitadas antes del primer
+        \texttt{push}.
+\end{itemize}
+
+\subsection*{Walkthrough: \texttt{acquire}}
+
+\begin{walkthrough}
+\textbf{\texttt{spinlock.c:27-44}}
+
+\begin{lstlisting}[style=cstyle]
+void acquire(spinlock *lk) {
+    push_irq_off();                              // (1)
+    while (__sync_lock_test_and_set(lk, 1) != 0) // (2)
+        ;
+    __sync_synchronize();                        // (3)
+}
+\end{lstlisting}
+
+\textbf{(1)} Antes de cualquier intento, \emph{deshabilitamos
+interrupciones en esta CPU}. ¿Por qué? Porque si un trap
+(particularmente el timer) llegara mientras tenemos el lock, podría
+dispararse \texttt{yield()} y dejaríamos a otro proceso girando
+para siempre sobre nuestro lock.
+
+\textbf{(2)} \texttt{\_\_sync\_lock\_test\_and\_set} compila a
+\texttt{amoswap.w.aq a5, a5, (s1)} en RISC-V: una operación
+atómica que escribe 1 en \texttt{*lk} y devuelve el valor previo.
+Mientras devuelva 1, alguien más lo tenía y giramos.
+
+\textbf{(3)} La barrera de memoria garantiza que las lecturas y
+escrituras dentro de la sección crítica no se reordenen
+\emph{antes} del lock.
+\end{walkthrough}
+
+\subsection*{Walkthrough: \texttt{release}}
+
+\begin{lstlisting}[style=cstyle]
+void release(spinlock *lk) {
+    __sync_synchronize();        // (1) las escrituras de la SC ya son visibles
+    __sync_lock_release(lk);     // (2) amoswap.w zero, zero, (s1)
+    pop_irq_off();               // (3) reactivar IRQs si corresponde
+}
+\end{lstlisting}
+
+\begin{itemize}[nosep,leftmargin=*]
+    \item (1) Barrera \emph{antes} de soltar el lock.
+    \item (2) Liberación atómica (escribe 0).
+    \item (3) Cierra el \texttt{push\_irq\_off} pareado.
+\end{itemize}
+
+\subsection*{Invariantes y errores típicos}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Anidamiento}: \texttt{acquire/release} pueden
+        anidarse arbitrariamente; las IRQs solo se restablecen
+        cuando \texttt{noff} vuelve a 0.
+    \item \textbf{Releer sin tener}: si liberás un lock que no
+        tomaste, \texttt{noff} se descuenta de más y eventualmente
+        las IRQs se rehabilitan en una sección crítica equivocada.
+    \item \textbf{Olvidarse del \texttt{push\_irq\_off}} (versión
+        sin esta protección) lleva a deadlocks clásicos cuando un
+        trap se dispara durante la sección crítica y termina
+        intentando tomar el mismo lock.
+    \item Comparado con un mutex de userland: aquí \textbf{no se
+        duerme}. La CPU gira. Por eso sólo conviene para regiones
+        muy cortas. Para esperas largas, EDOS usa
+        \texttt{suspend/wakeup} (sleep-locks de hecho construidos
+        sobre spinlocks).
+\end{itemize}
+
+% ---------------------------------------------------------------------
+\section{Traps e interrupciones (trap.s, trap.c)}
+
+\subsection*{Qué resuelve}
+
+Recibir cualquier evento que cambia el flujo de ejecución
+(interrupciones del timer, IRQs de dispositivos, syscalls,
+excepciones como page fault) y dispatcharlo al manejador
+correspondiente, dejando la CPU en un estado consistente para
+retornar.
+
+\subsection*{Estructura: \texttt{struct trap\_frame}}
+
+Definida en \texttt{arch.h:100-132}, contiene 31 enteros de 32 b
+(124 B en total):
+
+\begin{lstlisting}[style=cstyle]
+struct trap_frame {
+    size_t ra, gp, t0..t6, a0..a7, s0..s11, sp, pc;
+} __attribute__((packed));
+\end{lstlisting}
+
+\textbf{Detalles importantes:}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item No incluye \texttt{x0} (siempre cero) ni \texttt{tp}
+        (lo usamos como hartid permanente).
+    \item El campo \texttt{pc} es donde se escribe \texttt{sepc}
+        al entrar y desde donde se vuelca antes de \texttt{sret}.
+    \item El \texttt{sp} guardado es el del modo \emph{previo}
+        (user stack si veníamos de U-mode).
+    \item Los punteros a frame de las syscalls usan helpers como
+        \texttt{syscall\_number(tf) = tf->a7}.
+\end{itemize}
+
+\subsection*{Los tres handlers de bajo nivel}
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{\texttt{s\_trap}} (\texttt{trap.s:10-82}): traps
+        en S-mode. Reserva 29$\times$4 B en el stack actual y
+        guarda \texttt{ra, gp, t*, a*, s*} ahí. Llama a
+        \texttt{kernel\_trap}. Al volver, restaura todo y hace
+        \texttt{sret}.
+    \item \textbf{\texttt{u\_trap}} (\texttt{trap.s:89-140}): traps
+        en U-mode. Es más complejo porque hay que cambiar de stack:
+        \begin{itemize}[nosep]
+            \item Intercambia \texttt{sp} y \texttt{sscratch}
+                (\texttt{csrrw sp, sscratch, sp}). Tras eso,
+                \texttt{sp} apunta al kernel-stack del proceso y
+                \texttt{sscratch} al user-stack.
+            \item Reserva 31$\times$4 B (un \texttt{trap\_frame}
+                completo) y guarda los registros, incluido el
+                \texttt{sp} de usuario (leído del \texttt{sscratch})
+                y \texttt{sepc} en el campo \texttt{pc} del frame.
+            \item Llama a \texttt{user\_trap}.
+        \end{itemize}
+    \item \textbf{\texttt{m\_trap}} (\texttt{trap.s:200-250}): trap
+        de M-mode, sólo para el timer. Reprograma
+        \texttt{mtimecmp}, escribe \texttt{sip = 2} (setea
+        \texttt{SSIP}, que el S-mode verá como interrupción de
+        software) y hace \texttt{mret}.
+\end{enumerate}
+
+\subsection*{Diagrama: dónde está cada handler}
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small,align=center},
+    box/.style={draw,rounded corners,minimum width=3.5cm,minimum height=0.8cm},
+    user/.style={box,fill=c1!25},
+    sup/.style={box,fill=c3!25},
+    mach/.style={box,fill=c2!25},
+    arr/.style={->,thick}
+]
+\node[user] (umode) at (0,4) {Modo Usuario};
+\node[sup]  (smode) at (5,4) {Modo Supervisor};
+\node[mach] (mmode) at (10,4) {Modo Machine};
+
+\node[box,fill=c1!15] (utrap) at (0,2) {\texttt{u\_trap}\\ \scriptsize en trap.s};
+\node[box,fill=c3!15] (strap) at (5,2) {\texttt{s\_trap}\\ \scriptsize en trap.s};
+\node[box,fill=c2!15] (mtrap) at (10,2) {\texttt{m\_trap}\\ \scriptsize en trap.s};
+
+\node[box,fill=c1!15] (uth)   at (0,0)  {\texttt{user\_trap}\\ \scriptsize en trap.c};
+\node[box,fill=c3!15] (kth)   at (5,0)  {\texttt{kernel\_trap}\\ \scriptsize en trap.c};
+\node[box,fill=c2!15] (rtt)   at (10,0) {timer + sip.SSIP\\ \scriptsize delega a S-mode};
+
+\draw[arr] (umode) -- node[right,font=\scriptsize]{trap} (utrap);
+\draw[arr] (smode) -- node[right,font=\scriptsize]{trap} (strap);
+\draw[arr] (mmode) -- node[right,font=\scriptsize]{timer} (mtrap);
+\draw[arr] (utrap) -- (uth);
+\draw[arr] (strap) -- (kth);
+\draw[arr] (mtrap) -- (rtt);
+\end{tikzpicture}
+\end{center}
+
+\subsection*{Walkthrough: el timer en U-mode}
+
+\begin{walkthrough}
+\textbf{Camino completo del timer cuando un proceso está corriendo}
+
+\begin{enumerate}[leftmargin=*]
+    \item El \texttt{mtime} alcanza \texttt{mtimecmp}. El hardware
+        levanta una IRQ de M-mode.
+    \item Al estar deshabilitada la M-mode preemption con \texttt{wfi},
+        la CPU salta a \texttt{mtvec} = \texttt{m\_trap}.
+    \item \texttt{m\_trap} reprograma \texttt{mtimecmp} (siguiente
+        cuanto) y levanta \texttt{sip.SSIP} (software int. en
+        S-mode). \texttt{mret} vuelve al código U-mode interrumpido.
+    \item Inmediatamente \emph{la propia} CPU ve la IRQ de software
+        en S-mode y atrapa a \texttt{stvec = u\_trap} (porque
+        estamos en U).
+    \item \texttt{u\_trap} swappea \texttt{sp/sscratch}, llena el
+        \texttt{trap\_frame} del proceso, llama \texttt{user\_trap}.
+    \item \texttt{user\_trap} (\texttt{trap.c:107-181}) reconoce
+        \texttt{cause = TIMER\_INTERRUPT} (\texttt{0x80000001},
+        bit de signo prendido $\Rightarrow$ interrupción), llama a
+        \texttt{ack\_timer\_interrupt()} (limpia \texttt{sip.SSIP})
+        y decrementa \texttt{task->ticks}.
+    \item Si llega a 0, llama a \texttt{yield()} (queda
+        \texttt{RUNNABLE} y vuelve al scheduler).
+    \item Cuando vuelve la CPU al proceso, \texttt{return\_to\_user\_mode()}
+        y \texttt{u\_trap\_ret} restauran el frame.
+\end{enumerate}
+\end{walkthrough}
+
+\subsection*{La función pivote: \texttt{return\_to\_user\_mode}}
+
+\texttt{trap.c:72-101} es la única vía para volver a U-mode. Hace
+cinco cosas, todas con interrupciones deshabilitadas:
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item Instalar \texttt{stvec = u\_trap}.
+    \item Guardar \texttt{sscratch} = base + 4\,KiB del kernel-stack
+        del proceso. \emph{Esa} dirección la usará \texttt{u\_trap}
+        para conmutar de pila la próxima vez.
+    \item Setear \texttt{sstatus.SPP=0} y \texttt{SPIE=1}, que el
+        \texttt{sret} interpretará como ``vamos a U-mode con IRQs
+        habilitadas''.
+    \item Cargar la page-table del proceso con \texttt{set\_page\_table}
+        (que también hace los \texttt{sfence.vma}).
+    \item Saltar a \texttt{u\_trap\_ret(task->trap\_frame)} en
+        ensamblador, que mueve \texttt{sp = a0}, restaura
+        \texttt{sepc} desde el frame, restaura registros y hace
+        \texttt{sret}.
+\end{enumerate}
+
+% ---------------------------------------------------------------------
+\section{Memoria física: \texttt{kalloc} (kalloc.c)}
+
+\subsection*{Qué resuelve}
+
+Asignar y liberar \emph{páginas físicas} de 4\,KiB. Todas las
+estructuras del kernel que crecen dinámicamente (page tables, kernel
+stacks, code/data/stack de procesos) las piden a \texttt{alloc\_page}.
+
+\subsection*{Estructura}
+
+Una \textbf{free-list} encadenada. Cada página libre lleva en sus
+primeros bytes un puntero al ``próximo'' (\texttt{struct link}):
+
+\begin{lstlisting}[style=cstyle]
+struct link { struct link *next; };
+static struct link *free_list = NULL;
+static unsigned int free_pages = 0;
+\end{lstlisting}
+
+\begin{idea}
+\textbf{Por qué los punteros viven dentro de las páginas libres.}
+Como cada página libre tiene 4\,KiB \emph{disponibles}, escribir un
+puntero en sus primeros 4 bytes no cuesta memoria adicional. El
+truco se usa en xv6, Linux y en cualquier SO con \emph{slab/freelist}
+de tamaño fijo.
+\end{idea}
+
+\subsection*{API}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{void* alloc\_page(void)} en \texttt{kalloc.c:16-24}
+        — desencola la cabeza de \texttt{free\_list}, hace
+        \texttt{memset(\dots, 0, PAGE\_SIZE)} y la devuelve. Si la
+        lista está vacía, devuelve 0.
+    \item \texttt{void free\_page(void* pa)} en \texttt{kalloc.c:27-40}
+        — verifica alineamiento y rango, encola al inicio de
+        \texttt{free\_list}.
+    \item \texttt{void init\_kalloc(void)} en \texttt{kalloc.c:43-51}
+        — desde \texttt{\_\_mem\_end - PAGE\_SIZE} bajando hasta
+        \texttt{\_\_kernel\_end}, llama \texttt{free\_page} en
+        cada página. Resultado: la free-list queda con la página
+        de menor dirección al frente (LIFO inverso).
+\end{itemize}
+
+\subsection*{Invariantes y errores típicos}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Toda página devuelta por \texttt{alloc\_page} está
+        \textbf{en cero}.
+    \item \texttt{free\_page} \textbf{aborta con panic} si la
+        dirección no está alineada a 4\,KiB o cae fuera del rango
+        \texttt{[\_\_kernel\_end, \_\_mem\_end]}.
+    \item \textbf{No hay protección de doble \texttt{free}}: si
+        liberás dos veces la misma página, queda dos veces en la
+        free-list y la próxima asignación devuelve un puntero
+        compartido. Ese error no se detecta hasta que se manifiesta
+        en un crash de otra estructura.
+    \item \texttt{alloc\_page} no toma lock; en SMP debería estar
+        protegido. En el código entregado esta carrera está latente,
+        pero como \texttt{Makefile:31} fuerza \texttt{-smp 1}, el
+        problema no aparece.
+\end{itemize}
+
+% ---------------------------------------------------------------------
+\section{Memoria virtual: paginación Sv32 (vm.c, vm.h, arch.h)}
+
+\subsection*{Qué resuelve}
+
+Construir y mantener las tablas de páginas que la MMU usa para
+traducir direcciones virtuales a físicas. Sin esto, el kernel
+funcionaría en modo \emph{bare} (acceso directo a RAM física), no
+podríamos darle un espacio de direcciones independiente a cada
+proceso ni proteger zonas del kernel del acceso de usuario.
+
+\subsection*{Formato de PTE en Sv32}
+
+EDOS usa el régimen \texttt{Sv32} de RISC-V: tablas de \textbf{dos
+niveles}, página de \textbf{4\,KiB}. Una dirección virtual de 32
+bits se descompone:
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    cell/.style={draw,minimum height=0.7cm,align=center}
+]
+\node[cell,minimum width=2.8cm,fill=c1!20] (vpn1) at (0,0) {VPN[1]};
+\node[cell,minimum width=2.8cm,fill=c2!20,right=0pt of vpn1] (vpn0) {VPN[0]};
+\node[cell,minimum width=3.4cm,fill=c3!20,right=0pt of vpn0] (off)  {offset};
+\node[font=\scriptsize] at ($(vpn1.north)+(0,0.25)$) {10 bits (idx1)};
+\node[font=\scriptsize] at ($(vpn0.north)+(0,0.25)$) {10 bits (idx0)};
+\node[font=\scriptsize] at ($(off.north)+(0,0.25)$)  {12 bits};
+\node[font=\scriptsize] at ($(vpn1.north west)+(0.1,-0.05)$) {31};
+\node[font=\scriptsize] at ($(vpn1.north east)+(-0.15,-0.05)$) {22};
+\node[font=\scriptsize] at ($(vpn0.north west)+(0.1,-0.05)$) {21};
+\node[font=\scriptsize] at ($(vpn0.north east)+(-0.15,-0.05)$) {12};
+\node[font=\scriptsize] at ($(off.north west)+(0.1,-0.05)$)  {11};
+\node[font=\scriptsize] at ($(off.north east)+(-0.05,-0.05)$) {0};
+\end{tikzpicture}
+\end{center}
+
+Una entrada de tabla (PTE) es de \textbf{32 bits} con 22 b de PPN y
+10 b de flags:
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    cell/.style={draw,minimum height=0.7cm,align=center}
+]
+\node[cell,minimum width=5.6cm,fill=c1!20] (ppn) at (0,0) {PPN (Physical Page Number)};
+\node[cell,minimum width=0.6cm,fill=c3!25,right=0pt of ppn] (u)  {U};
+\node[cell,minimum width=0.6cm,fill=c3!25,right=0pt of u]   (x)  {X};
+\node[cell,minimum width=0.6cm,fill=c3!25,right=0pt of x]   (w)  {W};
+\node[cell,minimum width=0.6cm,fill=c3!25,right=0pt of w]   (r)  {R};
+\node[cell,minimum width=0.6cm,fill=c3!25,right=0pt of r]   (v)  {V};
+\node[font=\scriptsize] at ($(ppn.north)+(0,0.25)$) {22 bits};
+\node[font=\scriptsize] at ($(v.north)+(0,0.25)$)   {1};
+\end{tikzpicture}
+\end{center}
+
+(EDOS no usa los bits A, D ni G del Sv32 estándar; el RISC-V los
+ignora si su hardware no los actualiza, lo cual es lo que pasa en
+QEMU.)
+
+\textbf{Flags definidas en \texttt{arch.h:175-179}:}
+
+\begin{itemize}[nosep,leftmargin=*]
+    \item \texttt{PAGE\_V (0x1)}: válido. Si está en 0, cualquier
+        acceso genera \emph{page fault}.
+    \item \texttt{PAGE\_R (0x2)}: lectura permitida.
+    \item \texttt{PAGE\_W (0x4)}: escritura permitida.
+    \item \texttt{PAGE\_X (0x8)}: ejecución permitida.
+    \item \texttt{PAGE\_U (0x10)}: accesible desde U-mode (sin esto,
+        el proceso de usuario no puede tocar la página aunque la
+        tenga mapeada).
+\end{itemize}
+
+\subsection*{Macros de traducción (\texttt{arch.h:188-212})}
+
+\begin{lstlisting}[style=cstyle]
+#define page_base_addr(addr) (addr & 0xfffff000)    // round-down a frontera
+#define va_offset(va)        (va & 0xfff)           // bits 11..0
+#define va_index1(va)        ((va >> 22) & 0x3ff)   // bits 31..22
+#define va_index0(va)        ((va >> 12) & 0x3ff)   // bits 21..12
+
+#define pte_ppn(pte)         (pte >> 10)            // PPN en bits 31..10
+#define pa2ppn(pa)           ((pa / PAGE_SIZE) << 10)
+#define pte_pa(pte)          ((pte >> 10) * PAGE_SIZE)
+#define pa2satp(pa)          (0x80000000 | (pa >> 12))
+\end{lstlisting}
+
+\textbf{Atención}: el bit alto de \texttt{satp} en Sv32 es el bit
+de modo. EDOS hace \texttt{0x80000000 | (pa >> 12)} que en rv32
+encodifica ``MODE=1, ASID=0, PPN=pa/4K'' (Sv32 enabled).
+
+\subsection*{Walkthrough: \texttt{get\_pte} y \texttt{map\_page}}
+
+\begin{walkthrough}
+\textbf{\texttt{arch.c:48-66} (\texttt{get\_pte}, dos niveles)}
+
+\begin{lstlisting}[style=cstyle]
+static pte* get_pte(pte* pgtbl, vaddr va, bool create_leaf) {
+    uint i = va_index1(va);
+    if ((pgtbl[i] & PAGE_V) == 0) {     // nivel 1 ausente
+        if (create_leaf) {              //   y queremos crearlo
+            paddr pa = (paddr) alloc_page();
+            if (!pa) panic("alloc_page() failed!");
+            pgtbl[i] = pa2ppn(pa) | PAGE_V;  // anclamos hoja
+        } else return 0;
+    }
+    pte* pg0 = (pte*) pte_pa(pgtbl[i]); // base de la hoja
+    return pg0 ? &pg0[va_index0(va)] : 0;
+}
+\end{lstlisting}
+
+Dos detalles claves:
+
+\begin{itemize}[nosep,leftmargin=*]
+    \item En el nivel 1, el PTE \textbf{sólo} tiene la flag
+        \texttt{V} prendida (sin R/W/X). Es la convención del Sv32
+        para indicar ``no es una hoja, sigan al próximo nivel''.
+    \item La hoja (\texttt{pg0}) es accedida por dirección física,
+        porque dentro del kernel todo está mapeado 1:1.
+\end{itemize}
+
+\textbf{\texttt{arch.c:69-73} (\texttt{map\_page})}
+
+\begin{lstlisting}[style=cstyle]
+void map_page(pte* pgtbl, vaddr va, paddr pa, uint flags) {
+    pte* entry = get_pte(pgtbl, va, true);
+    *entry = pa2ppn(pa) | flags | PAGE_V;
+}
+\end{lstlisting}
+
+Una línea para crear la PTE final. Las flags incluyen los
+permisos R/W/X/U que pasa el caller.
+\end{walkthrough}
+
+\subsection*{Construcción del \texttt{kernel\_pgtbl}}
+
+\begin{walkthrough}
+\textbf{\texttt{vm.c:6-11} (\texttt{init\_vm}) y \texttt{arch.c:97-117} (\texttt{map\_kernel\_memory})}
+
+\begin{lstlisting}[style=cstyle]
+void init_vm(void) {
+    extern pte* kernel_pgtbl;
+    kernel_pgtbl = (pte*) alloc_page(); // 1 página = directorio raíz
+    map_kernel_memory(kernel_pgtbl);
+}
+
+void map_kernel_memory(pte* pgtbl) {
+    address ktext_start = (address) __kernel_start;
+    uint    ktext_size  = (uint)(__text_end - __kernel_start);
+    address kdata_start = (address) (__text_end);
+    uint    kdata_size  = (uint) (__mem_end - __text_end);
+
+    map_region(pgtbl, UART,        UART,        PAGE_SIZE, PAGE_R | PAGE_W);
+    map_region(pgtbl, VIRTIO0,     VIRTIO0,     PAGE_SIZE, PAGE_R | PAGE_W);
+    map_region(pgtbl, PLIC,        PLIC,        PLIC_SIZE, PAGE_R | PAGE_W);
+    map_region(pgtbl, ktext_start, ktext_start, ktext_size, PAGE_R | PAGE_X);
+    map_region(pgtbl, kdata_start, kdata_start, kdata_size, PAGE_R | PAGE_W);
+}
+\end{lstlisting}
+
+Cinco regiones \textbf{idénticas en virtual y físico} (1:1):
+
+\begin{enumerate}[nosep,leftmargin=*]
+    \item UART (\texttt{0x10000000}): R/W.
+    \item VIRTIO0 (\texttt{0x10001000}): R/W.
+    \item PLIC (\texttt{0x0c000000}, 4\,MiB): R/W.
+    \item Kernel \texttt{.text}: R+X (no W para que un bug del
+        kernel no pueda sobrescribir su propio código).
+    \item Kernel \texttt{.data} + \texttt{.bss} + stacks + pool de
+        páginas: R+W (no X).
+\end{enumerate}
+
+Ninguna de estas tiene el bit \texttt{U}, así que los procesos no
+pueden tocarlas.
+\end{walkthrough}
+
+\subsection*{Cambio de espacio de direcciones (\texttt{arch.h:420-425})}
+
+\begin{lstlisting}[style=cstyle]
+static inline void set_page_table(pte* pgtbl) {
+    __asm__ __volatile__("sfence.vma");           // invalida TLB anterior
+    w_satp(pa2satp((size_t) pgtbl));              // cambia raíz
+    __asm__ __volatile__("sfence.vma");           // invalida TLB nueva
+}
+\end{lstlisting}
+
+Las dos \texttt{sfence.vma} son críticas. Sin ellas, la MMU podría
+seguir usando entradas cacheadas que apuntan a la tabla anterior y
+toda la traducción quedaría mal.
+
+\subsection*{Resumen de funciones de \texttt{vm.h}}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{init\_vm()} — crea \texttt{kernel\_pgtbl}.
+    \item \texttt{map\_region(pgtbl, va, pa, size, flags)} — mapea
+        un rango (\texttt{vm.c:14-25}).
+    \item \texttt{unmap\_region(pgtbl, va, size, free)} — desmapea
+        rango (\texttt{vm.c:28-36}).
+    \item \texttt{copy\_from\_user(pgtbl, dst, src\_va, n)} y
+        \texttt{copy\_to\_user} — traducen la VA de usuario a su PA
+        kernel-visible vía \texttt{va2kernel\_address} y hacen
+        \texttt{memcpy}.
+\end{itemize}
+
+\subsection*{Errores típicos en VM}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Olvidar \texttt{sfence.vma}}: traducción
+        impredecible tras cambiar \texttt{satp}.
+    \item \textbf{No prender \texttt{PAGE\_U}} en páginas del
+        proceso: el kernel las ve OK, pero el proceso obtiene page
+        fault al primer acceso.
+    \item \textbf{No copiar \texttt{kernel\_pgtbl} en
+        \texttt{exec}}: el proceso pierde los mapeos del kernel y,
+        cuando entre a un trap, \texttt{s\_trap}/\texttt{u\_trap}
+        no estarán en su espacio $\Rightarrow$ panic.
+\end{itemize}
+
+% ---------------------------------------------------------------------
+\section{Tareas y scheduler (task.c, task.h)}
+
+\subsection*{Qué resuelve}
+
+Multiplexar la CPU entre varias \emph{tareas}. Una \emph{tarea} en
+EDOS es la abstracción común que cubre tanto threads de kernel como
+procesos de usuario; la diferencia es que un proceso tiene
+\texttt{pid > 0} y un \texttt{pgtbl} distinto del \texttt{kernel\_pgtbl}
+(\texttt{task.h:67-68}: \texttt{is\_process}).
+
+\subsection*{Estructura \texttt{struct task} (task.h:23-39)}
+
+\begin{lstlisting}[style=cstyle]
+struct task {
+    uint            tid;             // task id (siempre)
+    uint            pid;             // process id (0 si kernel-thread)
+    char            name[81];        // nombre amistoso
+    int             state;           // UNUSED, CREATED, RUNNABLE, ...
+    struct task    *parent;          // padre (NULL para init)
+    bool            killed;          // marca de muerte
+    int             exit_code;
+    struct context  ctx;             // ra, sp, s0..s11 (callee-saved)
+    int             ticks;           // cuanto restante (QUANTUM=2 inicial)
+    uint8          *kstack;          // base del kernel stack (4 KiB)
+    uint64          sleep_ticks;     // contador para sleep(n)
+    int             cpu_id;          // CPU donde corre, -1 si no corre
+    void           *wait_condition;  // canal de espera (suspend)
+    pte            *pgtbl;           // page table del proceso
+    spinlock        lock;
+};
+\end{lstlisting}
+
+\textbf{Tabla global}: \texttt{static struct task tasks[TASK\_MAX]}
+con \texttt{TASK\_MAX = 16} (\texttt{task.h:7, task.c:17}).
+
+\subsection*{Máquina de estados}
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    state/.style={draw,rounded corners,minimum width=2.6cm,minimum height=0.7cm,align=center},
+    arr/.style={->,thick}
+]
+\node[state,fill=cfree!25] (un) at (0,4)       {UNUSED};
+\node[state,fill=c1!25]    (cr) at (4,4)       {CREATED};
+\node[state,fill=c2!25]    (rn) at (8,4)       {RUNNABLE};
+\node[state,fill=c3!25]    (ru) at (8,2)       {RUNNING};
+\node[state,fill=c4!25]    (wa) at (4,2)       {WAITING};
+\node[state,fill=cred!25]  (zo) at (4,0)       {ZOMBIE};
+
+\draw[arr] (un) -- node[above,font=\scriptsize]{create\_task} (cr);
+\draw[arr] (cr) -- node[above,font=\scriptsize]{create\_process} (rn);
+\draw[arr] (rn) -- node[right,font=\scriptsize]{scheduler} (ru);
+\draw[arr] (ru) to[bend right=15] node[left,font=\scriptsize]{yield} (rn);
+\draw[arr] (ru) -- node[above,font=\scriptsize]{suspend} (wa);
+\draw[arr] (wa) -- node[right,font=\scriptsize]{wakeup} (rn);
+\draw[arr] (ru) -- node[right,font=\scriptsize]{terminate} (zo);
+\draw[arr,bend right=25] (zo) to node[above,font=\scriptsize]{free\_resources} (un);
+\end{tikzpicture}
+\end{center}
+
+(EDOS define también \texttt{TERMINATED} en \texttt{task.h:15}, pero
+en la práctica no la usa el flujo principal: las tareas pasan
+directo de \texttt{RUNNING} a \texttt{ZOMBIE}.)
+
+\subsection*{Walkthrough: \texttt{scheduler} (\texttt{task.c:90-118})}
+
+\begin{walkthrough}
+\begin{lstlisting}[style=cstyle]
+void scheduler(void) {
+    int cpu_id = cpuid();
+    cpus_state[cpu_id].task = NULL;
+    while (1) {
+        enable_interrupts();
+        for (int i=0; i<TASK_MAX; i++) {
+            acquire(&tasks[i].lock);
+            if (tasks[i].state == ZOMBIE) {
+                free_resources(&tasks[i]);     // libera kstack y marca UNUSED
+            } else if (tasks[i].state == RUNNABLE) {
+                struct task* next = &tasks[i];
+                next->state  = RUNNING;
+                next->cpu_id = cpu_id;
+                next->ticks  = QUANTUM;
+                cpus_state[cpu_id].task = next;
+
+                context_switch(&cpus_state[cpu_id].ctx, &next->ctx);
+
+                // cuando next cede, volvemos acá
+                next->cpu_id = -1;
+                cpus_state[cpu_id].task = NULL;
+            }
+            release(&tasks[i].lock);
+        }
+    }
+}
+\end{lstlisting}
+
+\textbf{Observaciones:}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Cada CPU tiene su propio ``thread de scheduler'' con
+        contexto en \texttt{cpus\_state[cpu].ctx}.
+    \item El recorrido es \textbf{round-robin sobre el arreglo
+        \texttt{tasks[]}}, no por prioridad ni por cola de listos
+        separada.
+    \item Al hacer \texttt{context\_switch}, el ``ra'' guardado del
+        scheduler le permite volver a la línea siguiente cuando la
+        tarea ceda.
+    \item Mientras tiene la CPU una tarea, su \texttt{lock} está
+        tomado (\textbf{importante}: \texttt{yield} libera tras el
+        \texttt{sched}, ver abajo).
+\end{itemize}
+\end{walkthrough}
+
+\subsection*{\texttt{yield}, \texttt{sched} y la pareja con \texttt{scheduler}}
+
+\begin{lstlisting}[style=cstyle]
+/* task.c:140-158 */
+void yield(void) {
+    struct task *t = cpus_state[cpuid()].task;
+    acquire(&t->lock);
+    t->state = RUNNABLE;
+    sched(t);             // salta al scheduler, manteniendo el lock
+    release(&t->lock);    // al volver, libera el lock
+}
+
+/* task.c:126-137 */
+static void sched(struct task* current) {
+    int cpu_id = cpuid();
+    int irq_status = cpus_state[cpu_id].irq_enabled;
+    context_switch(&current->ctx, &cpus_state[cpu_id].ctx);
+    cpus_state[cpuid()].irq_enabled = irq_status;
+}
+\end{lstlisting}
+
+\textbf{La danza del lock}:
+
+\begin{enumerate}[nosep,leftmargin=*]
+    \item \texttt{yield} entra y \emph{toma} el lock de la tarea.
+    \item Cambia \texttt{state} a \texttt{RUNNABLE}.
+    \item Llama a \texttt{sched}, que hace \texttt{context\_switch}
+        al scheduler.
+    \item El scheduler ``retorna'' en el medio de \texttt{for},
+        donde luego va a \texttt{release(\&tasks[i].lock)}: ese es
+        \emph{nuestro} lock.
+    \item Más tarde, otro \texttt{context\_switch} nos trae de
+        vuelta dentro de \texttt{sched} $\to$ \texttt{yield} $\to$
+        \texttt{release(\&t->lock)}: ahora \emph{el scheduler nos
+        liberó} y nosotros liberamos también. Cuidado: la cuenta
+        de \texttt{noff} (push\_irq\_off) debe alinearse.
+\end{enumerate}
+
+\subsection*{Walkthrough: \texttt{create\_task}}
+
+\begin{walkthrough}
+\textbf{\texttt{task.c:53-79}}
+
+\begin{lstlisting}[style=cstyle]
+struct task* create_task(char* name, task_function f) {
+    struct task *task = NULL;
+    for (int i = 0; i < TASK_MAX && !task; i++) {
+        acquire(&tasks[i].lock);
+        if (tasks[i].state == UNUSED) {
+            task = &tasks[i];
+            memset(&task->ctx, 0, sizeof(struct context));
+            task->ctx.ra = (address) f;                      // (a)
+            task->kstack = alloc_page();                     // (b)
+            task->ctx.sp = (address) (task->kstack + PAGE_SIZE);
+            task->tid    = ++last_tid;
+            task->pid    = 0;
+            task->pgtbl  = kernel_pgtbl;                     // (c)
+            task->state  = CREATED;
+            strcpy(task->name, name);
+        }
+        release(&tasks[i].lock);
+    }
+    return task;
+}
+\end{lstlisting}
+
+\textbf{(a)} El truco está acá: configuramos el ``return address''
+del contexto guardado para que apunte a \texttt{f}. Cuando el
+scheduler haga \texttt{context\_switch(\&scheduler\_ctx,
+\&task->ctx)}, lo último que carga es \texttt{ra = f}, e
+inmediatamente hace \texttt{ret} (la instrucción de retorno de
+\texttt{context\_switch} en \texttt{arch.s:122}). Como \texttt{ret}
+en RISC-V es \texttt{jr ra}, terminamos saltando a \texttt{f} ``como
+si \texttt{f} hubiera sido llamada''.
+
+\textbf{(b)} Reservamos una página para kernel stack y dejamos
+\texttt{sp} en el tope (RISC-V crece para abajo).
+
+\textbf{(c)} Tarea de kernel: comparte el \texttt{kernel\_pgtbl}.
+Un proceso va a tener su propio pgtbl, asignado más tarde por
+\texttt{exec}.
+\end{walkthrough}
+
+\subsection*{\texttt{suspend}, \texttt{wakeup}, \texttt{sleep}}
+
+\begin{walkthrough}
+\textbf{\texttt{task.c:163-183}}
+
+\begin{lstlisting}[style=cstyle]
+void suspend(void* condition, spinlock* lk) {
+    struct task* task = current_task();
+    acquire(&task->lock);
+    release(lk);                  // liberamos el lock del recurso
+    task->wait_condition = condition;
+    task->state = WAITING;
+    sched(task);                  // ceder
+    task->wait_condition = 0;
+    release(&task->lock);
+    acquire(lk);                  // reasumimos el lock del recurso
+}
+\end{lstlisting}
+
+Es el patrón clásico (xv6, Linux): \emph{atomically release+sleep}.
+El truco para que el \texttt{wakeup} no se pierda es que
+\texttt{lk} se libera \emph{con \texttt{task->lock} tomado}; el
+\texttt{wakeup}, cuando recorre la tabla, intenta tomar
+\texttt{task->lock}, así que no puede despertarnos antes de que
+ya estemos en \texttt{WAITING} dentro de \texttt{sched}.
+
+\texttt{wakeup} (\texttt{task.c:186-200}) recorre todas las tareas,
+toma su \texttt{lock} y cambia a \texttt{RUNNABLE} las que coincidan
+en \texttt{wait\_condition}.
+
+\texttt{sleep(n)} (\texttt{task.c:203-212}) es un caso particular:
+deja en \texttt{sleep\_ticks} el contador y se suspende con
+condición \texttt{\&ticks}. El \texttt{inc\_ticks} en cada timer
+decrementa \texttt{sleep\_ticks} y, al llegar a 0, pasa a
+\texttt{RUNNABLE}.
+\end{walkthrough}
+
+\subsection*{Errores típicos en \texttt{task.c}}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Olvidar el \texttt{release(\&t->lock)} en algún path:
+        deja el lock tomado para siempre.
+    \item Hacer \texttt{wakeup(t)} sin tener \texttt{t->lock} (en
+        EDOS lo toma adentro). Si lo hicieras desde fuera con el
+        lock ya tomado, deadlock.
+    \item Cambiar el \texttt{state} fuera del lock.
+    \item Asumir que después de \texttt{sched(t)} estamos en la
+        misma CPU. Podemos haber migrado.
+\end{itemize}
+
+% ---------------------------------------------------------------------
+\section{Procesos de usuario (task.c + vm.c + arch.s)}
+
+\subsection*{Espacio de direcciones del proceso}
+
+\texttt{PROC\_MIN\_VA = 0}, \texttt{PROC\_MAX\_VA = 0x80000000}
+(\texttt{task.h:19-20}). El stack va al final, una sola página:
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    sec/.style={draw,minimum width=4.5cm,minimum height=0.7cm,align=center}
+]
+\node[sec,fill=c1!25] (text)  at (0,5)        {código + datos\\(desde \texttt{0x0})};
+\node[sec,fill=cfree!20,below=0pt of text,minimum height=2.2cm] (gap) {free space \\ (sin mapear)};
+\node[sec,fill=c3!25,below=0pt of gap]        (stk)  {stack \\ (1 página)};
+\node[anchor=west,xshift=0.5cm] at (text.east) {\texttt{0x00000000}};
+\node[anchor=west,xshift=0.5cm] at (gap.east)  {};
+\node[anchor=west,xshift=0.5cm] at (stk.east)  {\texttt{PROC\_MAX\_VA -- 4\,KiB}};
+\node[anchor=west,xshift=0.5cm] at (stk.south east) {\texttt{0x80000000} (excluido)};
+\end{tikzpicture}
+\end{center}
+
+\subsection*{Creación del primer proceso}
+
+\begin{walkthrough}
+\textbf{\texttt{task.c:424-441} (\texttt{create\_process})}
+
+\begin{lstlisting}[style=cstyle]
+bool create_process(char *path) {
+    struct task* t = create_task(path, start_process); // (a)
+    if (!t) panic("Create process: No tasks free slot!");
+
+    t->pid = ++last_pid;                                // (b)
+    if (!exec(t, path, 0)) {                            // (c)
+        release(&t->lock);
+        return false;
+    }
+    t->state = RUNNABLE;                                // (d)
+    return true;
+}
+\end{lstlisting}
+
+\textbf{(a)} Crear un \texttt{task} con \texttt{start\_process} como
+``ra''. Cuando el scheduler lo elija por primera vez,
+\texttt{context\_switch} le entregará el control a
+\texttt{start\_process}.
+
+\textbf{(b)} Asignar PID (\texttt{++last\_pid}).
+
+\textbf{(c)} \texttt{exec} carga el programa.
+
+\textbf{(d)} \texttt{RUNNABLE}: ya es elegible.
+\end{walkthrough}
+
+\subsection*{Walkthrough: \texttt{exec}}
+
+\begin{walkthrough}
+\textbf{\texttt{task.c:376-421}}
+
+\begin{lstlisting}[style=cstyle]
+bool exec(struct task* task, char* path, char* args[]) {
+    struct trap_frame *tf = task_trap_frame_address(task);
+
+    pte* new_pgtbl = (pte*) alloc_page();
+    if (!new_pgtbl) goto error;
+
+    memcpy(new_pgtbl, kernel_pgtbl, PAGE_SIZE);          // (1)
+    if (!load_program(new_pgtbl, path)) goto error;       // (2)
+
+    uint8 *ustack = (uint8 *) alloc_page();
+    if (!ustack) goto error;
+    map_page(new_pgtbl, PROC_MAX_VA - PAGE_SIZE, (paddr) ustack,
+             PAGE_R | PAGE_W | PAGE_U);                   // (3)
+
+    vaddr sp = setup_main_args(task, ustack + PAGE_SIZE, args); // (4)
+
+    tf->sp = sp;                                          // (5)
+    tf->pc = 0;                                           // (6)
+
+    if (is_process(task)) {                               // (7)
+        unmap_region(task->pgtbl, 0, PROC_MAX_VA, true);
+        free_page(task->pgtbl);
+    }
+    task->pgtbl  = new_pgtbl;
+    task->ctx.sp = (size_t) tf;                           // (8)
+    return sp;
+error:
+    free_page(new_pgtbl);
+    return false;
+}
+\end{lstlisting}
+
+\textbf{(1)} \texttt{memcpy(new\_pgtbl, kernel\_pgtbl, PAGE\_SIZE)}.
+Copia el directorio raíz del kernel en el del proceso. \emph{Las
+entradas de hoja del kernel (sus PTs internas) son compartidas con
+toda otra page table de proceso}. Por eso un page fault en código
+de \texttt{s\_trap} jamás ocurre: está mapeado en cualquier proceso.
+
+\textbf{(2)} \texttt{load\_program} (\texttt{task.c:291-313}) hace
+\texttt{efs\_file(path)}, asigna páginas para todo el contenido y
+las mapea con \texttt{R|W|X|U} a partir de \texttt{VA=0}.
+
+\textbf{(3)} Mapea \emph{una sola página de stack} con permisos
+\texttt{R|W|U} en \texttt{PROC\_MAX\_VA - 4\,KiB}. Sin \texttt{U}
+el proceso no podría ni escribir su SP.
+
+\textbf{(4)} \texttt{setup\_main\_args} (\texttt{task.c:335-363})
+copia los strings de \texttt{args[]} al stack y arma el array
+\texttt{argv[]}. Llena \texttt{tf->a0 = argc} y
+\texttt{tf->a1 = \&argv}.
+
+\textbf{(5)(6)} Punto de retorno a usuario: \texttt{pc=0} (entry
+point del programa) y \texttt{sp = top del stack}.
+
+\textbf{(7)} Si el task ya era un proceso (caso de un \texttt{exec}
+sobre un proceso vivo), desmapea su anterior pgtbl y libera.
+
+\textbf{(8)} \texttt{task->ctx.sp = (size\_t) tf}. Esto es elegante:
+deja el kernel-mode SP del task apuntando al trap frame. Cuando el
+scheduler haga \texttt{context\_switch} a este task y caigamos en
+\texttt{start\_process}, \texttt{sp} ya estará sobre el trap frame
+listo para que \texttt{return\_to\_user\_mode} lea
+\texttt{task->kstack + PAGE\_SIZE - sizeof(tf)}.
+\end{walkthrough}
+
+\subsection*{\texttt{start\_process} y la primera vuelta a U-mode}
+
+\begin{walkthrough}
+\textbf{\texttt{task.c:366-372}}
+
+\begin{lstlisting}[style=cstyle]
+static void start_process(void) {
+    struct task *task = current_task();
+    release(&task->lock);          // soltamos el lock que tomó el scheduler
+    return_to_user_mode();          // configurar CSRs y u_trap_ret
+}
+\end{lstlisting}
+
+Recordá: el \emph{scheduler} cuando hace \texttt{context\_switch} a
+un task \texttt{RUNNABLE} ya tiene \texttt{task->lock} tomado. La
+``promesa'' es que la tarea, al recibir el control, va a soltarlo.
+
+Después de \texttt{return\_to\_user\_mode}, el flujo termina en
+\texttt{u\_trap\_ret} (\texttt{trap.s:150-192}) que pone \texttt{sp}
+al trap frame, restaura los registros y hace \texttt{sret}. El
+\texttt{sret} salta a \texttt{tf->pc = 0}, que es la entry
+\texttt{start} del binario de usuario (definida primero en
+\texttt{user.ld} con \texttt{ENTRY(start)}).
+\end{walkthrough}
+
+\subsection*{Diagrama: ciclo de vida de un proceso}
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small,align=center},
+    box/.style={draw,rounded corners,minimum width=3.2cm,minimum height=0.8cm},
+    arr/.style={->,thick}
+]
+\node[box,fill=c1!25] (cm) at (0, 5) {kernel\_main \\ \scriptsize (hart 0)};
+\node[box,fill=c2!25] (cp) at (0, 3) {create\_process};
+\node[box,fill=c3!25] (sc) at (0, 1) {scheduler \\ \scriptsize (cualquier hart)};
+\node[box,fill=c4!25] (sp) at (6, 1) {start\_process};
+\node[box,fill=c4!25] (rt) at (6, 3) {return\_to\_user\_mode};
+\node[box,fill=cred!25] (us) at (6, 5) {init.c::start \\ \scriptsize (U-mode)};
+\draw[arr] (cm) -- node[right,font=\scriptsize]{create\_process("init")} (cp);
+\draw[arr] (cp) -- node[right,font=\scriptsize]{exec + state=RUNNABLE} (sc);
+\draw[arr] (sc) -- node[above,font=\scriptsize]{context\_switch} (sp);
+\draw[arr] (sp) -- (rt);
+\draw[arr] (rt) -- node[right,font=\scriptsize]{u\_trap\_ret + sret} (us);
+\end{tikzpicture}
+\end{center}
+
+% ---------------------------------------------------------------------
+\section{Syscalls (syscall.c, syscall.h)}
+
+\subsection*{Convención}
+
+Los binarios de usuario implementan cada syscall en
+\texttt{user/usys.s} cargando el número en \texttt{a7} y haciendo
+\texttt{ecall}:
+
+\begin{lstlisting}[style=asmstyle]
+.global getpid
+getpid:
+    li a7, 1     # SYS_GETPID
+    ecall
+    ret
+\end{lstlisting}
+
+Los argumentos viajan en \texttt{a0--a6}. El resultado vuelve en
+\texttt{a0}.
+
+\subsection*{Tabla de syscalls}
+
+\begin{center}
+\small
+\begin{tabular}{@{}clp{8cm}@{}}
+\toprule
+\# & Nombre & Comportamiento \\
+\midrule
+0 & \texttt{exit(int code)}      & Marca \texttt{killed=true}; el trap handler lo cosechará en \texttt{terminate}. \\
+1 & \texttt{getpid()}            & Devuelve \texttt{task->pid}. \\
+2 & \texttt{console\_puts(s)}    & Traduce la VA del string a kernel y hace \texttt{printf("\%s", \dots)}. \\
+3 & \texttt{console\_putc(c)}    & \texttt{console\_putc(arg0)}. \\
+4 & \texttt{console\_getc()}     & Lee 1 carácter (no bloqueante; devuelve 0 si no hay). \\
+5 & \texttt{sleep(n)}            & Suspende la tarea por \texttt{n} ticks. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{Walkthrough: el dispatcher (\texttt{syscall.c:73-84})}
+
+\begin{walkthrough}
+\begin{lstlisting}[style=cstyle]
+void syscall(struct task *task) {
+    struct trap_frame *tf = task_trap_frame_address(task);
+    uint n = syscall_number(tf);              // tf->a7
+    if (n < SYSCALLS && syscalls_table[n]) {
+        int result = syscalls_table[n](task);
+        syscall_put_result(tf, result);       // tf->a0 = result
+    } else {
+        syscall_put_result(tf, -1);
+    }
+}
+\end{lstlisting}
+
+Notar que el \texttt{syscall} \emph{escribe directamente en el trap
+frame}. Cuando \texttt{user\_trap} retorna y \texttt{u\_trap\_ret}
+restaura registros, \texttt{a0} contiene el resultado.
+
+Después de retornar, \texttt{user\_trap} llama a
+\texttt{skip\_trap\_instruction(tf)} (\texttt{arch.h:333}) que hace
+\texttt{tf->pc += 4}. Sin esto, el \texttt{sret} volvería al mismo
+\texttt{ecall} y caeríamos en un loop infinito.
+\end{walkthrough}
+
+\subsection*{Validación de punteros}
+
+\textbf{Importante}: \texttt{sys\_console\_puts}
+(\texttt{syscall.c:22-29}) traduce la VA del usuario a una dirección
+kernel:
+
+\begin{lstlisting}[style=cstyle]
+int sys_console_puts(struct task *task) {
+    struct trap_frame *tf = task_trap_frame_address(task);
+    size_t str  = syscall_arg(tf, 0);
+    char *kaddr = (char *) va2kernel_address(task->pgtbl, (vaddr)str);
+    printf("%s", kaddr);
+    return 0;
+}
+\end{lstlisting}
+
+\begin{importante}
+La validación en EDOS \textbf{es mínima}: si \texttt{kaddr} resulta
+0 (página no mapeada en el proceso), el \texttt{printf("\%s", 0)}
+va a crashear. Tampoco se chequea longitud, alineamiento ni que
+toda la cadena viva en una región accesible. Esto es deliberado:
+EDOS muestra el \emph{esqueleto}, no la validación industrial. En
+xv6 lo hace \texttt{argstr/argint/fetchaddr}.
+\end{importante}
+
+% ---------------------------------------------------------------------
+\section{Sistema de archivos EFS (efs.c, efs.h, efsfiles.c)}
+
+\subsection*{Qué provee}
+
+Un sistema de archivos \textbf{en RAM}, \textbf{embebido en el
+binario del kernel}, \textbf{de sólo lectura}. Cada archivo es un
+arreglo de bytes con un nombre y un tipo (\texttt{EFS\_FILE\_PROGRAM}
+o \texttt{EFS\_FILE\_DATA}).
+
+\subsection*{Tabla de archivos}
+
+\begin{lstlisting}[style=cstyle]
+struct file {
+    char            *name;
+    unsigned char   type;        // PROGRAM o DATA
+    unsigned char   *data;
+    unsigned int    length;
+};
+extern struct file efs_files_table[];
+\end{lstlisting}
+
+\texttt{efsfiles.c} (\textbf{generado} por \texttt{user/mkefs.sh}
+con \texttt{xxd -i}) contiene:
+
+\begin{itemize}[nosep,leftmargin=*]
+    \item \texttt{unsigned char init\_bin[]} — bytes binarios del
+        ejecutable \texttt{init}.
+    \item \texttt{unsigned char README[]} — contenido del README.
+    \item \texttt{efs\_files\_table[]} = \{(\texttt{init},
+        \texttt{PROGRAM}, \texttt{init\_bin}, len), (\texttt{README},
+        \texttt{DATA}, \texttt{README}, len), \{0\}\}.
+\end{itemize}
+
+\subsection*{API}
+
+Sólo dos cosas, y una de ellas con una línea:
+
+\begin{lstlisting}[style=cstyle]
+struct file* efs_file(char *file_name) {
+    for (int i=0; efs_files_table[i].name; i++)
+        if (strcmp(efs_files_table[i].name, file_name) == 0)
+            return efs_files_table + i;
+    return 0;
+}
+\end{lstlisting}
+
+\subsection*{Cómo \texttt{exec} lo usa}
+
+En \texttt{task.c:291-313} (\texttt{load\_program}):
+
+\begin{enumerate}[nosep,leftmargin=*]
+    \item \texttt{efs\_file(path)} devuelve el \texttt{file*} de
+        \texttt{init} (o falla si el path no existe / no es PROGRAM).
+    \item Por cada bloque de hasta 4\,KiB, hace
+        \texttt{alloc\_page}, copia con \texttt{memcpy} y
+        \texttt{map\_page} a la VA correspondiente.
+\end{enumerate}
+
+\subsection*{Diferencias con xv6fs}
+
+EFS \textbf{no tiene}:
+
+\begin{itemize}[nosep,leftmargin=*]
+    \item Inodes ni superblock.
+    \item Bloques en disco (todo en RAM).
+    \item Directorios (es una lista plana).
+    \item Permisos.
+    \item Escritura, append, truncate, delete.
+\end{itemize}
+
+Esto es a propósito: la consigna no es ``filesystem completo''
+sino ``manera de tener un binario de usuario disponible al boot''.
+xv6fs (que sí tiene todo lo anterior) se cubre en talleres
+posteriores en otras versiones del curso.
+
+% ---------------------------------------------------------------------
+\section{Programas de usuario (user/)}
+
+\subsection*{Qué hay}
+
+\begin{itemize}[nosep,leftmargin=*]
+    \item \texttt{init.c} — el ``programa init'' que es el primer
+        (y único, en 08-process) proceso de usuario.
+    \item \texttt{edoslib.c}/\texttt{edoslib.h} — la mini-libc de
+        EDOS. Provee \texttt{printf}, \texttt{strcpy}, \texttt{memset}, etc.,
+        más la entrada \texttt{start()}.
+    \item \texttt{usys.s} — un stub por syscall que carga
+        \texttt{a7} y hace \texttt{ecall}.
+    \item \texttt{user.ld} — linker script con \texttt{ENTRY(start)}
+        y \texttt{. = 0;}.
+    \item \texttt{Makefile} — compila a rv32 estático y empaqueta.
+    \item \texttt{mkefs.sh} — convierte los binarios en
+        \texttt{efsfiles.c}.
+    \item \texttt{README} — archivo de datos para probar EFS.
+\end{itemize}
+
+\subsection*{Cómo se compila el ejecutable}
+
+\begin{lstlisting}[style=shellstyle]
+riscv64-unknown-elf-gcc -O -Wall -mcmodel=medany -march=rv32ima -mabi=ilp32 \
+  -ffreestanding -nostdlib -fno-common -fno-omit-frame-pointer \
+  -fno-stack-protector -nostartfiles -static \
+  -Wl,-Tuser.ld,--build-id=none -o init -e start \
+  edoslib.o usys.o init.c
+riscv64-unknown-elf-objcopy -S -O binary init init.bin
+\end{lstlisting}
+
+\textbf{Notas:}
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{rv32ima} = rv32 base + multiplicación + atómicos.
+    \item \texttt{nostartfiles} suprime el \texttt{crt0.o} de
+        GCC: usamos \emph{nuestra} \texttt{start} en \texttt{edoslib.c:14}.
+    \item \texttt{-e start} explicita el entry point.
+    \item \texttt{objcopy -O binary} elimina la cabecera ELF; el
+        binario que termina en EFS son \emph{instrucciones puras}
+        listas para mapear en VA=0.
+\end{itemize}
+
+\subsection*{\texttt{start} y el ciclo de vida}
+
+\begin{lstlisting}[style=cstyle]
+extern int main();
+void start(void) { exit(main()); }
+\end{lstlisting}
+
+(\texttt{edoslib.c:14-17}.) La primera función definida en el
+\texttt{.text}, garantizada por \texttt{KEEP(*(.text.start))} en
+\texttt{user.ld}. Aunque acá usamos sólo la convención del nombre,
+en proyectos más grandes habría una sección \texttt{.text.start}
+explícita.
+
+% =====================================================================
+\part{Diferencias y similitudes con xv6}
+% =====================================================================
+
+\section{Tabla comparativa}
+
+\begin{center}
+\footnotesize
+\begin{longtable}{@{}p{3.5cm}p{6cm}p{6cm}@{}}
+\toprule
+Aspecto & \textbf{EDOS (08-process)} & \textbf{xv6-riscv} \\
+\midrule
+ISA target           & rv32ima (\texttt{ilp32}) & rv64 (\texttt{lp64}) \\
+Paginación           & Sv32, 2 niveles, página 4\,KiB & Sv39, 3 niveles, página 4\,KiB \\
+Flags PTE expuestos  & V, R, W, X, U & V, R, W, X, U, A, D, G \\
+Layout kernel        & 1:1 desde \texttt{0x80000000}; MMIO mapeado 1:1; sin trampoline & 1:1 + trampoline en la VA más alta (en cada proceso) \\
+Trampoline           & No usa página separada; \texttt{s\_trap}/\texttt{u\_trap} viven en \texttt{.text} y se ven gracias a la copia de \texttt{kernel\_pgtbl} & Página dedicada \texttt{TRAMPOLINE} mapeada en cada proceso y en el kernel \\
+Trap frame           & En la cima del kernel-stack del task & Página \texttt{trapframe} per-proc mapeada vía VA fija \\
+PCB                  & \texttt{struct task} de \texttt{task.c}; UNIFICA threads de kernel y procesos & \texttt{struct proc}; tienen \texttt{trapframe} y \texttt{context} separados \\
+Estados              & UNUSED, CREATED, RUNNABLE, RUNNING, WAITING, ZOMBIE & UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE \\
+Scheduler            & Round-robin sobre \texttt{tasks[]}, quantum=2 ticks, sin prioridades & Round-robin con sleep-locks; idéntica filosofía \\
+Context switch       & \texttt{context\_switch} en \texttt{arch.s}, 14 callee-saved (rv32) & \texttt{swtch.S}, 14 callee-saved (rv64) \\
+Locking              & \texttt{spinlock} (\texttt{unsigned int}) con \texttt{push/pop\_irq\_off} & \texttt{spinlock} (con holder, name) + \texttt{sleeplock} encima \\
+Sistema de archivos  & EFS (embebido, RAM, read-only, sin directorios) & xv6fs (en disco, journaled, inodes, directorios) \\
+Syscalls             & 6 (\texttt{exit, getpid, console\_puts, console\_putc, console\_getc, sleep}) & $\sim$22 (incluye \texttt{fork, exec, wait, read, write, open, close, pipe, fstat, dup, sbrk, kill, mkdir, link, unlink, chdir}) \\
+Convención syscall   & \texttt{a7} = número, \texttt{a0--a6} = args, \texttt{a0} = ret (idéntica) & Idéntica \\
+Driver UART          & NS16550A, polling TX, RX configurable & NS16550A, IRQ-driven RX, ring buffer \\
+SMP                  & Soporta hasta NCPU=4, pero \texttt{Makefile} arranca \texttt{-smp 1} & Plenamente SMP; un hart 0 inicia y los demás esperan \\
+M-mode               & EDOS hace el rol de OpenSBI: setea PMP, deleg, MPP, timer & xv6 con \texttt{-bios default} se apoya en OpenSBI; el código RISC-V en xv6 entra ya en S-mode \\
+\bottomrule
+\end{longtable}
+\end{center}
+
+\section{Discusión: el porqué pedagógico de cada decisión}
+
+\paragraph{rv32 vs.\ rv64.}
+xv6-riscv eligió rv64 porque emula servidores modernos. EDOS optó
+por rv32 para que (a) las direcciones quepan en \texttt{uint32}, (b)
+las traducciones de páginas tengan sólo \textbf{dos niveles}, (c)
+los listados de ensamblador usen \texttt{lw}/\texttt{sw} (más
+intuitivos) y (d) la consigna ``imprimir un puntero'' no asuste con
+8 dígitos hexa.
+
+\paragraph{Sv32 vs.\ Sv39.}
+Mismo motivo: dos niveles permiten dibujar la traducción completa
+en un slide. Sv39 tiene 3 niveles + páginas de 1\,GiB y 2\,MiB que
+quitan foco.
+
+\paragraph{Sin trampoline page.}
+xv6 mapea una página de código (\texttt{trampoline.S}) en la VA más
+alta tanto en kernel como en cada proceso. Esa página tiene
+\texttt{uservec}/\texttt{userret}. EDOS toma un atajo: la copia del
+directorio raíz del kernel en cada \texttt{pgtbl} de proceso
+incluye las PTEs que apuntan a las páginas del kernel.text, y por
+tanto \texttt{s\_trap}/\texttt{u\_trap} \emph{son} accesibles desde
+el proceso (aunque sin la flag \texttt{U}, claro: sólo el hardware
+en modo S puede saltar ahí).
+
+\paragraph{Trap frame en el kernel-stack.}
+xv6 reserva una página \texttt{trapframe} por proceso, en una VA
+fija. En EDOS, el trap frame se construye \emph{empujando} 31
+registros sobre el kernel-stack del task; la macro
+\texttt{task\_trap\_frame\_address(t)} es simplemente
+\texttt{t->kstack + PAGE\_SIZE - sizeof(struct trap\_frame)}.
+Funciona porque la página del kernel-stack ya está accesible al
+kernel desde cualquier proceso. La ventaja didáctica: un solo dato
+para entender (``la cima del stack''), sin VA mágica adicional.
+
+\paragraph{EFS vs.\ xv6fs.}
+xv6 tiene un FS de disco completo (inodes, journal, directorios,
+crash-safety). Para entender ``cómo se carga el init'' no hace
+falta nada de eso: EFS pega los binarios al kernel con \texttt{xxd}.
+A cambio el alumno aprende que ``filesystem'' no significa
+``ext4''; significa ``mapeo nombre $\to$ bytes''.
+
+\paragraph{Round-robin puro.}
+EDOS no tiene prioridades ni MLFQ. La cátedra muestra esa
+complejidad en los prácticos teóricos; el kernel se queda con la
+forma más simple para que la atención esté en \texttt{context\_switch}
+y la danza del lock con el scheduler.
+
+% =====================================================================
+\part{Banco de preguntas de defensa}
+% =====================================================================
+
+A continuación, 35 preguntas razonables agrupadas por tema, con
+respuestas completas que citan archivo y línea para que las puedas
+ir leyendo en paralelo.
+
+\section{Conceptuales generales}
+
+\subsection*{P1. ¿Qué es un trap y por qué nuestro kernel \emph{necesita} uno?}
+
+\begin{respuesta}
+Un \emph{trap} es cualquier transferencia involuntaria del flujo
+de control desde el código actual hacia un handler en modo
+supervisor. En RISC-V hay tres familias: \textbf{interrupciones}
+asíncronas (timer, dispositivos), \textbf{excepciones} síncronas
+(page fault, instrucción ilegal, división por cero) y la
+\textbf{trap explícita} (\texttt{ecall}, que un proceso usa para
+pedirle al kernel un servicio).
+
+Sin traps, el kernel \textbf{no podría existir tal como lo
+conocemos}: ningún proceso podría pedirle servicios al SO sin
+ejecutar él mismo en modo privilegiado, y el SO no podría recuperar
+la CPU de un proceso que no la cede voluntariamente. La existencia
+de traps + dos modos (U/S) es la base de la separación entre
+``programa de usuario'' y ``kernel''.
+
+En EDOS los handlers de bajo nivel están en \texttt{trap.s}: tres
+de ellos (\texttt{s\_trap}, \texttt{u\_trap}, \texttt{m\_trap}) y se
+ramifican en C en \texttt{trap.c::kernel\_trap} y
+\texttt{trap.c::user\_trap}.
+\end{respuesta}
+
+\subsection*{P2. ¿Qué es un trampoline y EDOS lo usa?}
+
+\begin{respuesta}
+En xv6 el \emph{trampoline} es una página de código mapeada en una
+VA fija tanto en el espacio del kernel como en el de cada proceso.
+Contiene \texttt{uservec} y \texttt{userret} (los pasajes
+\texttt{U $\to$ S} y \texttt{S $\to$ U}). El nombre viene de que
+``ambos espacios pueden saltar en él''.
+
+\textbf{EDOS no usa una página trampoline separada.} En su lugar:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Las rutinas \texttt{s\_trap} y \texttt{u\_trap} viven en
+        el segmento \texttt{.text} del kernel
+        (\texttt{trap.s:10,89}).
+    \item \texttt{exec} copia el directorio raíz del kernel en cada
+        \texttt{pgtbl} de proceso (\texttt{task.c:386}). Esa copia
+        incluye las PTEs intermedias que llevan a la \texttt{.text}
+        del kernel.
+    \item Por lo tanto la VA donde está \texttt{u\_trap} es
+        \emph{traducible} (a la misma PA, vía 1:1) desde cualquier
+        proceso. Cuando ocurre el trap y el hardware salta a
+        \texttt{stvec = u\_trap}, no hay un cambio de \texttt{satp}:
+        el código del kernel ya está accesible.
+\end{itemize}
+
+La consecuencia es que \texttt{u\_trap} \textbf{no} cambia el
+\texttt{satp} (es decir, sigue con el \texttt{pgtbl} del proceso)
+mientras hace el trabajo bajo nivel; sólo cuando entra a
+\texttt{user\_trap} se hace \texttt{set\_page\_table(kernel\_pgtbl)}
+(\texttt{trap.c:126}).
+\end{respuesta}
+
+\subsection*{P3. ¿Qué hereda un task que viene del scheduler? ¿Cómo se entera el scheduler de dónde retomar?}
+
+\begin{respuesta}
+La pieza es \texttt{context\_switch} (\texttt{arch.s:90-122}). Se
+invoca como \texttt{context\_switch(\&old, \&new)} con dos punteros
+a \texttt{struct context}. La rutina:
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item Guarda en \texttt{*old} los registros callee-saved
+        actuales: \texttt{ra, sp, s0--s11}.
+    \item Restaura desde \texttt{*new} esos mismos registros.
+    \item Hace \texttt{ret} (jr ra), que salta al \texttt{ra}
+        recién restaurado.
+\end{enumerate}
+
+Por eso, cuando el scheduler hace \texttt{context\_switch(\&own,
+\&task->ctx)}:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Guardó su propio \texttt{ra} (la instrucción siguiente a
+        la llamada) en \texttt{own.ra}. \emph{Esa es su marca de
+        retorno.}
+    \item Cargó \texttt{task->ctx.ra} y saltó allí. Si la tarea
+        nunca corrió, \texttt{ra} apunta a \texttt{start\_process}
+        (preparado en \texttt{create\_task}). Si ya corrió y luego
+        cedió, \texttt{ra} apunta justo después del
+        \texttt{context\_switch} \emph{de \texttt{sched}} que la
+        cedió.
+\end{itemize}
+
+Lo importante: el control retorna al scheduler exactamente cuando
+otro task hace \texttt{context\_switch(\&task->ctx,
+\&cpu->ctx)}, y entonces el flujo retorna a la línea siguiente
+\texttt{cpus\_state[cpu\_id].task = NULL;} en
+\texttt{task.c:112-113}.
+\end{respuesta}
+
+\subsection*{P4. ¿Qué pasa con los stacks durante el cambio de contexto?}
+
+\begin{respuesta}
+\texttt{context\_switch} salva y restaura el \texttt{sp} como
+cualquier otro callee-saved (\texttt{arch.s:93,109}). Entonces:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Cuando se entra a \texttt{context\_switch}, estamos en el
+        stack del que cede.
+    \item Después del \texttt{lw sp, 4(a1)} estamos en el stack del
+        próximo. El \texttt{ret} usa ese stack.
+\end{itemize}
+
+Es seguro porque ambas estructuras \texttt{context} fueron
+preparadas con \texttt{sp = base del kstack + 4\,KiB} en algún
+momento previo, y la zona de stack está siempre \emph{válidamente
+mapeada} en el \texttt{kernel\_pgtbl} (todos los stacks viven en la
+RAM 1:1).
+\end{respuesta}
+
+\subsection*{P5. ¿Cómo asegura el spinlock que no haya deadlock entre un trap y la sección crítica?}
+
+\begin{respuesta}
+Porque \texttt{acquire} llama a \texttt{push\_irq\_off}
+(\texttt{spinlock.c:7-17}) antes de hacer el test-and-set. Esto
+deshabilita las IRQs en la CPU local. Mientras tenemos el lock, no
+puede llegar un trap del timer que invoque \texttt{yield} y nos
+deje girando para siempre. \texttt{pop\_irq\_off} sólo rehabilita
+cuando el último \texttt{release} (anidamiento contado en
+\texttt{noff}) lo permita.
+
+En SMP, IRQs deshabilitadas en una CPU no garantizan exclusión
+entre CPUs (eso sí lo hace el spinlock); pero sí garantizan que la
+propia CPU no se interrumpa a sí misma estando dentro de la
+sección crítica.
+\end{respuesta}
+
+\section{Caminá el código de…}
+
+\subsection*{P6. Caminá el \texttt{exec} desde \texttt{create\_process} hasta el primer \texttt{sret}.}
+
+\begin{respuesta}
+\textbf{Paso a paso}, con citas:
+
+\begin{enumerate}[leftmargin=*]
+    \item \texttt{create\_process("init")} (\texttt{task.c:424-441})
+        llama a \texttt{create\_task("init", start\_process)}.
+    \item \texttt{create\_task} (\texttt{task.c:53-79}) busca un
+        slot \texttt{UNUSED} en \texttt{tasks[]}, le asigna kstack,
+        \texttt{ctx.ra=start\_process}, \texttt{ctx.sp=kstack+4K},
+        \texttt{pgtbl=kernel\_pgtbl}, estado \texttt{CREATED}.
+    \item \texttt{create\_process} asigna \texttt{pid} y llama a
+        \texttt{exec(t, "init", 0)}.
+    \item \texttt{exec} (\texttt{task.c:376-421}):
+        \begin{enumerate}[nosep,label=\alph*)]
+            \item \texttt{alloc\_page} para el nuevo \texttt{pgtbl}.
+            \item \texttt{memcpy(new\_pgtbl, kernel\_pgtbl,
+                PAGE\_SIZE)} — copia las entradas raíz del kernel.
+            \item \texttt{load\_program(new\_pgtbl, "init")}
+                (\texttt{task.c:291-313}) llama
+                \texttt{efs\_file("init")} y mapea cada bloque a
+                VAs desde 0 con \texttt{R|W|X|U}.
+            \item \texttt{alloc\_page} para el user stack y
+                \texttt{map\_page} a \texttt{PROC\_MAX\_VA-4\,KiB}
+                con \texttt{R|W|U}.
+            \item \texttt{setup\_main\_args} (no hay args para init,
+                pero igual configura \texttt{a0=0}, \texttt{a1=PROC\_MAX\_VA}).
+            \item Setea en el trap frame: \texttt{tf->pc=0},
+                \texttt{tf->sp=top stack user}.
+            \item Asigna \texttt{task->pgtbl = new\_pgtbl} y
+                \texttt{task->ctx.sp = (size\_t) tf}.
+        \end{enumerate}
+    \item \texttt{create\_process} pone \texttt{state=RUNNABLE}.
+    \item En algún hart, el \texttt{scheduler} (\texttt{task.c:90-118})
+        encuentra el task \texttt{RUNNABLE}, lo elige y hace
+        \texttt{context\_switch} a \texttt{task->ctx}.
+    \item Como \texttt{ctx.ra = start\_process}, el \texttt{ret} de
+        \texttt{context\_switch} cae en \texttt{start\_process}
+        (\texttt{task.c:366-372}) con \texttt{sp} apuntando al trap
+        frame en la cima del kstack.
+    \item \texttt{start\_process} libera el lock del task y llama
+        \texttt{return\_to\_user\_mode()}.
+    \item \texttt{return\_to\_user\_mode} (\texttt{trap.c:72-101}):
+        \begin{enumerate}[nosep,label=\alph*)]
+            \item \texttt{disable\_interrupts()}.
+            \item \texttt{stvec = u\_trap}.
+            \item \texttt{sscratch = task->kstack+4\,KiB}.
+            \item \texttt{sstatus.SPP=0; SPIE=1}.
+            \item \texttt{satp = task->pgtbl} (con
+                \texttt{sfence.vma}).
+            \item \texttt{u\_trap\_ret(\&trap\_frame)}.
+        \end{enumerate}
+    \item \texttt{u\_trap\_ret} (\texttt{trap.s:150-192}) pone
+        \texttt{sp=trap\_frame}, restaura \texttt{sepc} desde
+        \texttt{tf->pc=0}, restaura todos los registros (incluido
+        \texttt{sp=tf->sp}) y hace \texttt{sret}.
+    \item \texttt{sret} salta a la VA 0 \textbf{en U-mode}, donde
+        está la primera instrucción de \texttt{start} (entry de
+        \texttt{init} según \texttt{user.ld}).
+\end{enumerate}
+\end{respuesta}
+
+\subsection*{P7. Caminá la \texttt{getpid()} desde el espacio de usuario.}
+
+\begin{respuesta}
+\begin{enumerate}[leftmargin=*]
+    \item En \texttt{init.c}, \texttt{getpid()} es una declaración
+        \texttt{extern int getpid(void)} de \texttt{edoslib.h:24}.
+        Su definición está en \texttt{user/usys.s:13-17}:
+\begin{lstlisting}[style=asmstyle]
+getpid:
+    li a7, 1       # SYS_GETPID
+    ecall
+    ret
+\end{lstlisting}
+    \item \texttt{ecall} en U-mode genera un trap con
+        \texttt{scause=8} (\texttt{SYSCALL} en \texttt{arch.h:73}).
+    \item El hardware salta a \texttt{stvec = u\_trap}
+        (\texttt{trap.s:89}).
+    \item \texttt{u\_trap} guarda registros en el kstack del
+        proceso, llama \texttt{user\_trap()}.
+    \item \texttt{user\_trap} (\texttt{trap.c:107-181}) en el
+        \texttt{case SYSCALL} (linea 146):
+        \begin{enumerate}[nosep,label=\alph*)]
+            \item \texttt{enable\_interrupts()}.
+            \item \texttt{syscall(task)} (en \texttt{syscall.c:73}).
+            \item \texttt{skip\_trap\_instruction(tf)}.
+        \end{enumerate}
+    \item \texttt{syscall} lee \texttt{n = tf->a7 = 1}, indexa
+        \texttt{syscalls\_table[1]} y llama \texttt{sys\_getpid(task)}
+        (\texttt{syscall.c:16-19}), que devuelve \texttt{task->pid}.
+    \item \texttt{syscall\_put\_result(tf, result)} pone
+        \texttt{tf->a0 = task->pid}.
+    \item \texttt{user\_trap} retorna; \texttt{return\_to\_user\_mode}
+        y \texttt{u\_trap\_ret} restauran los registros del frame
+        (\texttt{a0} ahora tiene el PID) y hacen \texttt{sret} a
+        \texttt{tf->pc + 4} (\texttt{ecall} es 4 bytes).
+    \item En U-mode, el \texttt{ret} de \texttt{usys.s} salta de
+        vuelta al llamador, que ve el PID en \texttt{a0} según ABI
+        \texttt{ilp32}.
+\end{enumerate}
+\end{respuesta}
+
+\subsection*{P8. Caminá un \emph{page fault} del proceso.}
+
+\begin{respuesta}
+\begin{enumerate}[leftmargin=*]
+    \item El proceso accede a una VA no mapeada (o con flags
+        incorrectos: ej.\ escribir una página R+X).
+    \item La MMU genera la excepción. \texttt{scause} toma uno de:
+        \texttt{INSTRUCTION\_PAGE\_FAULT (0xc)},
+        \texttt{LOAD\_PAGE\_FAULT (0xd)} o
+        \texttt{STORE\_PAGE\_FAULT (0xf)} (\texttt{arch.h:75-79}).
+        \texttt{stval} contiene la VA que falló y \texttt{sepc} la
+        instrucción que la disparó.
+    \item Salta a \texttt{stvec = u\_trap}.
+    \item \texttt{u\_trap} guarda el trap frame y llama
+        \texttt{user\_trap}.
+    \item \texttt{user\_trap} entra a uno de los \texttt{case
+        \dots\_PAGE\_FAULT} (\texttt{trap.c:154-162}):
+\begin{lstlisting}[style=cstyle]
+case LOAD_PAGE_FAULT:
+case LOAD_ACCESS_FAULT:
+case INSTRUCTION_PAGE_FAULT:
+case STORE_ACCESS_FAULT:
+case STORE_PAGE_FAULT:
+    printf("Task %s in CPU %d page fault. Killing task...\n", ...);
+    task->exit_code = 1;
+    task->killed = true;
+    break;
+\end{lstlisting}
+    \item Luego del \texttt{switch}, si \texttt{task->killed},
+        llama a \texttt{terminate()} (\texttt{task.c:237-259}) que
+        pone \texttt{state=ZOMBIE}, hace \texttt{wakeup(t)} y entra
+        a \texttt{sched}.
+    \item El scheduler, en su próxima iteración, ve el ZOMBIE y
+        llama \texttt{free\_resources(t)} (\texttt{task.c:82-87})
+        que libera el kstack y pone \texttt{state=UNUSED}.
+\end{enumerate}
+
+\textbf{Nota:} EDOS \emph{no} implementa demand paging, COW ni
+expansión del stack. Cualquier page fault de usuario es fatal. Es
+una diferencia importante con xv6 (que tampoco hace demand paging
+para texto, pero sí mata el proceso de forma similar; eso sí, en
+xv6 más recientes el stack crece con guard).
+\end{respuesta}
+
+\subsection*{P9. Caminá un \texttt{sleep(4)}.}
+
+\begin{respuesta}
+\begin{enumerate}[leftmargin=*,nosep]
+    \item User-space: \texttt{sleep(4)} (\texttt{usys.s:42-45})
+        $\to$ \texttt{li a7, 5; ecall}.
+    \item Trap a \texttt{u\_trap} $\to$ \texttt{user\_trap} $\to$
+        \texttt{syscall} $\to$ \texttt{sys\_sleep}
+        (\texttt{syscall.c:48-54}): \texttt{sleep(4)} en kernel.
+    \item \texttt{sleep(4)} (\texttt{task.c:203-212}):
+        \texttt{acquire(\&ticks\_lock)}, \texttt{task->sleep\_ticks
+        = 4}, \texttt{suspend(\&ticks, \&ticks\_lock)}.
+    \item \texttt{suspend} libera \texttt{ticks\_lock}, marca
+        \texttt{state=WAITING, wait\_condition=\&ticks}, hace
+        \texttt{sched(task)} — la tarea cede la CPU.
+    \item Cada timer en el hart 0 llama a \texttt{inc\_ticks()}
+        (\texttt{task.c:272-288}), que recorre las tareas
+        \texttt{WAITING} con \texttt{wait\_condition == \&ticks} y
+        decrementa su \texttt{sleep\_ticks}. Cuando llega a 0, pone
+        \texttt{state=RUNNABLE}.
+    \item En la siguiente iteración del scheduler, la tarea es
+        elegible; \texttt{context\_switch} vuelve a \texttt{sched}
+        en \texttt{suspend}, que reasume \texttt{ticks\_lock},
+        retorna, y \texttt{sys\_sleep} devuelve 0.
+    \item \texttt{user\_trap} retorna; \texttt{u\_trap\_ret} salta
+        de vuelta a \texttt{ret} en \texttt{usys.s}.
+\end{enumerate}
+\end{respuesta}
+
+\subsection*{P10. Caminá el camino del timer en kernel mode.}
+
+\begin{respuesta}
+\begin{enumerate}[leftmargin=*,nosep]
+    \item Estamos ejecutando código del kernel (por ejemplo, dentro
+        del scheduler o de una syscall).
+    \item \texttt{mtime} alcanza \texttt{mtimecmp}; el hardware
+        levanta IRQ M-mode.
+    \item \texttt{mtvec = m\_trap}; saltamos a \texttt{m\_trap}
+        (\texttt{trap.s:198-250}): salva los \texttt{a*}, llama a
+        \texttt{next\_timer\_interrupt(tp)} para reprogramar
+        \texttt{mtimecmp}, escribe \texttt{sip = 2} (\texttt{SSIP}),
+        \texttt{mret}.
+    \item De vuelta en S-mode, vemos pendiente la software int.
+        \texttt{scause = 0x80000001} (TIMER\_INTERRUPT).
+    \item Como \texttt{stvec = s\_trap}, saltamos a
+        \texttt{s\_trap} (\texttt{trap.s:10}). Guarda registros en
+        \emph{el mismo stack} (estamos en kernel), llama
+        \texttt{kernel\_trap}.
+    \item \texttt{kernel\_trap} (\texttt{trap.c:29-67}): en
+        \texttt{case TIMER\_INTERRUPT}, incrementa ticks (sólo
+        hart 0), \texttt{ack\_timer\_interrupt()} (limpia
+        \texttt{sip.SSIP}); si hay tarea actual y se le acabó el
+        quantum, \texttt{yield()}.
+    \item Después del switch, \texttt{kernel\_trap} restaura
+        \texttt{sepc} y \texttt{sstatus} (puede haber cambiado por
+        un \texttt{context\_switch}) y retorna.
+    \item \texttt{s\_trap} restaura registros y hace \texttt{sret}
+        $\to$ vuelve al PC que tenía antes.
+\end{enumerate}
+\end{respuesta}
+
+\section{¿Qué pasa si…?}
+
+\subsection*{P11. ¿Qué pasa si saco el primer \texttt{sfence.vma} de \texttt{set\_page\_table}?}
+
+\begin{respuesta}
+La TLB de la CPU sigue conteniendo entradas del \texttt{satp}
+\emph{anterior}. Cuando hagamos accesos a memoria justo después de
+\texttt{w\_satp(\dots)}, la MMU resolverá esas direcciones usando
+las traducciones viejas, no las nuevas. En la práctica:
+
+\begin{itemize}[nosep,leftmargin=*]
+    \item Si pasamos del \texttt{pgtbl} de un proceso A al de B,
+        accesos a las primeras instrucciones del kernel podrían
+        traducirse contra la tabla de A (que está pendiente de
+        flush). El resultado típico es leer instrucciones
+        equivocadas o una excepción de violación de permisos.
+    \item En SMP, peor: cada CPU mantiene su propia TLB; si A se
+        movió de CPU, la TLB de la nueva CPU puede no estar
+        sincronizada.
+\end{itemize}
+
+Es justamente lo que \texttt{sfence.vma} (sin argumentos) hace:
+invalida \emph{todas} las traducciones cacheadas en la TLB local.
+\end{respuesta}
+
+\subsection*{P12. ¿Y si saco el segundo \texttt{sfence.vma}?}
+
+\begin{respuesta}
+Generalmente menos grave que sacar el primero, pero igualmente
+incorrecto. El segundo asegura que, después de que escribimos en
+una tabla de páginas (creando una nueva entrada), la próxima
+referencia a esa VA vea la nueva entrada en vez de un viejo cache
+miss/parcial.
+
+Sin el segundo, podríamos hacer \texttt{map\_page} y luego acceder
+inmediatamente a la VA mapeada y obtener un page fault espurio,
+porque la TLB aún no llenó la entrada.
+\end{respuesta}
+
+\subsection*{P13. ¿Qué pasa si no guardo \texttt{sepc} antes de llamar \texttt{user\_trap}?}
+
+\begin{respuesta}
+\texttt{sepc} es un CSR \emph{compartido} para el modo S. Si
+durante \texttt{user\_trap} ocurre otro trap (por ejemplo, una
+syscall del propio kernel — no, eso no pasa, pero un page fault
+del kernel sí), \texttt{sepc} se sobrescribe con el nuevo PC. Al
+volver, \texttt{sret} saltaría al lugar equivocado.
+
+El kernel necesita ``apropiarse'' del \texttt{sepc} actual y
+guardarlo. En \texttt{u\_trap} (\texttt{trap.s:136-137}) eso se
+hace antes de la llamada:
+
+\begin{lstlisting}[style=asmstyle]
+csrr    a0, sepc
+sw      a0, 30 * 4 (sp)     # tf->pc
+\end{lstlisting}
+
+Y al retornar, \texttt{u\_trap\_ret} (\texttt{trap.s:156-157})
+restaura:
+
+\begin{lstlisting}[style=asmstyle]
+lw      a0, 30 * 4 (sp)
+csrw    sepc, a0
+\end{lstlisting}
+
+Si lo olvidamos, después de un timer en U-mode el \texttt{sret}
+final saltaría a la dirección del último trap que haya ocurrido.
+\end{respuesta}
+
+\subsection*{P14. ¿Y si el spinlock no deshabilita interrupciones?}
+
+\begin{respuesta}
+Deadlock clásico de tipo \emph{lock-to-self}:
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item Llamamos \texttt{acquire(\&L)}. Lo obtenemos.
+    \item Llega un timer. \texttt{s\_trap $\to$ kernel\_trap $\to$
+        yield}. \texttt{yield} a su vez quiere usar
+        \texttt{tasks[i].lock} para cambiar de estado.
+    \item Si el handler del trap necesita el lock \texttt{L} (o
+        cualquier lock que esté actualmente tomado), giraría
+        esperándolo \emph{en la misma CPU que ya lo tiene}.
+        \textbf{Deadlock irrecuperable.}
+\end{enumerate}
+
+Aún cuando los locks no se solapen, hay un escenario más sutil:
+si un \texttt{wakeup} se dispara desde un handler de trap mientras
+nosotros tenemos el lock de \texttt{tasks[i]}, y el \texttt{wakeup}
+intenta tomar ese mismo lock, esperamos eternamente.
+
+Por eso \texttt{acquire} llama a \texttt{push\_irq\_off} antes del
+test-and-set (\texttt{spinlock.c:29-30}).
+\end{respuesta}
+
+\subsection*{P15. ¿Qué pasa si \texttt{exec} no copia el kernel pgtbl?}
+
+\begin{respuesta}
+El proceso quedaría con un \texttt{pgtbl} que mapea su código y
+stack, pero \emph{nada} del kernel. Apenas saliera por
+\texttt{sret} a \texttt{u\_trap\_ret} (que está en \texttt{.text}
+del kernel), generaría un \texttt{INSTRUCTION\_PAGE\_FAULT} porque
+el PC apunta a una VA no mapeada en su tabla.
+
+Lo más temprano que se vería es al ocurrir el primer trap: la CPU
+salta a \texttt{stvec=u\_trap}. Esa dirección sería inválida en el
+\texttt{pgtbl} actual del proceso. Result\-ado: una \emph{trap
+loop} infinita o una excepción doble que termina en hardware reset.
+
+La copia \texttt{memcpy(new\_pgtbl, kernel\_pgtbl, PAGE\_SIZE)} en
+\texttt{task.c:386} es lo que evita esto.
+\end{respuesta}
+
+\subsection*{P16. ¿Qué pasaría si \texttt{NCPU} no coincide con \texttt{-smp N} de QEMU?}
+
+\begin{respuesta}
+\texttt{NCPU} dimensiona \texttt{cpus\_state[NCPU]}
+(\texttt{task.c:14}). Si QEMU lanza más harts que \texttt{NCPU},
+\texttt{cpuid()} devolvería un índice fuera de rango y todas las
+operaciones sobre \texttt{cpus\_state[cpu]} corromperían memoria.
+
+Si QEMU lanza menos, no pasa nada: los slots extra de
+\texttt{cpus\_state[]} quedan sin usar.
+
+En el \texttt{Makefile} actual se lanza \texttt{-smp 1}, así que
+sólo el hart 0 corre y el resto del array está ocioso.
+\end{respuesta}
+
+\section{Cálculos sobre paginación Sv32}
+
+\subsection*{P17. ¿Cuántas entradas hay por tabla en Sv32? ¿Cuánto ocupa cada tabla?}
+
+\begin{respuesta}
+Cada tabla (directorio raíz o tabla hoja) tiene \textbf{$2^{10}=1024$
+entradas}. Cada entrada (PTE) es de \textbf{4 bytes}. Por lo tanto
+una tabla ocupa exactamente \textbf{4096 B = 1 página}. Es por eso
+que \texttt{alloc\_page} alcanza para crear un directorio o una
+tabla hoja: una llamada $=$ una tabla.
+\end{respuesta}
+
+\subsection*{P18. Traducir manualmente la VA \texttt{0x80004ABC} con \texttt{kernel\_pgtbl}.}
+
+\begin{respuesta}
+\begin{itemize}[leftmargin=*,nosep]
+    \item \texttt{VPN[1]} = bits 31..22 de \texttt{0x80004ABC} =
+        \texttt{0b10\_0000\_0000} = \texttt{0x200} = 512.
+    \item \texttt{VPN[0]} = bits 21..12 = \texttt{0b00\_0000\_0100}
+        = \texttt{0x4} = 4.
+    \item Offset = bits 11..0 = \texttt{0xABC} = 2748.
+\end{itemize}
+
+Buscamos \texttt{kernel\_pgtbl[512]}. \texttt{map\_kernel\_memory}
+mapeó \texttt{ktext\_start = 0x80000000} con tamaño =
+\texttt{\_\_text\_end - \_\_kernel\_start}, R+X, 1:1. Como
+$0x80004ABC \in [0x80000000, \texttt{\_\_text\_end})$, \emph{si
+\texttt{\_\_text\_end} > 0x80005000}, la VA está mapeada con
+PTE para frame físico \texttt{0x80004} (es decir
+\texttt{PPN=0x80004}, escrito \texttt{0x80004 << 10 | (R|X|V) =
+0x20001000 | 0xb} \dots).
+
+Bajando dos niveles:
+
+\begin{itemize}[nosep,leftmargin=*]
+    \item \texttt{root\_table[512]} apunta a la tabla hoja con su
+        \texttt{PPN} y \texttt{V=1}.
+    \item En esa tabla hoja, la entrada $[4]$ tiene \texttt{PPN =
+        0x80004}, flags R+X+V.
+    \item PA $= (\texttt{PPN} \ll 12) + \texttt{offset} = 0x80004000
+        + 0xABC = $ \textbf{\texttt{0x80004ABC}}.
+\end{itemize}
+
+Como esperábamos para una región 1:1.
+\end{respuesta}
+
+\subsection*{P19. ¿Cuánta memoria consume el \emph{conjunto} de tablas de páginas de \texttt{init} en EDOS?}
+
+\begin{respuesta}
+Estimemos suponiendo que el \texttt{init.bin} pesa $\sim 1\,300$ B
+(redondeamos a 1 página de código/datos) y la stack ocupa 1 página
+más en \texttt{PROC\_MAX\_VA-4\,KiB}.
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item Directorio raíz: 1 página (\texttt{exec} la asigna en
+        \texttt{task.c:381}).
+    \item Tabla hoja para \texttt{VPN[1]=0} (cubre la VA 0): 1
+        página (la crea \texttt{get\_pte} cuando se mapea VA=0).
+    \item Tabla hoja para \texttt{VPN[1]=511} (cubre la VA
+        \texttt{0x7FC00000..0x80000000}, donde está el stack en
+        \texttt{0x7FFFF000}): 1 página.
+\end{itemize}
+
+\textbf{Total para el proceso: 3 páginas $= $ 12\,KiB} (más las
+PTs heredadas del kernel — \emph{compartidas} con todos los
+procesos, no se cuentan).
+
+Si el init fuera más grande y cruzara una frontera de 4\,MiB
+(\texttt{VPN[1]} distinto), necesitaríamos más tablas hoja.
+\end{respuesta}
+
+\subsection*{P20. ¿Cuál es el máximo espacio de direcciones de un proceso EDOS?}
+
+\begin{respuesta}
+\texttt{PROC\_MAX\_VA = 0x80000000} = 2\,GiB (\texttt{task.h:20}).
+Eso es de 0 a \texttt{0x7FFFFFFF} (excluido \texttt{0x80000000}).
+
+¿Por qué no los 4\,GiB completos del Sv32? Porque desde
+\texttt{0x80000000} hacia arriba está mapeada la RAM del kernel
+1:1 en \texttt{kernel\_pgtbl}, y \texttt{exec} copia esa porción
+\emph{en cada proceso}. Si dejáramos al usuario usar esas VAs,
+chocaría con código del kernel y la separación user/kernel
+perdería sentido.
+
+Es exactamente la decisión que xv6 toma con \texttt{MAXVA} y
+\texttt{KERNBASE}, aunque allí los números son distintos (Sv39).
+\end{respuesta}
+
+\section{Trade-offs}
+
+\subsection*{P21. ¿Por qué Sv32 y no Sv39?}
+
+\begin{respuesta}
+La cátedra ya tiene que enseñar paginación, interrupciones, traps,
+syscalls, planificación y filesystem en un cuatrimestre. Sv39
+agrega:
+
+\begin{itemize}[nosep,leftmargin=*]
+    \item Tercer nivel (PD $\to$ PT inter. $\to$ PT hoja).
+    \item Páginas de \textbf{4\,KiB, 2\,MiB y 1\,GiB} (megapages
+        y gigapages) que complican el formato de PTE.
+    \item Direcciones virtuales con \emph{sign extension} a 64 b
+        (la regla de bits 63..39 = bit 38).
+\end{itemize}
+
+Ninguno de esos detalles es central para entender ``cómo funciona
+la traducción de VA''. Sv32 da exactamente lo mismo
+conceptualmente con la mitad del esfuerzo cognitivo.
+\end{respuesta}
+
+\subsection*{P22. ¿Por qué round-robin y no MLFQ o prioridades?}
+
+\begin{respuesta}
+Por la misma razón que Sv32: simplicidad. Un MLFQ requiere:
+
+\begin{itemize}[nosep,leftmargin=*]
+    \item Estructuras de colas múltiples.
+    \item Reglas de subida/bajada de prioridad.
+    \item Tracking del tiempo de CPU por tarea (más allá del cuanto).
+\end{itemize}
+
+Para que el alumno entienda ``cambio de contexto'',
+``preemption'', ``estado del PCB'' y ``yield'', round-robin
+alcanza. Las complicaciones de planificación se ven en teoría y
+en los prácticos de scheduling (Práctico 4), no en EDOS.
+\end{respuesta}
+
+\subsection*{P23. ¿Por qué EFS y no xv6fs?}
+
+\begin{respuesta}
+Tres razones:
+
+\begin{enumerate}[nosep,leftmargin=*]
+    \item \textbf{Boot rápido}: no hay que montar un disco virtio,
+        leer superblock, parsear inodes\dots\ basta \texttt{xxd
+        -i} y un \texttt{efs\_files\_table[]}.
+    \item \textbf{Foco}: el contenido conceptual de ``filesystem''
+        en EDOS es ``mapeo nombre $\to$ bytes''. EFS lo cubre. Los
+        detalles de journaling, FAT, inodes, etc., se cubren en
+        prácticos teóricos.
+    \item \textbf{Reproducibilidad}: como el FS vive en el binario,
+        no hay que distribuir una imagen de disco aparte.
+\end{enumerate}
+\end{respuesta}
+
+\subsection*{P24. ¿Por qué no hay \texttt{fork} en EDOS?}
+
+\begin{respuesta}
+Porque \texttt{fork} requiere \textbf{copiar el espacio de
+direcciones del padre} (o implementar COW). Eso significa caminar
+la page table del padre y, para cada PTE válida con \texttt{U=1},
+o bien:
+
+\begin{itemize}[nosep,leftmargin=*]
+    \item Asignar una página nueva, hacer \texttt{memcpy}, mapearla
+        en el pgtbl del hijo, \textbf{o}
+    \item Marcar la PTE como solo-lectura en ambos pgtbls y manejar
+        el page fault de COW.
+\end{itemize}
+
+Ambas opciones son ``ejercicios para el lector'' que pueden
+agregarse en talleres posteriores. La versión 08-process se
+contenta con \texttt{create\_process(path)}, que es esencialmente
+\texttt{fork + exec} fusionados.
+\end{respuesta}
+
+\section{Comparativas con xv6}
+
+\subsection*{P25. ¿Cómo se diferencia el manejo de la TLB?}
+
+\begin{respuesta}
+Ambos hacen \texttt{sfence.vma} antes y después de cambiar
+\texttt{satp}. La diferencia es que xv6 tiene una rutina explícita
+\texttt{kvminithart} llamada \emph{en cada hart después de boot}
+para cargar \texttt{satp} apuntando al \texttt{kernel\_pgtbl}; en
+EDOS el equivalente es \texttt{enable\_paging()} en
+\texttt{kmain.c:28}, también llamado por cada hart antes de entrar
+al \texttt{scheduler}.
+
+xv6 mantiene además la VA \texttt{TRAMPOLINE} mapeada en todos los
+pgtbls, lo que le permite hacer \texttt{satp} switches \emph{en
+ensamblador} sin perder el código que ejecuta. EDOS evita esto
+copiando el directorio del kernel en cada pgtbl de proceso.
+\end{respuesta}
+
+\subsection*{P26. ¿Qué hace xv6 con el trapframe que EDOS hace distinto?}
+
+\begin{respuesta}
+xv6:
+
+\begin{itemize}[nosep,leftmargin=*]
+    \item Reserva una página \emph{específica} para el trapframe de
+        cada proceso, mapeada en una VA fija (\texttt{TRAPFRAME =
+        TRAMPOLINE - PGSIZE}).
+    \item \texttt{trampoline.S::uservec} accede a esa VA para
+        guardar registros, sin tocar el stack del proceso.
+    \item Después de eso, cambia \texttt{satp} al kernel pgtbl y
+        salta al handler en C.
+\end{itemize}
+
+EDOS:
+
+\begin{itemize}[nosep,leftmargin=*]
+    \item Construye el trapframe \emph{en la cima del kernel-stack}
+        del task. Su dirección es \texttt{kstack + 4K -
+        sizeof(tf)}.
+    \item No cambia \texttt{satp} en \texttt{u\_trap}; sigue con el
+        pgtbl del proceso (que tiene los mapeos del kernel
+        copiados).
+    \item Cambia \texttt{satp} dentro de \texttt{user\_trap}
+        (\texttt{trap.c:126}) sólo cuando ya está manejando la
+        causa.
+\end{itemize}
+
+La razón didáctica: EDOS prefiere ``todo está en la pila'' a
+``buscá la página mágica''.
+\end{respuesta}
+
+\subsection*{P27. ¿Cómo se diferencia el sleep-lock de xv6 con \texttt{suspend} en EDOS?}
+
+\begin{respuesta}
+xv6 tiene \textbf{dos} tipos de locks:
+
+\begin{itemize}[nosep,leftmargin=*]
+    \item \texttt{struct spinlock}: el clásico, no duerme.
+    \item \texttt{struct sleeplock}: encima de \texttt{spinlock},
+        con \texttt{acquiresleep/releasesleep}. Si no se puede
+        tomar, llama a \texttt{sleep(\&slk->locked, \&slk->lk)},
+        que pone al proceso \texttt{SLEEPING} hasta que el dueño lo
+        libere y llame \texttt{wakeup}.
+\end{itemize}
+
+EDOS tiene \emph{sólo} \texttt{spinlock} más
+\texttt{suspend/wakeup} (\texttt{task.c:163,186}). Lo segundo es
+construible \emph{encima de} lo primero — y de hecho la API
+\texttt{suspend(condition, lk)} es funcionalmente equivalente a un
+sleep-lock que duerme en \texttt{condition} y reasume el lock al
+volver. EDOS no encapsula el patrón en un tipo separado.
+\end{respuesta}
+
+\subsection*{P28. ¿Qué syscalls tiene xv6 que no tiene EDOS?}
+
+\begin{respuesta}
+xv6 expone alrededor de 22 syscalls; EDOS, 6. Las que faltan en
+EDOS:
+
+\begin{itemize}[nosep,leftmargin=*]
+    \item \texttt{fork}, \texttt{wait}: no hay relación padre-hijo
+        real en EDOS.
+    \item \texttt{exec}: existe en kernel (\texttt{task.c:376})
+        pero no como syscall.
+    \item \texttt{read}, \texttt{write}, \texttt{open},
+        \texttt{close}, \texttt{dup}, \texttt{fstat}: no hay
+        descriptores de archivo en EDOS.
+    \item \texttt{pipe}: no hay pipes.
+    \item \texttt{kill}: no hay señales.
+    \item \texttt{mkdir}, \texttt{link}, \texttt{unlink},
+        \texttt{chdir}: el FS de EDOS no soporta jerarquía ni
+        escrituras.
+    \item \texttt{sbrk}: no hay heap manage\-able en EDOS (el
+        stack es de tamaño fijo, una página).
+\end{itemize}
+
+A cambio EDOS tiene unas pocas convenientes (\texttt{console\_puts}/
+\texttt{console\_putc} explícitas), que xv6 implementa vía
+\texttt{write(1, \dots)}.
+\end{respuesta}
+
+\section{Detalles finos del código}
+
+\subsection*{P29. ¿Por qué \texttt{m\_trap} pone los \texttt{a*} en 0 después de salvarlos?}
+
+\begin{respuesta}
+Mirá \texttt{trap.s:224-239}:
+
+\begin{lstlisting}[style=asmstyle]
+lw      a0, 0 * 4 (sp)
+sw      x0, 0 * 4 (sp)
+\dots
+\end{lstlisting}
+
+Restaura y \emph{escribe cero} sobre el slot del stack que acaba
+de leer. ¿Para qué? Para que, si después el código de un proceso
+de usuario lee el stack del kernel (por algún error del SO o por
+una vulnerabilidad de filtración), no encuentre valores
+identificables. Es una mitigación defensiva preventiva, mínima
+pero presente.
+\end{respuesta}
+
+\subsection*{P30. ¿Por qué \texttt{u\_trap} hace \texttt{csrrw sp, sscratch, sp}?}
+
+\begin{respuesta}
+\texttt{csrrw rd, csr, rs1} es ``intercambio atómico'': escribe
+\texttt{rs1} en \texttt{csr} y deja en \texttt{rd} el valor previo.
+La instrucción aquí cambia \texttt{sp} (que tenía el SP de usuario)
+por \texttt{sscratch} (que tenía la base del kstack del proceso),
+en \textbf{una sola instrucción}. Esto es importante porque, al
+entrar al trap, todavía estamos con stack de usuario; cualquier
+escritura previa al swap rompería el stack del proceso.
+
+Después del swap, \texttt{sp} apunta al kstack y \texttt{sscratch}
+al user-stack. La siguiente instrucción reserva espacio en kstack
+para el trap frame, y unas líneas más abajo
+(\texttt{trap.s:132-133}) \texttt{csrr a0, sscratch; sw a0, 29*4(sp)}
+guarda el SP de usuario en el frame.
+\end{respuesta}
+
+\subsection*{P31. ¿Por qué \texttt{create\_task} hace \texttt{memset(\&ctx, 0, sizeof ctx)} antes de asignar \texttt{ra}?}
+
+\begin{respuesta}
+Para que los registros \texttt{s0--s11} y \texttt{sp} en el
+contexto inicial estén en 0. Cuando \texttt{context\_switch} los
+cargue al programar la primera ejecución, esos \texttt{s*}
+quedarán en cero (que es lo que correspondería para una función
+recién entrada). Sin el \texttt{memset}, leeríamos basura del slot
+\texttt{tasks[i]} que tal vez quedó de una tarea previa
+\texttt{UNUSED}.
+\end{respuesta}
+
+\subsection*{P32. ¿Por qué \texttt{exec} libera la página vieja \emph{después} de mapear la nueva?}
+
+\begin{respuesta}
+Por seguridad: si la asignación o el \texttt{load\_program} fallan
+(\texttt{goto error}), todavía conservamos la tabla del proceso
+original y podemos devolver \texttt{false} sin haberlo dejado en un
+estado inválido.
+
+La lógica está en \texttt{task.c:406-411}:
+
+\begin{lstlisting}[style=cstyle]
+if (is_process(task)) {
+    unmap_region(task->pgtbl, 0, PROC_MAX_VA, true);
+    free_page(task->pgtbl);
+}
+task->pgtbl = new_pgtbl;
+\end{lstlisting}
+
+Sólo después de que \texttt{new\_pgtbl} está completo y validado
+liberamos el viejo. Es el patrón \emph{prepare-then-swap} típico.
+\end{respuesta}
+
+\subsection*{P33. ¿Cuándo se incrementa \texttt{ticks} y por qué sólo el hart 0?}
+
+\begin{respuesta}
+En \texttt{trap.c:46-48} (en \texttt{kernel\_trap}) y
+\texttt{trap.c:133-135} (en \texttt{user\_trap}), dentro del caso
+\texttt{TIMER\_INTERRUPT}, se hace:
+
+\begin{lstlisting}[style=cstyle]
+if (cpu_id == 0)
+    inc_ticks();
+\end{lstlisting}
+
+Cada hart tiene su propio \texttt{mtimecmp}, así que recibirían su
+propio timer y cada uno incrementaría ticks, llevando la cuenta al
+\emph{múltiplo del número de harts}. Para mantener ``ticks $=$
+tiempo real'', sólo el hart 0 incrementa.
+
+Es una decisión simple: en xv6 hay una similar (sólo el hart 0
+mantiene la noción de tiempo).
+\end{respuesta}
+
+\subsection*{P34. ¿Qué hace \texttt{set\_u\_previous\_mode} y por qué hace falta?}
+
+\begin{respuesta}
+\texttt{arch.h:411-417}:
+
+\begin{lstlisting}[style=cstyle]
+static inline void set_u_previous_mode(void) {
+    size_t status = cpu_status();
+    status &= ~(1 << 8);    // clear sstatus.SPP
+    status |= (1 << 5);     // sstatus.SPIE = 1
+    set_cpu_status(status);
+}
+\end{lstlisting}
+
+\texttt{sstatus.SPP} (Supervisor Previous Privilege) en 0 indica
+``el modo previo era U'', así que el próximo \texttt{sret} bajará a
+U-mode. \texttt{sstatus.SPIE} (Previous Interrupt Enable) en 1
+indica ``cuando se ejecute \texttt{sret}, hay que dejar
+\texttt{SIE=1}'' (es decir, interrupciones habilitadas en U-mode).
+
+Sin esta función, después del primer \texttt{return\_to\_user\_mode}
+\texttt{sret} no haría el cambio de modo correcto.
+\end{respuesta}
+
+\subsection*{P35. ¿Por qué \texttt{sleep} suspende sobre \texttt{\&ticks} y no sobre el propio task?}
+
+\begin{respuesta}
+Porque la condición no es ``este task termine'', sino ``\emph{los
+ticks alcancen un valor}''. Toda tarea durmiendo por tiempo
+comparte la misma fuente de wakeups: el timer en \texttt{inc\_ticks}.
+\texttt{inc\_ticks} (\texttt{task.c:272-288}) hace un solo recorrido
+de la tabla, y para todas las tareas con
+\texttt{wait\_condition == \&ticks} decrementa su
+\texttt{sleep\_ticks}.
+
+Si se durmiera sobre un canal por tarea, \texttt{inc\_ticks}
+tendría que enviar wakeups individuales, lo cual es más caro y no
+agrega claridad.
+\end{respuesta}
+
+% =====================================================================
+\part{Cheat sheet final}
+% =====================================================================
+
+\section{Registros RISC-V relevantes (1 cara)}
+
+\begin{center}
+\footnotesize
+\begin{tabular}{@{}llp{9.5cm}@{}}
+\toprule
+Reg./CSR & Modo & Rol \\
+\midrule
+\texttt{x0}             & --- & Siempre cero (no se puede escribir). \\
+\texttt{ra}             & --- & Return address. Es el primer registro guardado por \texttt{context\_switch}. \\
+\texttt{sp}             & --- & Stack pointer. Cada hart arranca con un stack propio en \texttt{\_\_stack0}. \\
+\texttt{gp}             & --- & Global pointer (set por el linker). \\
+\texttt{tp}             & --- & \emph{En EDOS, el hartid}. Se setea en \texttt{arch.s:14}. \\
+\texttt{a0--a7}         & --- & Argumentos y resultado. \texttt{a0} también porta el retorno de syscalls. \\
+\texttt{s0--s11}        & --- & Callee-saved. Es lo que \texttt{context\_switch} salva además de \texttt{ra} y \texttt{sp}. \\
+\texttt{t0--t6}         & --- & Caller-saved. Sólo se salvan en el trap frame. \\
+\midrule
+\texttt{mhartid}        & M   & Identifica el hart. Leído en boot. \\
+\texttt{mstatus}        & M   & \texttt{MPP} (modo previo), \texttt{MIE} (habilita IRQs M). \\
+\texttt{mepc}           & M   & PC para \texttt{mret}. \\
+\texttt{mtvec}          & M   & Handler M-mode (en EDOS, \texttt{m\_trap}). \\
+\texttt{mie}            & M   & Bit \texttt{MTIE} habilita IRQ del timer. \\
+\texttt{medeleg / mideleg} & M & Delega exc./int.\ a S. \\
+\midrule
+\texttt{sstatus}        & S   & \texttt{SIE} (habilita IRQs), \texttt{SPP} (modo previo: 0=U, 1=S), \texttt{SPIE} (estado previo de SIE). \\
+\texttt{sepc}           & S   & PC en el trap, restaurado por \texttt{sret}. \\
+\texttt{scause}         & S   & Causa del trap (bit 31 = interrupción). \\
+\texttt{stval}          & S   & Dirección que causó el fault (page faults). \\
+\texttt{stvec}          & S   & Handler S-mode (en EDOS, \texttt{s\_trap} o \texttt{u\_trap}). \\
+\texttt{sscratch}       & S   & ``Bolsillo'' del kernel. En EDOS: base + 4\,KiB del kstack del proceso. \\
+\texttt{satp}           & S   & Page table register. \texttt{0x80000000 | PPN(root)} en Sv32. \\
+\texttt{sie / sip}      & S   & Habilitación / pendiente de IRQs S-mode. \\
+\midrule
+\texttt{pmpcfg0, pmpaddr0} & M & Configuración del Physical Memory Protection. \\
+\texttt{mtime / mtimecmp[h]} & M & Timer (MMIO en CLINT). \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Formato de PTE Sv32}
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={font=\ttfamily\small},
+    cell/.style={draw,minimum height=0.7cm,align=center}
+]
+\node[cell,minimum width=5cm,fill=c1!20] (ppn) at (0,0) {PPN (22 bits)};
+\node[cell,minimum width=0.6cm,fill=cfree!20,right=0pt of ppn] (r0) {res};
+\node[cell,minimum width=0.5cm,fill=c3!25,right=0pt of r0]   (d)  {D};
+\node[cell,minimum width=0.5cm,fill=c3!25,right=0pt of d]    (a)  {A};
+\node[cell,minimum width=0.5cm,fill=c3!25,right=0pt of a]    (g)  {G};
+\node[cell,minimum width=0.5cm,fill=c3!25,right=0pt of g]    (u)  {U};
+\node[cell,minimum width=0.5cm,fill=c3!25,right=0pt of u]    (x)  {X};
+\node[cell,minimum width=0.5cm,fill=c3!25,right=0pt of x]    (w)  {W};
+\node[cell,minimum width=0.5cm,fill=c3!25,right=0pt of w]    (r)  {R};
+\node[cell,minimum width=0.5cm,fill=c3!25,right=0pt of r]    (v)  {V};
+\node[font=\scriptsize] at ($(ppn.north)+(0,0.25)$) {bits 31..10};
+\node[font=\scriptsize] at ($(v.north)+(0,0.25)$) {0};
+\end{tikzpicture}
+\end{center}
+
+\textbf{EDOS sólo usa V, R, W, X, U} (\texttt{arch.h:175-179}). En
+Sv32 ``oficial'' hay además A (accessed), D (dirty) y G (global)
+que el hardware actualiza, pero QEMU no los gestiona y EDOS no los
+consulta.
+
+\textbf{Reglas:} \texttt{V} debe estar siempre en 1 para una entrada
+viva. Si \texttt{R|W|X = 0}, la entrada es un puntero a la próxima
+tabla (no es hoja). Si alguno de R/W/X está prendido, es hoja.
+
+\section{Secuencia mínima de boot}
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item \texttt{boot} en \texttt{arch.s}: PMP, MPP=S, deleg,
+        \texttt{sie}, \texttt{mret} a \texttt{supervisor}.
+    \item \texttt{supervisor:} en \texttt{arch.s}: \texttt{stvec=s\_trap},
+        \texttt{kernel\_main}.
+    \item \texttt{kernel\_main} en \texttt{kmain.c}: hart 0 hace
+        \texttt{init\_kalloc, init\_vm, create\_process("init")},
+        publica \texttt{ready=1}.
+    \item Todos los harts: \texttt{enable\_paging, scheduler}.
+\end{enumerate}
+
+\section{Secuencia del primer scheduling de init}
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item Scheduler ve \texttt{tasks[k].state == RUNNABLE} con
+        \texttt{ctx.ra=start\_process}.
+    \item \texttt{context\_switch} $\to$ \texttt{ret} a
+        \texttt{start\_process}.
+    \item \texttt{start\_process}: \texttt{release(\&t->lock); return\_to\_user\_mode();}
+    \item \texttt{return\_to\_user\_mode}: \texttt{stvec=u\_trap,
+        sscratch=kstack+4K, SPP=0, SPIE=1, satp=task->pgtbl,
+        u\_trap\_ret(tf);}
+    \item \texttt{u\_trap\_ret}: \texttt{sp=tf, sepc=tf->pc=0,
+        restaurar regs, sret}.
+    \item \texttt{sret} $\to$ U-mode @ \texttt{pc=0} (entry
+        \texttt{start} de \texttt{init}).
+\end{enumerate}
+
+\section{Secuencia de una syscall}
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item User: \texttt{li a7, N; ecall}.
+    \item HW $\to$ \texttt{u\_trap}: swap \texttt{sp/sscratch},
+        salvar regs, llamar \texttt{user\_trap}.
+    \item \texttt{user\_trap}: \texttt{satp=kernel\_pgtbl,
+        stvec=s\_trap}, dispatch por \texttt{scause=8},
+        \texttt{syscall(task)}, \texttt{skip\_trap\_instruction}.
+    \item \texttt{syscall}: lee \texttt{a7}, llama
+        \texttt{syscalls\_table[N](task)}, escribe \texttt{tf->a0}.
+    \item \texttt{return\_to\_user\_mode} $\to$ \texttt{u\_trap\_ret}
+        $\to$ \texttt{sret}.
+\end{enumerate}
+
+\section{Comandos útiles para QEMU + GDB}
+
+\begin{lstlisting}[style=shellstyle]
+# Compilar y correr
+make
+make qemu          # arranca QEMU con -smp 1
+
+# Salir de QEMU
+Ctrl-A, x
+
+# Ver el ensamblado del kernel
+less kernel.asm
+
+# Ver el ensamblado de init
+less user/init.asm
+
+# Debug con GDB:
+# Terminal 1:
+qemu-system-riscv32 -machine virt -bios none -nographic -smp 1 \
+                    -kernel kernel -s -S
+# (-s = gdbserver en :1234, -S = freezar al inicio)
+
+# Terminal 2:
+riscv64-unknown-elf-gdb kernel
+(gdb) target remote :1234
+(gdb) set arch riscv:rv32
+(gdb) b kernel_main
+(gdb) c
+
+# Para ver registros CSR:
+(gdb) info registers
+(gdb) p/x $satp
+(gdb) p/x $sepc
+
+# Para imprimir memoria como un trap_frame:
+(gdb) p *(struct trap_frame *)(task->kstack + 4096 - sizeof(struct trap_frame))
+
+# Para ver dónde está mapeada una VA en el pgtbl del proceso:
+(gdb) p/x ((unsigned int*)task->pgtbl)[0]            # PDE[0]
+(gdb) p/x ((unsigned int*)pte_pa(PDE[0]))[0]         # PTE[0] de la hoja
+\end{lstlisting}
+
+\section{Tabla mental rápida}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+Pregunta urgente & Mirar en\dots & Línea \\
+\midrule
+``Cómo se monta un PTE'' & \texttt{arch.c} & 69-73 \\
+``Cómo entra al kernel'' & \texttt{arch.s} & 11-83 \\
+``Qué hace el timer'' & \texttt{trap.s} + \texttt{trap.c} & 198 + 45 \\
+``Cómo cede la CPU una tarea'' & \texttt{task.c} & 140-158 \\
+``Cómo cambia entre tareas'' & \texttt{arch.s} & 90-122 \\
+``Cómo se carga un programa'' & \texttt{task.c} & 376-421 \\
+``Por qué hay un \texttt{sscratch} & \texttt{trap.s} + \texttt{trap.c} & 93 + 84 \\
+``Cómo despierta sleep'' & \texttt{task.c} & 272-288 \\
+``Dónde está la tabla de syscalls'' & \texttt{syscall.c} & 63-70 \\
+``Cómo se inicializa la VM'' & \texttt{vm.c} + \texttt{arch.c} & 6 + 97 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\end{document}
